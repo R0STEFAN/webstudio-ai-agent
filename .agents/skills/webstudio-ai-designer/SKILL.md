@@ -22,31 +22,31 @@ Webstudio stores the complete source of truth for an entire visual site inside `
 
 ---
 
-## 2. Setting Up Local MCP on Any Machine
+## 2. Setting Up Local MCP in Any Project
 
-To enable 100% offline MCP execution:
+To enable 100% offline MCP execution locally inside a project:
 ```bash
-# 1. Install official Webstudio CLI
-npm i -g webstudio
+# 1. Install Webstudio locally in your project folder
+npm i webstudio
 
-# 2. Run the patcher once
-node scripts/setup-local-mcp.mjs
+# 2. Run the patcher for local node_modules
+node scripts/setup-local-mcp.mjs --local
 ```
 
 ---
 
 ## 3. Official MCP Command Reference
 
-Run any of the 70+ official Webstudio MCP tools locally:
+Run any of the 70+ official Webstudio MCP tools locally via `npx webstudio`:
 
 ### Reading Project Data:
 ```bash
-webstudio mcp single-op-call list-pages "{}"
-webstudio mcp single-op-call list-instances '{"pagePath":"/services"}'
-webstudio mcp single-op-call list-breakpoints "{}"
-webstudio mcp single-op-call list-assets "{}"
-webstudio mcp single-op-call list-design-tokens "{}"
-webstudio mcp single-op-call list-resources "{}"
+npx webstudio mcp single-op-call list-pages "{}"
+npx webstudio mcp single-op-call list-instances '{"pagePath":"/services"}'
+npx webstudio mcp single-op-call list-breakpoints "{}"
+npx webstudio mcp single-op-call list-assets "{}"
+npx webstudio mcp single-op-call list-design-tokens "{}"
+npx webstudio mcp single-op-call list-resources "{}"
 ```
 
 ### Mutating UI with JSX (`insert-fragment`):
