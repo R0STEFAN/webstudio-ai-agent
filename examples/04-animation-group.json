@@ -1,0 +1,46 @@
+{
+  "updates": [
+    {
+      "instanceId": "animation-instance-id",
+      "name": "action",
+      "type": "animationAction",
+      "value": {
+        "type": "view",
+        "animations": [
+          {
+            "timing": {
+              "duration": {
+                "type": "unit",
+                "value": 800,
+                "unit": "ms"
+              },
+              "rangeStart": {
+                "type": "unit",
+                "value": 10,
+                "unit": "%"
+              },
+              "easing": "ease-out",
+              "fill": "backwards"
+            },
+            "keyframes": [
+              {
+                "offset": 0,
+                "styles": {
+                  "opacity": "0",
+                  "transform": "translateY(50px) scale(0.96)"
+                }
+              },
+              {
+                "offset": 1,
+                "styles": {
+                  "opacity": "1",
+                  "transform": "translateY(0px) scale(1)"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+{
+  "parentInstanceId": "root-body-id",
+  "fragment": "<ws.element ws:tag='section' ws:tokens={[token('token-card', css`background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 32px; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05);`)]} ws:style={css`max-width: 1200px; margin: 48px auto; display: flex; flex-direction: row; align-items: center; gap: 48px; @media (max-width: 767px) { flex-direction: column; }`}><ws.element ws:tag='div' ws:style={css`flex: 1;`}><ws.element ws:tag='h1' ws:style={css`font-size: 40px; font-weight: 800; line-height: 1.1; margin: 0;`}>Future of Solar Energy</ws.element><ws.element ws:tag='p' ws:style={css`font-size: 16px; color: #64748b; margin-top: 16px;`}>High efficiency systems designed for maximum energy autonomy.</ws.element></ws.element></ws.element>"
+}

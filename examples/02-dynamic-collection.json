@@ -1,0 +1,8 @@
+{
+  "parentInstanceId": "grid-container-id",
+  "data": {
+    "type": "expression",
+    "value": "pricingPlans"
+  },
+  "itemFragment": "<ws.element ws:tag='div' style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 20, padding: 32, display: 'flex', flexDirection: 'column', gap: 16 }}><ws.element ws:tag='h3' style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{expression`collectionItem.title`}</ws.element><ws.element ws:tag='div' style={{ fontSize: 32, fontWeight: 800, color: '#0284c7' }}>{expression`collectionItem.price`}</ws.element></ws.element>"
+}

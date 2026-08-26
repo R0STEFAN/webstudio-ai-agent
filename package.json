@@ -1,0 +1,24 @@
+{
+  "name": "webstudio-ai-agent",
+  "version": "1.0.0",
+  "description": "Local Webstudio MCP bridge & AI agent toolkit for designing, mutating, and cloud-syncing Webstudio projects offline with 0 API limits.",
+  "type": "module",
+  "main": "scripts/setup-local-mcp.mjs",
+  "scripts": {
+    "setup": "node scripts/setup-local-mcp.mjs",
+    "cli": "node scripts/ai-designer/cli.mjs"
+  },
+  "keywords": [
+    "webstudio",
+    "mcp",
+    "model-context-protocol",
+    "ai-agent",
+    "antigravity",
+    "cursor",
+    "claude-code",
+    "windsurf",
+    "visual-builder"
+  ],
+  "author": "R0STEFAN",
+  "license": "MIT"
+}
