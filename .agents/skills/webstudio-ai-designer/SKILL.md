@@ -49,6 +49,22 @@ npx webstudio mcp single-op-call list-design-tokens "{}"
 npx webstudio mcp single-op-call list-resources "{}"
 ```
 
+### Design Token First Protocol (Reusable Styles):
+Whenever styling repeating UI elements, ALWAYS declare and reuse Design Tokens via `ws:tokens={[token('token-<name>', css`...`)]}` instead of hardcoded local styles.
+
+Standard Token Taxonomy:
+- `token-btn-primary`, `token-btn-secondary`, `token-btn-outline` (Buttons)
+- `token-card-surface`, `token-card-feature` (Cards & Containers)
+- `token-badge-<color>` (Badges & Tags)
+- `token-text-heading`, `token-text-muted` (Typography)
+
+Example:
+```jsx
+<ws.element ws:tag='button' ws:tokens={[token('token-btn-primary', css`background-color: #0284c7; color: #ffffff; padding: 12px 24px; border-radius: 12px; font-weight: 600; text-decoration: none; border: 0; cursor: pointer;`)]}>
+  Click Me
+</ws.element>
+```
+
 ### Mutating UI with JSX (`insert-fragment`):
 Always prefer creating payloads in a temporary JSON file and passing `--input-file payload.json`:
 ```json
