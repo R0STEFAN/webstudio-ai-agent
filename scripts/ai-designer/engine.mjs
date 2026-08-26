@@ -28,13 +28,23 @@ export function saveProject(projectDir, data) {
 }
 
 export function getShareLink(projectDir) {
-  const configPath = path.join(projectDir, '.webstudio', 'config.json');
   let projectId = '';
-
+  
+  // Try config.json
+  const configPath = path.join(projectDir, '.webstudio', 'config.json');
   if (fs.existsSync(configPath)) {
     try {
       const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
       projectId = cfg.projectId || '';
+    } catch {}
+  }
+
+  // Try data.json
+  const dataPath = path.join(projectDir, '.webstudio', 'data.json');
+  if (!projectId && fs.existsSync(dataPath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
+      projectId = data.build?.projectId || data.project?.id || '';
     } catch {}
   }
 
@@ -54,6 +64,9 @@ export function getShareLink(projectDir) {
 
   if (projectId && authToken) {
     return `https://p-${projectId}.apps.webstudio.is/?authToken=${authToken}`;
+  }
+  if (projectId) {
+    return `https://p-${projectId}.apps.webstudio.is`;
   }
   return null;
 }

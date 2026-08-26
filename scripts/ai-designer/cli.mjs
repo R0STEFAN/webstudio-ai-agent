@@ -26,17 +26,26 @@ const targetDir = args[1] && !args[1].startsWith('{') && !args[1].startsWith('ht
 try {
   if (command === 'info') {
     const data = loadProject(targetDir);
-    const pages = data.build?.pages || [];
-    const instances = data.build?.instances || [];
+    const unwrap = (items) => {
+      if (!items) return [];
+      if (Array.isArray(items)) {
+        return items.map((item) => (Array.isArray(item) && item.length === 2 && typeof item[0] === "string" ? item[1] : item));
+      }
+      if (typeof items === 'object') return Object.values(items);
+      return [];
+    };
+    const pages = Array.isArray(data.pages) ? data.pages : unwrap(data.build?.pages);
+    const instances = unwrap(data.build?.instances || data.instances);
     const link = getShareLink(targetDir);
     console.log(`📁 Project Directory: ${targetDir}`);
     console.log(`📄 Pages (${pages.length}):`);
-    for (const p of pages) {
-      const page = Array.isArray(p) ? p[1] : p;
-      console.log(`   - ${page.path || page.name} (id: ${page.id})`);
+    for (const page of pages) {
+      if (page && typeof page === 'object') {
+        console.log(`   - ${page.path || page.name || 'Home'} (id: ${page.id}, title: ${page.title || ''})`);
+      }
     }
     console.log(`🌳 Total Instances: ${instances.length}`);
-    if (link) console.log(`☁️ Cloud Share Link: ${link}`);
+    if (link) console.log(`☁️ Cloud Project: ${link}`);
   } else if (command === 'mcp') {
     const tool = args[1];
     const inputJson = args[2] ? JSON.parse(args[2]) : {};
