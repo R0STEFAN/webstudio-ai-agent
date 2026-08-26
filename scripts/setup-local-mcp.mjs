@@ -18,24 +18,30 @@ import { execSync } from 'node:child_process';
 console.log('🔧 Webstudio Local MCP Patcher');
 console.log('---------------------------------');
 
-// 1. Locate global npm webstudio cli.js or monorepo build
+const args = process.argv.slice(2);
+const preferLocal = args.includes('--local');
+const preferGlobal = args.includes('--global');
+
+// 1. Locate webstudio cli.js
 let cliPath = '';
 
-// Try global npm root
-try {
-  const globalRoot = execSync('npm root -g', { encoding: 'utf-8' }).trim();
-  const candidate = path.join(globalRoot, 'webstudio', 'lib', 'cli.js');
-  if (fs.existsSync(candidate)) {
-    cliPath = candidate;
-  }
-} catch {}
+// Check local node_modules first if --local or if it exists locally without explicit --global
+const localCandidate = path.join(process.cwd(), 'node_modules', 'webstudio', 'lib', 'cli.js');
+if ((preferLocal || !preferGlobal) && fs.existsSync(localCandidate)) {
+  cliPath = localCandidate;
+  console.log('📦 Using local project node_modules/webstudio');
+}
 
-// Fallback to local node_modules
+// Otherwise fallback to global npm root
 if (!cliPath) {
-  const localCandidate = path.join(process.cwd(), 'node_modules', 'webstudio', 'lib', 'cli.js');
-  if (fs.existsSync(localCandidate)) {
-    cliPath = localCandidate;
-  }
+  try {
+    const globalRoot = execSync('npm root -g', { encoding: 'utf-8' }).trim();
+    const candidate = path.join(globalRoot, 'webstudio', 'lib', 'cli.js');
+    if (fs.existsSync(candidate)) {
+      cliPath = candidate;
+      console.log('🌐 Using global npm webstudio');
+    }
+  } catch {}
 }
 
 if (!cliPath) {

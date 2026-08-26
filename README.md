@@ -48,24 +48,33 @@
 
 ---
 
-## ⚡ Швидкий старт (Встановлення за 1 хвилину)
+## ⚡ Встановлення (2 варіанти на вибір)
 
-### 1. Клонуйте репозиторій
+### Варіант А: Локально в проект (Безпечно, без зміни глобальних пакетів)
 ```bash
-git clone https://github.com/R0STEFAN/webstudio-ai-agent.git
-cd webstudio-ai-agent
+# 1. Встановіть Webstudio локально в проект
+npm i webstudio
+
+# 2. Запустіть патчер
+node scripts/setup-local-mcp.mjs --local
+
+# 3. Використовуйте через npx
+npx webstudio mcp single-op-call list-pages "{}"
+npx webstudio import --to "<shareLink>"
 ```
 
-### 2. Встановіть Webstudio CLI глобально
+### Варіант Б: Глобально на комп'ютер (Один раз для всіх проектів)
 ```bash
+# 1. Встановіть глобально
 npm i -g webstudio
-```
 
-### 3. Запустіть автоматичний патчер
-```bash
+# 2. Запустіть патчер
 node scripts/setup-local-mcp.mjs
+
+# 3. Використовуйте напряму
+webstudio mcp single-op-call list-pages "{}"
+webstudio import --to "<shareLink>"
 ```
-> Патчер налаштовує локальний транспорт: дозволяє локальний запис Immer-патчів, знімає перевірку хмарних дозволів та усуває редіректи для операцій додавання компонентів.
 
 ---
 
