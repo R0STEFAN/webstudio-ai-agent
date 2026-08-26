@@ -50,7 +50,7 @@
 
 ## ⚡ Встановлення (2 варіанти на вибір)
 
-### Варіант А: Локально в проект (Безпечно, без зміни глобальних пакетів)
+### Варіант А: Локально в проект (Рекомендовано, ізольовано)
 ```bash
 # 1. Встановіть Webstudio локально в проект
 npm i webstudio
@@ -58,8 +58,13 @@ npm i webstudio
 # 2. Запустіть патчер
 node scripts/setup-local-mcp.mjs --local
 
-# 3. Використовуйте через npx
+# 3. Завантажте проект із хмари
+npx webstudio sync --link "<shareLink>"
+
+# 4. Використовуйте MCP-інструменти для дизайну
 npx webstudio mcp single-op-call list-pages "{}"
+
+# 5. Відправте оновлений дизайн у хмару
 npx webstudio import --to "<shareLink>"
 ```
 
@@ -71,8 +76,13 @@ npm i -g webstudio
 # 2. Запустіть патчер
 node scripts/setup-local-mcp.mjs
 
-# 3. Використовуйте напряму
+# 3. Завантажте проект із хмари
+webstudio sync --link "<shareLink>"
+
+# 4. Використовуйте MCP-інструменти для дизайну
 webstudio mcp single-op-call list-pages "{}"
+
+# 5. Відправте оновлений дизайн у хмару
 webstudio import --to "<shareLink>"
 ```
 

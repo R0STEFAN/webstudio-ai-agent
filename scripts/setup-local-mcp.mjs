@@ -8,7 +8,9 @@
  * 3. Commits Immer patch transactions directly to local .webstudio/data.json
  *
  * Usage:
- *   node scripts/setup-local-mcp.mjs
+ *   node scripts/setup-local-mcp.mjs           # patches local node_modules if present, else global
+ *   node scripts/setup-local-mcp.mjs --local   # forces patching local project node_modules
+ *   node scripts/setup-local-mcp.mjs --global  # forces patching global npm package
  */
 
 import fs from 'node:fs';
@@ -46,17 +48,19 @@ if (!cliPath) {
 
 if (!cliPath) {
   console.error('❌ Could not find Webstudio CLI (cli.js).');
-  console.error('👉 Please install Webstudio CLI globally first: npm i -g webstudio');
+  console.error('👉 Please install Webstudio first: npm i webstudio (or npm i -g webstudio)');
   process.exit(1);
 }
 
 console.log(`📍 Found Webstudio CLI at: ${cliPath}`);
 
-let code = fs.readFileSync(cliPath, 'utf-8');
-
-// Backup original file
+// Read original from backup if already patched
+let code = '';
 const backupPath = `${cliPath}.backup`;
-if (!fs.existsSync(backupPath)) {
+if (fs.existsSync(backupPath)) {
+  code = fs.readFileSync(backupPath, 'utf-8');
+} else {
+  code = fs.readFileSync(cliPath, 'utf-8');
   fs.writeFileSync(backupPath, code, 'utf-8');
   console.log(`💾 Backup created at: ${backupPath}`);
 }
@@ -84,9 +88,10 @@ if (genPos !== -1) {
 // 3. Patch createCliProjectSessionTransport for local fetchNamespaces and commitPatch
 const transportSearch = 'const createCliProjectSessionTransport =';
 const transportPos = code.indexOf(transportSearch);
+const sessionSearch = 'const createCliProjectSession =';
+const sessionPos = code.indexOf(sessionSearch);
 
-if (transportPos !== -1) {
-  const transportEnd = code.indexOf('};', transportPos);
+if (transportPos !== -1 && sessionPos !== -1) {
   const patchCode = `const createCliProjectSessionTransport = ({
   projectPath,
   fetchNamespaces: remoteFetchNamespaces,
@@ -94,6 +99,10 @@ if (transportPos !== -1) {
   executeServerOperation: remoteExecuteServerOperation,
   options
 }) => {
+  const unwrap = (items) => {
+    if (!Array.isArray(items)) return [];
+    return items.map((item) => (Array.isArray(item) && item.length === 2 && typeof item[0] === "string" ? item[1] : item));
+  };
   return {
     async fetchNamespaces(project, namespaces) {
       const dataFilePath = path.join(projectPath, ".webstudio", "data.json");
@@ -101,10 +110,6 @@ if (transportPos !== -1) {
         try {
           const raw = JSON.parse(fs.readFileSync(dataFilePath, "utf8"));
           if (raw && raw.build) {
-            const unwrap = (items) => {
-              if (!Array.isArray(items)) return [];
-              return items.map((item) => (Array.isArray(item) && item.length === 2 && typeof item[0] === "string" ? item[1] : item));
-            };
             const buildData = {
               id: raw.build.id || "local-build",
               projectId: raw.build.projectId || raw.project?.id || "local-project",
@@ -137,10 +142,6 @@ if (transportPos !== -1) {
         try {
           const raw = JSON.parse(fs.readFileSync(dataFilePath, "utf8"));
           if (raw && raw.build) {
-            const unwrap = (items) => {
-              if (!Array.isArray(items)) return [];
-              return items.map((item) => (Array.isArray(item) && item.length === 2 && typeof item[0] === "string" ? item[1] : item));
-            };
             const buildData = {
               id: raw.build.id || "local-build",
               projectId: raw.build.projectId || raw.project?.id || "local-project",
@@ -182,9 +183,11 @@ if (transportPos !== -1) {
       return { ok: true };
     }
   };
-};`;
+};
 
-  code = code.slice(0, transportPos) + patchCode + code.slice(transportEnd + 2);
+`;
+
+  code = code.slice(0, transportPos) + patchCode + code.slice(sessionPos);
   console.log('✅ Patched transport for offline local mutations');
 }
 
@@ -192,6 +195,6 @@ fs.writeFileSync(cliPath, code, 'utf-8');
 console.log('---------------------------------');
 console.log('🎉 Webstudio Local MCP successfully configured!');
 console.log('🚀 You can now run all 70+ official MCP tools completely offline:');
-console.log('   webstudio mcp single-op-call list-pages "{}"');
-console.log('   webstudio mcp single-op-call insert-fragment --input-file payload.json');
-console.log('   webstudio import --to "<shareLink>"');
+console.log('   npx webstudio mcp single-op-call list-pages "{}"');
+console.log('   npx webstudio mcp single-op-call insert-fragment --input-file payload.json');
+console.log('   npx webstudio import --to "<shareLink>"');
