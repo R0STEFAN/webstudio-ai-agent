@@ -180,7 +180,7 @@ webstudio mcp single-op-call insert-collection --input-file collection.json
 
 Коли ви завершили генерацію або редагування сторінок, синхронізуйте весь проект у хмару однією командою:
 ```bash
-webstudio import --to "https://p-<projectId>.apps.webstudio.is/?authToken=<token>"
+webstudio import --to "https://apps.webstudio.is/builder/<projectId>?authToken=<token>"
 ```
 
 ---

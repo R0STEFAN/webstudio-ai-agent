@@ -2,8 +2,36 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
-const globalRoot = execSync('npm root -g', { encoding: 'utf-8' }).trim();
-const cliPath = path.join(globalRoot, 'webstudio', 'lib', 'cli.js');
+const args = process.argv.slice(2);
+const preferLocal = args.includes('--local');
+const preferGlobal = args.includes('--global');
+
+let cliPath = '';
+
+const localCandidate = path.join(process.cwd(), 'node_modules', 'webstudio', 'lib', 'cli.js');
+if ((preferLocal || !preferGlobal) && fs.existsSync(localCandidate)) {
+  cliPath = localCandidate;
+  console.log('📦 Using local project node_modules/webstudio');
+}
+
+if (!cliPath) {
+  try {
+    const globalRoot = execSync('npm root -g', { encoding: 'utf-8' }).trim();
+    const candidate = path.join(globalRoot, 'webstudio', 'lib', 'cli.js');
+    if (fs.existsSync(candidate)) {
+      cliPath = candidate;
+      console.log('🌐 Using global npm webstudio');
+    }
+  } catch {}
+}
+
+if (!cliPath) {
+  console.error('❌ Could not find Webstudio CLI (cli.js).');
+  console.error('👉 Please install Webstudio CLI: npm i webstudio (or npm i -g webstudio)');
+  process.exit(1);
+}
+
+console.log(`📍 Found Webstudio CLI at: ${cliPath}`);
 const backupPath = `${cliPath}.backup`;
 
 if (!fs.existsSync(backupPath)) {
