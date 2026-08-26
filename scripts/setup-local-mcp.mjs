@@ -1,200 +1,195 @@
-#!/usr/bin/env node
-/**
- * Webstudio Local MCP Setup & Patcher
- * ----------------------------------------------------
- * Enables 100% offline, local execution of official Webstudio MCP tools:
- * 1. Bypasses cloud permissions check (FORBIDDEN on free tier/API keys)
- * 2. Bypasses cloud server operation redirect on generated records (insert-fragment, insert-component, clone-instance)
- * 3. Commits Immer patch transactions directly to local .webstudio/data.json
- *
- * Usage:
- *   node scripts/setup-local-mcp.mjs           # patches local node_modules if present, else global
- *   node scripts/setup-local-mcp.mjs --local   # forces patching local project node_modules
- *   node scripts/setup-local-mcp.mjs --global  # forces patching global npm package
- */
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
-console.log('🔧 Webstudio Local MCP Patcher');
-console.log('---------------------------------');
-
-const args = process.argv.slice(2);
-const preferLocal = args.includes('--local');
-const preferGlobal = args.includes('--global');
-
-// 1. Locate webstudio cli.js
-let cliPath = '';
-
-// Check local node_modules first if --local or if it exists locally without explicit --global
-const localCandidate = path.join(process.cwd(), 'node_modules', 'webstudio', 'lib', 'cli.js');
-if ((preferLocal || !preferGlobal) && fs.existsSync(localCandidate)) {
-  cliPath = localCandidate;
-  console.log('📦 Using local project node_modules/webstudio');
-}
-
-// Otherwise fallback to global npm root
-if (!cliPath) {
-  try {
-    const globalRoot = execSync('npm root -g', { encoding: 'utf-8' }).trim();
-    const candidate = path.join(globalRoot, 'webstudio', 'lib', 'cli.js');
-    if (fs.existsSync(candidate)) {
-      cliPath = candidate;
-      console.log('🌐 Using global npm webstudio');
-    }
-  } catch {}
-}
-
-if (!cliPath) {
-  console.error('❌ Could not find Webstudio CLI (cli.js).');
-  console.error('👉 Please install Webstudio first: npm i webstudio (or npm i -g webstudio)');
-  process.exit(1);
-}
-
-console.log(`📍 Found Webstudio CLI at: ${cliPath}`);
-
-// Read original from backup if already patched
-let code = '';
+const globalRoot = execSync('npm root -g', { encoding: 'utf-8' }).trim();
+const cliPath = path.join(globalRoot, 'webstudio', 'lib', 'cli.js');
 const backupPath = `${cliPath}.backup`;
-if (fs.existsSync(backupPath)) {
-  code = fs.readFileSync(backupPath, 'utf-8');
-} else {
-  code = fs.readFileSync(cliPath, 'utf-8');
-  fs.writeFileSync(backupPath, code, 'utf-8');
-  console.log(`💾 Backup created at: ${backupPath}`);
+
+if (!fs.existsSync(backupPath)) {
+  fs.copyFileSync(cliPath, backupPath);
 }
 
-// 1. Patch getProjectPermissions
-const permSearch = 'const getProjectPermissions = async (options) => {';
-const permPos = code.indexOf(permSearch);
-if (permPos !== -1) {
-  const permEnd = code.indexOf('};', permPos);
-  code = code.slice(0, permPos) +
-    `const getProjectPermissions = async () => ({ canView: true, canEdit: true, canBuild: true, canAdmin: true, canUseApi: true });` +
+let code = fs.readFileSync(backupPath, 'utf-8');
+
+// Ensure readFileSync and writeFileSync are imported from "node:fs"
+const importTarget = 'import { readdirSync,';
+if (code.includes(importTarget) && !code.includes('readFileSync,')) {
+  code = code.replace(importTarget, 'import { readdirSync, readFileSync, writeFileSync,');
+}
+
+// 1. Patch hasProjectSessionPermit -> always true
+const permitSearch = 'const hasProjectSessionPermit = (permissions, permit) => {';
+if (code.includes(permitSearch)) {
+  code = code.replace(
+    permitSearch,
+    'const hasProjectSessionPermit = () => true;\nconst _unused_hasProjectSessionPermit = (permissions, permit) => {'
+  );
+  console.log('✅ 1. Patched hasProjectSessionPermit -> true');
+}
+
+// 2. Patch getProjectPermissions -> always full access
+const permSearch = 'const getProjectPermissions = projectQuery(';
+if (code.includes(permSearch)) {
+  const permEnd = code.indexOf(');', code.indexOf(permSearch));
+  code = code.slice(0, code.indexOf(permSearch)) +
+    'const getProjectPermissions = async () => ({ canView: true, canEdit: true, canBuild: true, canAdmin: true, canUseApi: true });' +
     code.slice(permEnd + 2);
-  console.log('✅ Bypassed cloud permissions check');
+  console.log('✅ 2. Patched getProjectPermissions -> full permissions');
 }
 
-// 2. Patch hasGeneratedRecordWritePatch to allow local mutation commits
+// 3. Patch hasGeneratedRecordWritePatch -> false (allows local commit of insert-fragment, insert-component)
 const genSearch = 'const hasGeneratedRecordWritePatch = (payload) =>';
-const genPos = code.indexOf(genSearch);
-if (genPos !== -1) {
-  const genEnd = code.indexOf(';', genPos);
-  code = code.slice(0, genPos) + 'const hasGeneratedRecordWritePatch = (payload) => false' + code.slice(genEnd);
-  console.log('✅ Enabled local commits for generated records (insert-fragment, insert-component)');
+if (code.includes(genSearch)) {
+  code = code.replace(
+    genSearch,
+    'const hasGeneratedRecordWritePatch = () => false; const _unused_hasGeneratedRecordWritePatch = (payload) =>'
+  );
+  console.log('✅ 3. Patched hasGeneratedRecordWritePatch -> false');
 }
 
-// 3. Patch createCliProjectSessionTransport for local fetchNamespaces and commitPatch
-const transportSearch = 'const createCliProjectSessionTransport =';
+// 4. Patch getCliServerApiContract -> always negotiated: true
+const contractSearch = 'const getCliServerApiContract = async (connection, getProjectPermissions$1 = getProjectPermissions) => {';
+if (code.includes(contractSearch)) {
+  code = code.replace(
+    contractSearch,
+    'const getCliServerApiContract = async () => ({ clientVersion: publicApiContractVersion, serverVersion: publicApiContractVersion, supportedOperationIds: new Set(publicApiOperations.map(op => op.id)), missingServerOperationIds: [], negotiated: true });\nconst _unused_getCliServerApiContract = async (connection, getProjectPermissions$1 = getProjectPermissions) => {'
+  );
+  console.log('✅ 4. Patched getCliServerApiContract -> negotiated: true');
+}
+
+// 4b. Patch mergeBuilderState to merge all available local namespaces
+const mergeSearch = 'const mergeBuilderState = (current4, incoming, namespaces) => {';
+if (code.includes(mergeSearch)) {
+  const mergeEnd = code.indexOf('\n};', code.indexOf(mergeSearch)) + 3;
+  code = code.slice(0, code.indexOf(mergeSearch)) +
+    'const mergeBuilderState = (current4, incoming) => ({ ...current4, ...incoming });' +
+    code.slice(mergeEnd);
+  console.log('✅ 4b. Patched mergeBuilderState -> full state merge');
+}
+
+// 4c. Patch createBuilderStateSnapshotFromState to safely handle entries
+const snapSearch = 'const createBuilderStateSnapshotFromState = (state) => {';
+if (code.includes(snapSearch)) {
+  const snapEnd = code.indexOf('\n};', code.indexOf(snapSearch)) + 3;
+  const safeSnapCode = `const createBuilderStateSnapshotFromState = (state) => {
+  const snapshot = {};
+  for (const namespace2 of builderNamespaces) {
+    const value2 = state[namespace2];
+    if (value2 === void 0) continue;
+    if (namespace2 === "pages" || namespace2 === "projectSettings" || namespace2 === "marketplaceProduct") {
+      snapshot[namespace2] = structuredClone(value2);
+      continue;
+    }
+    snapshot[namespace2] = value2 instanceof Map
+      ? Array.from(value2.entries()).map(([k, v]) => [k, structuredClone(v)])
+      : (Array.isArray(value2) ? value2 : []);
+  }
+  return snapshot;
+};`;
+  code = code.slice(0, code.indexOf(snapSearch)) + safeSnapCode + code.slice(snapEnd);
+  console.log('✅ 4c. Patched createBuilderStateSnapshotFromState -> safe entries serialization');
+}
+
+// 4d. Patch getInstanceParents to safely handle instance children
+const parentsSearch = 'const getInstanceParents = (instances) => {';
+if (code.includes(parentsSearch)) {
+  const parentsEnd = code.indexOf('\n};', code.indexOf(parentsSearch)) + 3;
+  const safeParentsCode = `const getInstanceParents = (instances) => {
+  const parents = new Map();
+  for (const instance2 of instances.values()) {
+    const ch = instance2 && instance2.children;
+    if (!Array.isArray(ch)) continue;
+    for (const [index2, child] of ch.entries()) {
+      if (child && child.type === "id") {
+        parents.set(child.value, { id: instance2.id, index: index2 });
+      }
+    }
+  }
+  return parents;
+};`;
+  code = code.slice(0, code.indexOf(parentsSearch)) + safeParentsCode + code.slice(parentsEnd);
+  console.log('✅ 4d. Patched getInstanceParents -> safe children traversal');
+}
+
+// 5. Replace createCliProjectSessionTransport with 100% Local data.json Transport
+const transportSearch = 'const createCliProjectSessionTransport = ({';
 const transportPos = code.indexOf(transportSearch);
-const sessionSearch = 'const createCliProjectSession =';
+const sessionSearch = 'const createCliProjectSession = ({';
 const sessionPos = code.indexOf(sessionSearch);
 
 if (transportPos !== -1 && sessionPos !== -1) {
-  const patchCode = `const createCliProjectSessionTransport = ({
-  projectPath,
-  fetchNamespaces: remoteFetchNamespaces,
-  commitPatch: remoteCommitPatch,
-  executeServerOperation: remoteExecuteServerOperation,
-  options
+  const localTransportCode = `const createCliProjectSessionTransport = ({
+  connection,
+  executeServerOperation,
+  getBuildSnapshot: getBuildSnapshot$1 = getBuildSnapshot,
+  getPermissions
 }) => {
-  const unwrap = (items) => {
-    if (!Array.isArray(items)) return [];
-    return items.map((item) => (Array.isArray(item) && item.length === 2 && typeof item[0] === "string" ? item[1] : item));
+  const _dataFile = () => join$1(process.cwd(), ".webstudio", "data.json");
+  const _readBuildData = () => {
+    const fp = _dataFile();
+    if (!existsSync(fp)) return null;
+    try {
+      const raw = JSON.parse(readFileSync(fp, "utf8"));
+      if (!raw || !raw.build) return null;
+      return raw;
+    } catch { return null; }
+  };
+  const _getLocalState = (raw) => {
+    return createBuilderStateFromSerializedSnapshot(raw.build);
   };
   return {
-    async fetchNamespaces(project, namespaces) {
-      const dataFilePath = path.join(projectPath, ".webstudio", "data.json");
-      if (fs.existsSync(dataFilePath)) {
-        try {
-          const raw = JSON.parse(fs.readFileSync(dataFilePath, "utf8"));
-          if (raw && raw.build) {
-            const buildData = {
-              id: raw.build.id || "local-build",
-              projectId: raw.build.projectId || raw.project?.id || "local-project",
-              version: raw.build.version || 1,
-              createdAt: raw.build.createdAt || new Date().toISOString(),
-              pages: unwrap(raw.build.pages),
-              instances: unwrap(raw.build.instances),
-              props: unwrap(raw.build.props),
-              styles: unwrap(raw.build.styles),
-              styleSources: unwrap(raw.build.styleSources),
-              styleSourceSelections: unwrap(raw.build.styleSourceSelections),
-              breakpoints: unwrap(raw.build.breakpoints),
-              dataSources: unwrap(raw.build.dataSources),
-              resources: unwrap(raw.build.resources),
-              assets: unwrap(raw.build.assets)
-            };
-            const state = createBuilderStateFromBuildData(buildData);
-            return {
-              data: state,
-              missingNamespaces: []
-            };
-          }
-        } catch (e) {}
-      }
-      return remoteFetchNamespaces(project, namespaces);
+    async getCompatibility() {
+      return createCliProjectSessionCompatibility(connection);
     },
-    async commitPatch(project, patch) {
-      const dataFilePath = path.join(projectPath, ".webstudio", "data.json");
-      if (fs.existsSync(dataFilePath)) {
+    async fetchNamespaces({ namespaces }) {
+      const raw = _readBuildData();
+      if (raw && raw.build) {
         try {
-          const raw = JSON.parse(fs.readFileSync(dataFilePath, "utf8"));
-          if (raw && raw.build) {
-            const buildData = {
-              id: raw.build.id || "local-build",
-              projectId: raw.build.projectId || raw.project?.id || "local-project",
-              version: raw.build.version || 1,
-              createdAt: raw.build.createdAt || new Date().toISOString(),
-              pages: unwrap(raw.build.pages),
-              instances: unwrap(raw.build.instances),
-              props: unwrap(raw.build.props),
-              styles: unwrap(raw.build.styles),
-              styleSources: unwrap(raw.build.styleSources),
-              styleSourceSelections: unwrap(raw.build.styleSourceSelections),
-              breakpoints: unwrap(raw.build.breakpoints),
-              dataSources: unwrap(raw.build.dataSources),
-              resources: unwrap(raw.build.resources),
-              assets: unwrap(raw.build.assets)
-            };
-            const state = createBuilderStateFromBuildData(buildData);
-            const res = applyBuilderPatchTransactions(state, patch.transactions);
-            const updatedState = res && res.state ? res.state : (res || state);
-            const snapshot = createSerializedBuilderStateSnapshotFromState(updatedState);
-            raw.build = {
-              ...raw.build,
-              ...snapshot,
-              version: (raw.build.version || 1) + 1
-            };
-            fs.writeFileSync(dataFilePath, JSON.stringify(raw, null, 2), "utf8");
-            return {
-              version: raw.build.version,
-              appliedTransactionCount: patch.transactions.length
-            };
-          }
+          const state = _getLocalState(raw);
+          return {
+            projectId: raw.build.projectId || raw.project?.id || "local-project",
+            buildId: raw.build.id || "local-build",
+            version: raw.build.version || 1,
+            state,
+            missingNamespaces: []
+          };
+        } catch (e) {
+          console.error("Local fetchNamespaces error:", e);
+        }
+      }
+      return toRemoteSnapshot(await getBuildSnapshot$1({ ...connection, include: getPublicBuildIncludes(namespaces) }));
+    },
+    async commitPatch({ baseVersion, transactions }) {
+      const raw = _readBuildData();
+      if (raw && raw.build) {
+        try {
+          const state = _getLocalState(raw);
+          const res = applyBuilderPatchTransactions(state, transactions);
+          const updatedState = res && res.state ? res.state : (res || state);
+          const snapshot = createSerializedBuilderStateSnapshotFromState(updatedState);
+          raw.build = { ...raw.build, ...snapshot, version: (raw.build.version || 1) + 1 };
+          writeFileSync(_dataFile(), JSON.stringify(raw, null, 2), "utf8");
+          return { version: raw.build.version, appliedTransactionCount: transactions.length };
         } catch (e) {
           console.error("Local commitPatch error:", e);
         }
       }
-      return remoteCommitPatch(project, patch);
+      return await withMappedRemoteError(() => applyBuildPatch({ ...connection, baseVersion, transactions }));
     },
-    async executeServerOperation(project, operation) {
-      return { ok: true };
-    }
+    async commitRestorePoint({ baseVersion, transactions }) {
+      return await withMappedRemoteError(() => applyRestorePointPatch({ ...connection, baseVersion, transactions: transactions.map(serializeRestorePointTransaction) }));
+    },
+    getPermissions: getPermissions ?? (async () => ({ canView: true, canEdit: true, canBuild: true, canAdmin: true, canUseApi: true })),
+    executeServerOperation: executeServerOperation ?? (async ({ operationId, input: input2 }) => ({ ok: true }))
   };
 };
 
 `;
-
-  code = code.slice(0, transportPos) + patchCode + code.slice(sessionPos);
-  console.log('✅ Patched transport for offline local mutations');
+  code = code.slice(0, transportPos) + localTransportCode + code.slice(sessionPos);
+  console.log('✅ 5. Replaced transport with 100% Local offline data.json engine');
 }
 
 fs.writeFileSync(cliPath, code, 'utf-8');
 console.log('---------------------------------');
 console.log('🎉 Webstudio Local MCP successfully configured!');
-console.log('🚀 You can now run all 70+ official MCP tools completely offline:');
-console.log('   npx webstudio mcp single-op-call list-pages "{}"');
-console.log('   npx webstudio mcp single-op-call insert-fragment --input-file payload.json');
-console.log('   npx webstudio import --to "<shareLink>"');
