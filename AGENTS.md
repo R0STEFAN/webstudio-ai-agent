@@ -23,4 +23,17 @@ This repository contains the Webstudio visual web builder and an AI agent design
      ```bash
      npx webstudio import --to "<shareLink>"
      ```
-7. **CLI Toolkit:** Pre-built scripts are available in `scripts/ai-designer/` (`engine.mjs` and `cli.mjs`) and `scripts/upload-assets.mjs`.
+7. **Strict Breakpoints & Responsive Design Rules:**
+   - **ONLY Standard Webstudio Breakpoints:** Webstudio strictly supports 4 standard breakpoints:
+     - `Base` (Desktop / default, no media query)
+     - `@media (max-width: 991px)` (Tablet)
+     - `@media (max-width: 767px)` (Mobile landscape / general mobile)
+     - `@media (max-width: 479px)` (Mobile portrait)
+   - **CRITICAL:** NEVER write arbitrary media queries (e.g. `@media (max-width: 768px)`, `@media (max-width: 640px)`, `@media (max-width: 575px)`). Any non-standard media query causes Webstudio to create unwanted custom breakpoints in the builder toolbar.
+   - **Mandatory Responsiveness:** Every section must be 100% responsive:
+     - Multi-column grids must collapse to 2 columns on Tablet (`max-width: 991px`) and 1 column on Mobile (`max-width: 767px`).
+     - Buttons and CTAs must be full-width (`width: 100%`) or neatly stacked in `flex-direction: column` on mobile screens.
+     - Headings must scale down on mobile (Hero H1: 28-32px, Section H2: 24-26px, Body: 14-15px).
+     - Containers must have `width: 100%; box-sizing: border-box;` and responsive horizontal paddings (`16px` on mobile, `24px` on desktop) to prevent any horizontal scrolling.
+8. **CLI Toolkit:** Pre-built scripts are available in `scripts/ai-designer/` (`engine.mjs` and `cli.mjs`) and `scripts/upload-assets.mjs`.
+

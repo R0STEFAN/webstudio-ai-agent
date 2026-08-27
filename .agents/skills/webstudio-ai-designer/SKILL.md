@@ -176,7 +176,35 @@ Example:
 </radix.Dialog>
 ```
 
----
+### Strict Breakpoints & Responsiveness Standard:
+
+Webstudio provides 4 official standard breakpoints out-of-the-box:
+1. `Base` — Desktop / default styles (no media query)
+2. `Tablet` — `@media (max-width: 991px)`
+3. `Mobile landscape` — `@media (max-width: 767px)`
+4. `Mobile portrait` — `@media (max-width: 479px)`
+
+> 🚨 **CRITICAL RULE:**
+> **NEVER** write arbitrary media queries (such as `@media (max-width: 768px)`, `@media (max-width: 640px)`, `@media (max-width: 600px)`, or `@media (max-width: 575px)`).
+> If you use arbitrary pixel numbers, Webstudio's JSX compiler will create unwanted custom breakpoints in the builder toolbar.
+> **ONLY** use `max-width: 991px`, `max-width: 767px`, and `max-width: 479px`.
+
+#### Responsiveness Checklist for Every Component:
+- **Grids & Layouts:**
+  - Desktop: Multi-column (e.g. `grid-template-columns: repeat(4, 1fr)` or `1.2fr 0.8fr`).
+  - Tablet (`max-width: 991px`): 2-columns (e.g. `grid-template-columns: repeat(2, 1fr)`).
+  - Mobile (`max-width: 767px`): 1-column (`grid-template-columns: 1fr; width: 100%;`).
+- **Flex Containers & Actions:**
+  - Multi-button strips must switch to `flex-direction: column; width: 100%;` on mobile (`max-width: 767px`).
+  - All CTA buttons must have full width or centered content on mobile screens.
+- **Typography Scale:**
+  - Hero H1: Desktop `46-52px` ➔ Tablet `36-38px` ➔ Mobile `28-30px`.
+  - Section H2: Desktop `32-36px` ➔ Tablet `28-30px` ➔ Mobile `24-26px`.
+  - Body Text: Desktop `16-18px` ➔ Mobile `14-15px`.
+- **Containers & Paddings:**
+  - Sections must have `width: 100%; box-sizing: border-box;`.
+  - Padding: Desktop `64px 24px` ➔ Mobile `36px 16px`. No horizontal scrollbars!
+
 
 ## 5. Cloud Push Highway
 
