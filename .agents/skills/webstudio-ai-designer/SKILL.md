@@ -10,9 +10,10 @@ description: Comprehensive guide and toolkit for designing, mutating, and syncin
 Webstudio stores the complete source of truth for an entire visual site inside `.webstudio/data.json` and assets inside `.webstudio/assets/`.
 
 ### 🚨 CORE DIRECTIVE FOR AI AGENTS:
-1. **100% MCP Execution:** You MUST ALWAYS use the official Webstudio MCP tools (`npx webstudio mcp single-op-call <tool>`) to perform all project operations (creating pages, extracting slots, inserting UI fragments, modifying styles, creating variables, auditing, etc.).
+1. **100% MCP Execution:** You MUST ALWAYS use the official Webstudio MCP tools (`npx webstudio mcp single-op-call <tool> --input-file <payload.json>`) to perform all project operations (creating pages, extracting slots, inserting UI fragments, modifying styles, creating variables, auditing, etc.).
 2. **NEVER Edit `.webstudio/data.json` Manually:** The schema and immer patch trees are complex. Relying exclusively on native MCP tool execution ensures 100% data integrity and builder compatibility.
-3. **Always Run Locally:** All 70+ MCP commands execute locally in <500ms via our local runtime bridge.
+3. **JSON-First Payload Pattern (`--input-file`):** Always save MCP tool arguments into a temporary JSON file (e.g. `.temp/payload.json`) and execute with `--input-file`. This completely eliminates Windows/POSIX shell escaping, quoting, and length limit issues.
+4. **Always Run Locally:** All 70+ MCP commands execute locally in <500ms via our local runtime bridge.
 
 ### The Offline AI Protocol:
 ```
@@ -44,9 +45,9 @@ node scripts/setup-local-mcp.mjs --local
 
 All tools are executed locally via:
 ```bash
-npx webstudio mcp single-op-call <tool-name> '<json-payload>'
-# Or using an input file:
 npx webstudio mcp single-op-call <tool-name> --input-file <payload.json>
+# Or for small payloads:
+npx webstudio mcp single-op-call <tool-name> '<json-payload>'
 ```
 
 ### 📄 Pages & Project Routing
@@ -83,21 +84,21 @@ npx webstudio mcp single-op-call <tool-name> --input-file <payload.json>
 * `create-breakpoint` — Add a custom media query breakpoint.
 * `update-breakpoint` — Modify min/max width of a breakpoint.
 * `delete-breakpoint` — Remove a custom breakpoint.
-* `apply-styles` — Apply CSS styles to an element on specific breakpoints.
+* `apply-styles` / `update-styles` — Apply CSS styles and state declarations (`:hover`, `:focus`) to an element.
 * `list-styles` — List all applied styles across instances.
 * `list-style-sources` — List style sources and rules.
 
-### 💎 Design Tokens as CSS Classes (DRY Protocol)
+### 💎 Design Tokens & Native States (DRY Protocol)
 * `list-design-tokens` — List all reusable design tokens (CSS classes).
-* `create-design-token` — Create reusable class (`{"name":"btn-primary","style":{...}}`).
-* `update-design-token` — Update styles inside a design token class.
+* `create-design-token` — Create reusable token class (`{"tokens":[{"name":"btn-primary","styles":{...}}]}`).
+* `update-design-token-styles` — Create or update declarations and native states (`state: ":hover"`) on a token.
 * `delete-design-token` — Delete a design token.
 * `define-css-variable` — Define project-level CSS variables (`--color-primary`).
 * `delete-css-variable` — Delete CSS custom property definitions.
 * `rewrite-css-variable-refs` — Rewrite `var(...)` references.
 
 ### ⚙️ Props & Event Bindings
-* `bind-props` — Bind properties (`href`, `target`, `id`, `src`, `alt`) to an instance.
+* `bind-props` — Bind properties (`href`, `target`, `id`, `src`, `alt`, `class`) to an instance.
 * `update-props` — Update values of bound props.
 * `delete-props` — Delete prop bindings from an instance.
 
@@ -123,8 +124,10 @@ npx webstudio mcp single-op-call <tool-name> --input-file <payload.json>
 * `replace-asset` — Replace all references to an asset with a new one.
 * `delete-asset` — Delete asset by ID.
 
-### 🔍 Audit & Project Health
+### 🔍 Audit & Visual Inspection
 * `audit` — Full project diagnostic audit (validates instance trees, broken refs, slot bindings, styles). Returns 0 errors when clean.
+* `screenshot` — Capture full-page or above-the-fold PNG screenshot (`{"path":"/","fullPage":true}`) for visual inspection.
+* `verify-bindings` — Verify dynamic data bindings and static integrity.
 * `whoami` — Inspect active auth token.
 * `permissions` — Inspect project permissions.
 * `inspect` — Show project summary and version history.
@@ -134,47 +137,69 @@ npx webstudio mcp single-op-call <tool-name> --input-file <payload.json>
 
 ## 4. UI Patterns & Best Practices
 
-### Design Tokens as CSS Classes (DRY Protocol):
-In Webstudio, Design Tokens function directly as **reusable CSS Classes**. Whenever styling repeating UI elements, ALWAYS declare and reuse tokens via `ws:tokens={[token('<class-name>', css`...`)]}` instead of hardcoded local styles. Do NOT prefix with `token-`.
+### 💎 Design Tokens as Native CSS Classes & States:
+In Webstudio, Design Tokens function directly as **reusable CSS Classes**. Whenever styling repeating UI elements, ALWAYS declare and reuse tokens via `ws:tokens={[token('<class-name>', css`...`)]}` instead of hardcoded local styles.
 
-Standard Class Taxonomy:
-- `btn-primary`, `btn-secondary`, `btn-outline` (Buttons)
-- `card-surface`, `card-feature`, `card-glass` (Cards & Containers)
-- `badge-primary`, `badge-success`, `badge-warning` (Badges & Tags)
-- `heading-xl`, `heading-lg`, `text-body`, `text-muted` (Typography)
+> 🚨 **CRITICAL SYNTAX RULES FOR TOKENS & STYLES:**
+> 1. **`token()` always takes 2 arguments:** `token('<token-name>', css\`<base-styles>\`)`. Never pass a single argument.
+> 2. **NO pseudo-selectors inside `css\`...\``:** Webstudio's CSS compiler parses `ws:style={css\`...\`}` and `token(..., css\`...\`)` strictly as property declarations and `@media` rules. Writing `&:hover`, `.class:hover`, or `@keyframes` inside `css\`...\`` will trigger compilation errors.
+> 3. **Setting Native `:hover` States on Tokens:** Use `update-design-token-styles` with `"state": ":hover"` to register hover styles directly in Webstudio's native style system:
+>    ```json
+>    {
+>      "designTokenId": "<tokenId>",
+>      "updates": [
+>        { "property": "--card-translate-y", "value": "0px" },
+>        { "property": "--card-translate-y", "state": ":hover", "value": "-6px" },
+>        { "property": "--img-scale", "value": "1" },
+>        { "property": "--img-scale", "state": ":hover", "value": "1.08" },
+>        { "property": "--img-grayscale", "value": "100%" },
+>        { "property": "--img-grayscale", "state": ":hover", "value": "0%" }
+>      ]
+>    }
+>    ```
+>    This makes all custom properties appear in the **Style panel (Advanced section)** and **State (:hover) dropdown** of the Webstudio Builder!
 
-Example:
-```jsx
-<ws.element ws:tag='button' ws:tokens={[token('btn-primary', css`background-color: #0284c7; color: #ffffff; padding: 12px 24px; border-radius: 12px; font-weight: 600; text-decoration: none; border: 0; cursor: pointer;`)]}>
-  Click Me
-</ws.element>
-```
+### ⚡ Cascading CSS Custom Properties Pattern on Parent Elements:
+When building rich interactive cards (with image zooms, grayscale reveals, rotating arrow buttons, and floating pill badges):
+1. Declare CSS variables (`--var`) on the parent Design Token (`card-project`, `card-marquee`).
+2. Register the `:hover` variations on the parent token using `update-design-token-styles`.
+3. Consume the variables on child tokens/instances:
+   - **Image:** `filter: grayscale(var(--img-grayscale, 100%)) contrast(var(--img-contrast, 100%)); transform: scale(var(--img-scale, 1)); transition: filter 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1);`
+   - **Floating Badge:** `opacity: var(--badge-opacity, 0); transform: translateY(var(--badge-translate-y, 10px)); transition: opacity 400ms cubic-bezier(0.16, 1, 0.3, 1), transform 400ms cubic-bezier(0.16, 1, 0.3, 1);`
+   - **Top-Right Arrow:** `background-color: var(--arrow-bg, #ffffff); color: var(--arrow-color, #000000); transform: scale(var(--arrow-scale, 1)); transition: background-color 400ms cubic-bezier(0.16, 1, 0.3, 1), color 400ms cubic-bezier(0.16, 1, 0.3, 1), transform 400ms cubic-bezier(0.16, 1, 0.3, 1);`
 
-### Mutating UI with JSX (`insert-fragment`):
-```json
-{
-  "parentInstanceId": "<parent-instance-id>",
-  "fragment": "<ws.element ws:tag='section' ws:tokens={[token('card-surface', css`background-color: #fff; border-radius: 16px; padding: 24px;`)]} ws:style={css`max-width: 1200px; margin: 0 auto; display: flex; flex-direction: row; @media (max-width: 767px) { flex-direction: column; }`}><ws.element ws:tag='h2'>Title</ws.element></ws.element>"
-}
-```
+### 🏷️ Assigning CSS Classes via Element Props (Settings Panel):
+> 🚨 **NEVER write `class: ...` inside `ws:style={css\`...\`}`.**
+> To attach class names to an element in Webstudio JSX, ALWAYS use standard JSX attribute `className="..."`:
+> ```jsx
+> <ws.element ws:tag="div" className="interactive-target marquee-card" ws:tokens={[token('card-marquee', css`...`)]} ws:style={css`...`}>
+> ```
+> Webstudio automatically converts `className` into native element `class` props in the Settings panel.
 
-### Radix UI Popups / Modals:
+### 🪟 Native Radix UI Modals & Navigation Drawers (`<radix.Dialog>`):
+For fullscreen overlays, creative menus, and modal dialogs, ALWAYS use native `<radix.Dialog>` components:
 ```jsx
 <radix.Dialog>
   <radix.DialogTrigger>
-    <ws.element ws:tag='button'>Open Modal</ws.element>
+    <ws.element ws:tag="button" className="interactive-target" ws:tokens={[token('btn-nav', css`display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 0; cursor: pointer;`)]}>
+      MENU +
+    </ws.element>
   </radix.DialogTrigger>
-  <radix.DialogOverlay ws:style={css`position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;`}>
-    <radix.DialogContent ws:style={css`background: #fff; border-radius: 20px; padding: 32px; max-width: 500px; width: 100%; position: relative;`}>
-      <$.Box>
-        <radix.DialogTitle>Modal Title</radix.DialogTitle>
-        <radix.DialogDescription>Modal description</radix.DialogDescription>
-      </$.Box>
-      <radix.DialogClose>✕</radix.DialogClose>
+  <radix.DialogOverlay ws:style={css`position: fixed; inset: 0; z-index: 99999; background: rgba(10, 10, 10, 0.96); backdrop-filter: blur(16px); display: flex; align-items: center; justify-content: center;`}>
+    <radix.DialogContent ws:style={css`position: fixed; inset: 0; width: 100vw; height: 100vh; background-color: #0A0A0A; color: #FFFFFF; display: flex; flex-direction: column; justify-content: space-between; padding: 100px 48px 48px; box-sizing: border-box; overflow-y: auto;`}>
+      <radix.DialogTitle ws:style={css`display: none;`}>Menu</radix.DialogTitle>
+      <radix.DialogDescription ws:style={css`display: none;`}>Navigation</radix.DialogDescription>
+      <radix.DialogClose className="interactive-target" ws:tokens={[token('btn-nav', css`...`)]} ws:style={css`position: absolute; top: 28px; right: 32px; background: transparent; border: 0; color: #ffffff; ...`}>
+        CLOSE ✕
+      </radix.DialogClose>
+      {/* Navigation Matrix */}
     </radix.DialogContent>
   </radix.DialogOverlay>
 </radix.Dialog>
 ```
+* **Benefit:** Radix Dialog is hidden by default in the visual builder canvas and opens as a high-contrast modal when triggered, preventing accidental layout spills over the Hero section.
+
+---
 
 ### 📐 Flexbox-First Layout Principle (Avoid CSS Grid Where Possible):
 
@@ -262,152 +287,36 @@ Webstudio provides 4 official standard breakpoints out-of-the-box:
 > If you use arbitrary pixel numbers, Webstudio's JSX compiler will automatically create unwanted custom breakpoints in the builder toolbar.
 > **ONLY** use `max-width: 991px`, `max-width: 767px`, and `max-width: 479px`.
 
-#### 📱 Responsive Adaptability Rules:
-
-1. **Flexbox-Driven Stacking:**
-   - On Tablet (`max-width: 991px`) and Mobile (`max-width: 767px`), horizontally aligned flex rows simply switch to `flex-direction: column; width: 100%;`.
-   - Card children automatically expand to full width `flex: 1 1 100%; width: 100%;`.
-
-2. **Buttons, Links & Touch Targets:**
-   - Multi-button action strips switch to `flex-direction: column; width: 100%;` on mobile (`max-width: 767px`).
-   - All CTA buttons must be full width (`width: 100%`) or neatly centered on mobile screens.
-   - Minimum touch target size of **44×44px** for buttons, tabs, and interactive elements.
-
-3. **Typography Scale (Responsive Hierarchy):**
-   - **Hero H1:** Desktop `46-52px` ➔ Tablet `36-38px` ➔ Mobile `28-32px` (line-height: 1.2-1.25).
-   - **Section H2:** Desktop `32-36px` ➔ Tablet `28-30px` ➔ Mobile `24-26px`.
-   - **Card Titles H3/H4:** Desktop `18-22px` ➔ Mobile `16-18px`.
-   - **Body Text:** Desktop `16-18px` ➔ Mobile `14-15px` (line-height: 1.5-1.6).
-
-4. **Forms & Input Fields:**
-   - All inputs, textareas, and select dropdowns must have `width: 100%; box-sizing: border-box;`.
-   - Set `font-size: 16px;` or `15px;` with proper vertical padding (`14-16px`) to ensure comfortable mobile typing and prevent iOS auto-zoom.
-
-5. **Images & Visual Media:**
-   - Images must have `max-width: 100%; width: 100%; object-fit: cover;`.
-   - Reduce fixed container heights on mobile (e.g. Hero visual: desktop `360-400px` ➔ mobile `220-240px`).
-
-6. **Containers & Zero Horizontal Overflow (Anti-Scroll):**
-   - Every `<section>`, `<div>`, `<main>` must have `width: 100%; box-sizing: border-box;`.
-   - Horizontal Paddings: Desktop `padding: 64px 24px` ➔ Tablet `48px 20px` ➔ Mobile `36px 16px`.
-   - Root wrapper must have `overflow-x: hidden;` to eliminate any accidental horizontal scrolling.
-
-
+---
 
 ### 🎬 Native Webstudio Animation Standard:
 
 Webstudio provides first-class native components for scroll-driven and viewport intersection animations via the `animation` namespace (`@webstudio-is/sdk-components-animation:`).
 
-#### 1. Available Animation Components:
+#### Available Animation Components:
 * `<animation.AnimateChildren action={...}>` — **Animation Group**: The parent wrapper that defines the trigger timeline and keyframe animation rules via the `action` prop.
-* `<animation.StaggerAnimation slidingWindow={1} easing="easeOut" ws:style={css`...`}>` — **Stagger Animation**: Wraps multiple child elements (cards, list items, bento blocks) to animate them in a smooth sequence. It also acts as the layout container (Grid/Flex).
+* `<animation.StaggerAnimation slidingWindow={1} easing="easeOut" ws:style={css`...`}>` — **Stagger Animation**: Wraps multiple child elements (cards, list items, bento blocks) to animate them in a smooth sequence.
 * `<animation.AnimateText slidingWindow={1} easing="linear" splitBy="char">` — **Text Animation**: Splits headings or paragraphs by character, word, or symbol for typewriter and staggered text reveals.
 * `<animation.VideoAnimation action={...}>` — **Video Animation**: Controls video playback timeline on scroll.
 
-#### 2. Animation Types (`action.type`):
-* `type: "view"` — **Viewport Intersection**: Triggers when the element enters/exits the browser screen.
-* `type: "scroll"` — **Scroll Timeline**: Progresses proportionally as the user scrolls the page.
-
-#### 3. Standard Built-in Range Presets (`rangeStart` & `rangeEnd`):
-Webstudio uses CSS Scroll-Driven Animation range phases:
-1. `["cover", { type: "unit", value: 0, unit: "%" }]` (or `entry 0%`) — **Bottom of Viewport**: When the element just begins to appear at the bottom of the screen.
-2. `["contain", { type: "unit", value: 0, unit: "%" }]` (or `entry 100%`) — **Fully Visible Bottom**: When the element has fully entered the viewport.
-3. `["contain", { type: "unit", value: 50, unit: "%" }]` — **Center of Viewport**: When the element is centered in the screen.
-4. `["contain", { type: "unit", value: 100, unit: "%" }]` — **Starts Leaving Top**: When the element begins to leave the top of the viewport but is still fully visible.
-5. `["cover", { type: "unit", value: 100, unit: "%" }]` (or `exit 100%`) — **Top of Viewport**: When the element has completely exited the top of the screen.
-
-#### 4. Timing, Duration & Easing:
-* **Fixed Duration (Optional):** `duration: { type: "unit", value: 400, unit: "ms" }` — sets a fixed time transition once triggered by `rangeStart` instead of relying purely on scroll distance.
-* **Fill:** `"backwards"` (prevents flash of unstyled content before entering), `"forwards"`, or `"both"`.
-* **Easing:** `"ease-out"`, `"ease"`, `"linear"`, `"easeInOutCubic"`, or `"cubic-bezier(0.16, 1, 0.3, 1)"`.
-
-#### 5. Code Pattern Example (Staggered Cards):
-```jsx
-<animation.AnimateChildren
-  action={{
-    type: "view",
-    animations: [
-      {
-        name: "Cards Stagger Entrance",
-        timing: {
-          fill: "backwards",
-          duration: { type: "unit", value: 400, unit: "ms" },
-          rangeStart: ["cover", { type: "unit", value: 0, unit: "%" }],
-          rangeEnd: ["contain", { type: "unit", value: 0, unit: "%" }],
-          easing: "ease-out"
-        },
-        keyframes: [
-          {
-            offset: 0,
-            styles: {
-              opacity: { type: "unit", value: 0, unit: "number" },
-              transform: { type: "unparsed", value: "translateY(24px)" }
-            }
-          },
-          {
-            offset: 1,
-            styles: {
-              opacity: { type: "unit", value: 1, unit: "number" },
-              transform: { type: "unparsed", value: "translateY(0px)" }
-            }
-          }
-        ]
-      }
-    ]
-  }}
->
-  <animation.StaggerAnimation slidingWindow={1} easing="easeOut" ws:style={css`display: flex; flex-wrap: wrap; gap: 20px; width: 100%; box-sizing: border-box; @media (max-width: 767px) { flex-direction: column; }`}>
-    <ws.element ws:tag="div" ws:tokens={[token('card-surface', css`flex: 1 1 calc(50% - 10px); min-width: 260px; max-width: 100%; background: #fff; padding: 24px; border-radius: 16px; box-sizing: border-box; @media (max-width: 767px) { flex: 1 1 100%; width: 100%; }`)]}>
-      Card 1
-    </ws.element>
-    <ws.element ws:tag="div" ws:tokens={[token('card-surface', css`flex: 1 1 calc(50% - 10px); min-width: 260px; max-width: 100%; background: #fff; padding: 24px; border-radius: 16px; box-sizing: border-box; @media (max-width: 767px) { flex: 1 1 100%; width: 100%; }`)]}>
-      Card 2
-    </ws.element>
-  </animation.StaggerAnimation>
-</animation.AnimateChildren>
-```
+---
 
 ### 📊 Native Dynamic Data & Collections Standard (`ws.collection` & `Variable`):
 
-Webstudio provides a reactive data system where dynamic data can be declared as Variables and iterated over using native Collections.
+* **Data Scoping to `Body`:** Dynamic data variables (JSON arrays, objects) are **declared and scoped to the `Body` instance (`scopeInstanceId = bodyId`)** so they are globally accessible across the entire page.
+* **Collections (`<ws.collection>`):** Use `<ws.collection data={expression`${variableName}`} item={itemParam}>` to dynamically iterate through JSON arrays and render repeated cards/items.
+* **Binding Verification:** Run `npx webstudio mcp single-op-call verify-bindings` to confirm complete static integrity and 0 broken data references.
 
-#### 1. Data Scoping to `Body` (Best Practice):
-> 💡 **IMPORTANT:** In Webstudio, dynamic data variables (JSON arrays, objects, strings, numbers) are **declared and scoped to the `Body` instance (`scopeInstanceId = bodyId`)**. This ensures the data is globally accessible to all sections, cards, and collections across the entire page.
+---
 
-* **Creating a Data Variable:**
-  - Via MCP Tool:
-    ```bash
-    npx webstudio mcp single-op-call create-variable '{"scopeInstanceId": "<bodyInstanceId>", "name": "medicalPackages", "valueType": "json", "value": [...] }'
-    ```
-  - In JSX Fragment evaluation:
-    ```typescript
-    const checkupPackages = new Variable("checkupPackages", [
-      { title: "Базовий Чек-ап", price: "2 400 ₴", badge: "Популярний" },
-      { title: "Кардіо Скринінг", price: "4 800 ₴", badge: "Експертний" }
-    ]);
-    const pkg = new Parameter("pkg"); // Element iterator parameter
-    ```
-
-#### 2. Native Collection Component (`<ws.collection>`):
-* Wraps the template card and loops through the array data:
-  ```jsx
-  <ws.collection data={expression`${checkupPackages}`} item={pkg}>
-    <ws.element ws:tag="div" ws:tokens={[token('card-surface', css`...`)]}>
-      <ws.element ws:tag="h3">{expression`${pkg}.title`}</ws.element>
-      <ws.element ws:tag="div">{expression`${pkg}.badge`}</ws.element>
-      <ws.element ws:tag="div">{expression`${pkg}.price`}</ws.element>
-    </ws.element>
-  </ws.collection>
-  ```
-
-#### 3. Binding Verification:
-Always verify dynamic data bindings statically via MCP before deployment:
+### 👁️ Visual AI Inspection Loop (`screenshot`):
+Before finishing any visual task, ALWAYS run a visual check using MCP screenshot:
 ```bash
-npx webstudio mcp single-op-call verify-bindings --input-file '{"pageId": "<pageId>"}'
+npx webstudio mcp single-op-call screenshot '{"path":"/","fullPage":true}'
 ```
-Ensures 0 broken references and 100% static data integrity (`analysis.staticIntegrity: complete`).
+Read the resulting image path using the `read` tool to visually verify layout balance, spacing, contrast, and responsive integrity.
 
-
+---
 
 ## 5. Cloud Push Highway
 
