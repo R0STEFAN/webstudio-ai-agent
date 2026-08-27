@@ -9,12 +9,17 @@ description: Comprehensive guide and toolkit for designing, mutating, and syncin
 
 Webstudio stores the complete source of truth for an entire visual site inside `.webstudio/data.json` and assets inside `.webstudio/assets/`.
 
+### 🚨 CORE DIRECTIVE FOR AI AGENTS:
+1. **100% MCP Execution:** You MUST ALWAYS use the official Webstudio MCP tools (`npx webstudio mcp single-op-call <tool>`) to perform all project operations (creating pages, extracting slots, inserting UI fragments, modifying styles, creating variables, auditing, etc.).
+2. **NEVER Edit `.webstudio/data.json` Manually:** The schema and immer patch trees are complex. Relying exclusively on native MCP tool execution ensures 100% data integrity and builder compatibility.
+3. **Always Run Locally:** All 70+ MCP commands execute locally in <500ms via our local runtime bridge.
+
 ### The Offline AI Protocol:
 ```
    [AI Assistant / LLM]
            │
            ▼
- [Local Webstudio MCP Tools] ──► mutates local `.webstudio/data.json` in <500ms
+ [Local Webstudio MCP Tools] ──► mutates local `.webstudio/data.json` via official runtime
            │
            ▼
  [`webstudio import --to "<shareLink>"`] ──► commits state to Webstudio Cloud
