@@ -205,6 +205,80 @@ Webstudio provides 4 official standard breakpoints out-of-the-box:
   - Sections must have `width: 100%; box-sizing: border-box;`.
   - Padding: Desktop `64px 24px` ➔ Mobile `36px 16px`. No horizontal scrollbars!
 
+### 🎬 Native Webstudio Animation Standard:
+
+Webstudio provides first-class native components for scroll-driven and viewport intersection animations via the `animation` namespace (`@webstudio-is/sdk-components-animation:`).
+
+#### 1. Available Animation Components:
+* `<animation.AnimateChildren action={...}>` — **Animation Group**: The parent wrapper that defines the trigger timeline and keyframe animation rules via the `action` prop.
+* `<animation.StaggerAnimation slidingWindow={1} easing="easeOut" ws:style={css`...`}>` — **Stagger Animation**: Wraps multiple child elements (cards, list items, bento blocks) to animate them in a smooth sequence. It also acts as the layout container (Grid/Flex).
+* `<animation.AnimateText slidingWindow={1} easing="linear" splitBy="char">` — **Text Animation**: Splits headings or paragraphs by character, word, or symbol for typewriter and staggered text reveals.
+* `<animation.VideoAnimation action={...}>` — **Video Animation**: Controls video playback timeline on scroll.
+
+#### 2. Animation Types (`action.type`):
+* `type: "view"` — **Viewport Intersection**: Triggers when the element enters/exits the browser screen.
+* `type: "scroll"` — **Scroll Timeline**: Progresses proportionally as the user scrolls the page.
+
+#### 3. Standard Built-in Range Presets (`rangeStart` & `rangeEnd`):
+Webstudio uses CSS Scroll-Driven Animation range phases:
+1. `["cover", { type: "unit", value: 0, unit: "%" }]` (or `entry 0%`) — **Bottom of Viewport**: When the element just begins to appear at the bottom of the screen.
+2. `["contain", { type: "unit", value: 0, unit: "%" }]` (or `entry 100%`) — **Fully Visible Bottom**: When the element has fully entered the viewport.
+3. `["contain", { type: "unit", value: 50, unit: "%" }]` — **Center of Viewport**: When the element is centered in the screen.
+4. `["contain", { type: "unit", value: 100, unit: "%" }]` — **Starts Leaving Top**: When the element begins to leave the top of the viewport but is still fully visible.
+5. `["cover", { type: "unit", value: 100, unit: "%" }]` (or `exit 100%`) — **Top of Viewport**: When the element has completely exited the top of the screen.
+
+#### 4. Timing, Duration & Easing:
+* **Fixed Duration (Optional):** `duration: { type: "unit", value: 400, unit: "ms" }` — sets a fixed time transition once triggered by `rangeStart` instead of relying purely on scroll distance.
+* **Fill:** `"backwards"` (prevents flash of unstyled content before entering), `"forwards"`, or `"both"`.
+* **Easing:** `"ease-out"`, `"ease"`, `"linear"`, `"easeInOutCubic"`, or `"cubic-bezier(0.16, 1, 0.3, 1)"`.
+
+#### 5. Code Pattern Example (Staggered Cards):
+```jsx
+<animation.AnimateChildren
+  action={{
+    type: "view",
+    animations: [
+      {
+        name: "Cards Stagger Entrance",
+        timing: {
+          fill: "backwards",
+          duration: { type: "unit", value: 400, unit: "ms" },
+          rangeStart: ["cover", { type: "unit", value: 0, unit: "%" }],
+          rangeEnd: ["contain", { type: "unit", value: 0, unit: "%" }],
+          easing: "ease-out"
+        },
+        keyframes: [
+          {
+            offset: 0,
+            styles: {
+              opacity: { type: "unit", value: 0, unit: "number" },
+              transform: { type: "unparsed", value: "translateY(24px)" }
+            }
+          },
+          {
+            offset: 1,
+            styles: {
+              opacity: { type: "unit", value: 1, unit: "number" },
+              transform: { type: "unparsed", value: "translateY(0px)" }
+            }
+          }
+        ]
+      }
+    ]
+  }}
+>
+  <animation.StaggerAnimation slidingWindow={1} easing="easeOut" ws:style={css`display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; box-sizing: border-box; @media (max-width: 991px) { grid-template-columns: repeat(2, 1fr); } @media (max-width: 767px) { grid-template-columns: 1fr; }`}>
+    <ws.element ws:tag="div" ws:tokens={[token('card-surface', css`background: #fff; padding: 24px; border-radius: 16px;`)]}>
+      Card 1
+    </ws.element>
+    <ws.element ws:tag="div" ws:tokens={[token('card-surface', css`background: #fff; padding: 24px; border-radius: 16px;`)]}>
+      Card 2
+    </ws.element>
+  </animation.StaggerAnimation>
+</animation.AnimateChildren>
+```
+
+
 
 ## 5. Cloud Push Highway
 
