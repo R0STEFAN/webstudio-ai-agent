@@ -35,10 +35,4 @@ This repository contains the Webstudio visual web builder and an AI agent design
      - Buttons and CTAs must be full-width (`width: 100%`) or neatly stacked in `flex-direction: column` on mobile screens.
      - Headings must scale down on mobile (Hero H1: 28-32px, Section H2: 24-26px, Body: 14-15px).
      - Containers must have `width: 100%; box-sizing: border-box;` and responsive horizontal paddings (`16px` on mobile, `24px` on desktop) to prevent any horizontal scrolling.
-8. **Strict Animation & Micro-Interactions Standard:**
-   - **Hardware Acceleration:** Only animate `transform` and `opacity` for smooth 60 FPS rendering. Never animate geometry properties (`width`, `height`, `margin`, `padding`, `top`, `left`).
-   - **Timing & Easing:** Micro-interactions (hover/tap) must be fast and responsive (`150ms-200ms`, `cubic-bezier(0.16, 1, 0.3, 1)`). Avoid sluggish >500ms floaty animations.
-   - **Interactive States:** All buttons (`btn-primary`, `btn-secondary`) and cards (`card-surface`) must have explicit hover lift (`translateY(-2px)` or `-4px`) and active press feedback (`scale(0.98)`).
-9. **CLI Toolkit:** Pre-built scripts are available in `scripts/ai-designer/` (`engine.mjs` and `cli.mjs`) and `scripts/upload-assets.mjs`.
-
-
+8. **CLI Toolkit:** Pre-built scripts are available in `scripts/ai-designer/` (`engine.mjs` and `cli.mjs`) and `scripts/upload-assets.mjs`.
