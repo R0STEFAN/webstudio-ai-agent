@@ -1,6 +1,6 @@
 # 🚀 Webstudio AI Agent & Local MCP Toolkit
 
-> **Повноцінний автономний міст для AI-агентів (Antigravity, Cursor, Claude Code, Windsurf), що відкриває 100% можливостей Webstudio MCP локально без жодних обмежень тарифів, лімітів API чи помилок доступу.**
+> **Повноцінний автономний міст для AI-агентів (Google Antigravity, Cursor, Claude Code, Windsurf), що відкриває 100% можливостей Webstudio MCP локально без жодних обмежень тарифів, лімітів API чи помилок доступу.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Webstudio: Local MCP](https://img.shields.io/badge/Webstudio-Local%20MCP-green.svg)](https://webstudio.is)
@@ -12,10 +12,11 @@
 
 | Звичайна робота через Cloud API | Наш автономний міст (Local MCP + Cloud Push) |
 | :--- | :--- |
-| ❌ Блокується на безкоштовних тарифах (`FORBIDDEN`) | ✅ **100% безкоштовно і без лімітів** |
-| ❌ Потребує платних API-ключів | ✅ Працює офлайн безпосередньо з `.webstudio/data.json` |
-| ❌ Повільно (десятки мережевих HTTP-запитів) | ✅ **Миттєва генерація (<500ms)** завдяки Immer-транзакціям |
-| ❌ Обмежений функціонал | ✅ **Повна підтримка JSX, Radix UI, Animation Groups, Tokens, Collections** |
+| ❌ Блокується на безкоштовних тарифах (`FORBIDDEN: Authorization token cannot use Builder API`) | ✅ **100% безкоштовно і без лімітів** |
+| ❌ Потребує платних тарифів / додаткових API-дозволів | ✅ Працює офлайн безпосередньо з `.webstudio/data.json` |
+| ❌ Повільно (десятки мережевих HTTP-запитів на кожну зміну) | ✅ **Миттєва генерація (<500ms)** завдяки Immer-транзакціям |
+| ❌ Обмежений функціонал | ✅ **Повна підтримка JSX, Radix UI, Animation Groups, Tokens, Collections, Slots** |
+| ❌ Помилки при завантаженні нових медіафайлів | ✅ **Автоматичний місток сесії для завантаження будь-яких ассетів** |
 
 ---
 
@@ -26,162 +27,134 @@
 │                    AI CODING ASSISTANT                    │
 │        (Google Antigravity, Cursor, Claude Code)          │
 └─────────────────────────────┬─────────────────────────────┘
-                              │
+                              │ (MCP-команди: extract-slot, insert-fragment...)
                               ▼
 ┌───────────────────────────────────────────────────────────┐
 │              LOCAL WEBSTUDIO MCP RUNTIME                  │
-│       (70+ Official MCP Tools: insert-fragment, etc.)     │
+│       (70+ Official MCP Tools: швидкі Immer-транзакції)   │
 └─────────────────────────────┬─────────────────────────────┘
-                              │  (Fast Immer Local Mutation)
+                              │
                               ▼
 ┌───────────────────────────────────────────────────────────┐
 │               LOCAL PROJECT SOURCE OF TRUTH               │
 │         .webstudio/data.json  &  .webstudio/assets/       │
 └─────────────────────────────┬─────────────────────────────┘
                               │
-                              ▼  webstudio import --to "<shareLink>"
+                              ▼  npx webstudio import --to "<shareLink>"
 ┌───────────────────────────────────────────────────────────┐
 │                  WEBSTUDIO CLOUD BUILDER                  │
-│         (Миттєве відображення результату в хмарі)         │
+│       (Авто-завантаження ассетів через сесію + імпорт)    │
 └───────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## ⚡ Встановлення (2 варіанти на вибір)
+## 📋 Покрокова інструкція по запуску та налаштуванню
 
-### Варіант А: Локально в проект (Рекомендовано, ізольовано)
+### Крок 1. Встановлення Webstudio CLI у проєкт
+
+Встановіть офіційний пакет `webstudio` у ваш репозиторій:
 ```bash
-# 1. Встановіть Webstudio локально в проект
 npm i webstudio
+```
 
-# 2. Запустіть патчер
+---
+
+### Крок 2. Активація локального мосту (Патчер)
+
+Запустіть скрипт конфігурації локального MCP:
+```bash
 node scripts/setup-local-mcp.mjs --local
+```
+> **Що робить патчер:** Перемикає виконання всіх 70+ MCP-інструментів на локальний файл `.webstudio/data.json`, розблоковує всі дозволи та активує місток авторизації браузерної сесії для завантаження ассетів.
 
-# 3. Завантажте проект із хмари
+---
+
+### Крок 3. Завантаження проєкту з Webstudio Cloud
+
+1. У веб-інтерфейсі Webstudio натисніть **Share** (вгорі праворуч) та скопіюйте посилання на проєкт.
+2. Завантажте поточний стан проєкту у локальну папку:
+```bash
 npx webstudio sync --link "<shareLink>"
+```
+Після виконання у вас з'являться файли:
+- `.webstudio/data.json` — повна структура проєкту, сторінки, слоти та стилі.
+- `.webstudio/assets/` — локальна папка для зображень та шрифтів.
 
-# 4. Використовуйте MCP-інструменти для дизайну
+---
+
+### Крок 4. Авторизація сесії браузера для ассетів (Один раз)
+
+Щоб нативна команда `webstudio import` могла завантажувати нові згенеровані картинки без обмежень безкоштовного тарифу, створіть файл **`.webstudio/session.json`** у корені проєкту:
+
+#### 📄 Формат `.webstudio/session.json`:
+```json
+{
+  "cookie": "ВСТАВИТИ_РЯДОК_COOKIE_З_БРАУЗЕРА",
+  "csrfToken": "ВСТАВИТИ_X_CSRF_TOKEN_З_БРАУЗЕРА"
+}
+```
+
+#### 🔍 Як отримати ці дані за 10 секунд (DevTools F12):
+1. Відкрийте ваш проєкт у браузері у [Webstudio Builder](https://apps.webstudio.is).
+2. Натисніть **`F12`** (DevTools) -> перейдіть на вкладку **Network** (Мережа).
+3. Зробіть будь-яку дію (клікніть елемент або оновіть сторінку F5).
+4. Клікніть на будь-який запит (наприклад, `polly.poll` або `loadProjectBundle...`) -> у вкладці **Headers** знайдіть **Request Headers**:
+   - **`cookie:`** — скопіюйте весь рядок та вставте в поле `"cookie"`.
+   - **`x-csrf-token:`** — скопіюйте рядок токена та вставте в поле `"csrfToken"`.
+
+> 🔒 **Безпека:** Файл `.webstudio/session.json` автоматично додано в `.gitignore` і він ніколи не потрапить на GitHub.
+
+---
+
+### Крок 5. Створення дизайну за допомогою AI або MCP
+
+Тепер ви (або AI-агент) можете створювати будь-які сторінки, секції, слоти та компоненти:
+
+#### 📄 Перегляд сторінок та елементів:
+```bash
 npx webstudio mcp single-op-call list-pages "{}"
+npx webstudio mcp single-op-call list-instances '{"pagePath":"/hospital"}'
+npx webstudio mcp single-op-call list-design-tokens "{}"
+```
 
-# 5. Відправте оновлений дизайн у хмару
+#### 🧩 Виділення блоку в перевикористовуваний слот (`extract-slot`):
+```bash
+npx webstudio mcp single-op-call extract-slot '{"instanceId":"<header-instance-id>"}'
+```
+
+#### 🎨 Додавання секцій через нативний JSX (`insert-fragment`):
+```bash
+npx webstudio mcp single-op-call insert-fragment --input-file payload.json
+```
+
+---
+
+### Крок 6. Синхронізація у Webstudio Cloud
+
+Коли ви завершили генерацію або редагування сторінок, надішліть усі оновлення та фотографії у хмару однією нативною командою:
+
+```bash
 npx webstudio import --to "<shareLink>"
 ```
 
-### Варіант Б: Глобально на комп'ютер (Один раз для всіх проектів)
-```bash
-# 1. Встановіть глобально
-npm i -g webstudio
-
-# 2. Запустіть патчер
-node scripts/setup-local-mcp.mjs
-
-# 3. Завантажте проект із хмари
-webstudio sync --link "<shareLink>"
-
-# 4. Використовуйте MCP-інструменти для дизайну
-webstudio mcp single-op-call list-pages "{}"
-
-# 5. Відправте оновлений дизайн у хмару
-webstudio import --to "<shareLink>"
-```
+✨ **Що відбудеться автоматично:**
+1. Команда виявить нові згенеровані картинки у `.webstudio/assets/`.
+2. Наш місток передасть їх у хмару через вашу активну сесію.
+3. Усі сторінки, слоти, компоненти та прив'язані картинки миттєво оновляться у браузері!
 
 ---
 
-## 🛠️ Як користуватися
+## 🛠️ Додаткові корисні команди
 
-### 1. Використання з AI-асистентами (Antigravity / Cursor / Claude Code)
-Просто відкрийте будь-який проект Webstudio у вашому редакторі.
-Файли `AGENTS.md` та `.agents/skills/webstudio-ai-designer/SKILL.md` автоматично пояснюють AI-асистенту всі команди та правила генерації!
-
-### 2. Приклади MCP-команд:
-
-#### 📄 Читання сторінок та елементів:
-```bash
-webstudio mcp single-op-call list-pages "{}"
-webstudio mcp single-op-call list-instances '{"pagePath":"/services"}'
-webstudio mcp single-op-call list-design-tokens "{}"
-```
-
-#### 🎨 Додавання секцій через JSX (`insert-fragment`):
-Створіть `payload.json`:
-```json
-{
-  "parentInstanceId": "<parent-instance-id>",
-  "fragment": "<ws.element ws:tag='section' ws:tokens={[token('token-card', css`background: #fff; padding: 32px; border-radius: 16px;`)]} ws:style={css`display: flex; gap: 24px; @media (max-width: 767px) { flex-direction: column; }`}><ws.element ws:tag='h2'>Назва Секції</ws.element></ws.element>"
-}
-```
-Виконайте:
-```bash
-webstudio mcp single-op-call insert-fragment --input-file payload.json
-```
-
-#### 📊 Динамічні колекції з JSON-ресурсу:
-1. **Створення змінної даних:**
-```bash
-webstudio mcp single-op-call create-variable --input-file pricing_data.json
-```
-2. **Підключення динамічної колекції:**
-```bash
-webstudio mcp single-op-call insert-collection --input-file collection.json
-```
-
-#### 🪟 Нативні Radix UI компоненти (Dialog / Popups):
-```jsx
-<radix.Dialog>
-  <radix.DialogTrigger>
-    <ws.element ws:tag='button'>Відкрити Попап</ws.element>
-  </radix.DialogTrigger>
-  <radix.DialogOverlay ws:style={css`position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;`}>
-    <radix.DialogContent ws:style={css`background: #fff; border-radius: 20px; padding: 32px; max-width: 500px;`}>
-      <$.Box>
-        <radix.DialogTitle>Заголовок Попапу</radix.DialogTitle>
-        <radix.DialogDescription>Опис модального вікна</radix.DialogDescription>
-      </$.Box>
-      <radix.DialogClose>✕</radix.DialogClose>
-    </radix.DialogContent>
-  </radix.DialogOverlay>
-</radix.Dialog>
-```
-
-#### 🎬 Нативні Webstudio Animation Groups (`<animation.AnimateChildren>`):
-```json
-{
-  "updates": [
-    {
-      "instanceId": "<animation-instance-id>",
-      "name": "action",
-      "type": "animationAction",
-      "value": {
-        "type": "view",
-        "animations": [
-          {
-            "timing": {
-              "duration": { "type": "unit", "value": 800, "unit": "ms" },
-              "rangeStart": { "type": "unit", "value": 10, "unit": "%" },
-              "easing": "ease-out",
-              "fill": "backwards"
-            },
-            "keyframes": [
-              { "offset": 0, "styles": { "opacity": "0", "transform": "translateY(40px)" } },
-              { "offset": 1, "styles": { "opacity": "1", "transform": "translateY(0px)" } }
-            ]
-          }
-        ]
-      }
-    }
-  ]
-}
-```
-
----
-
-## ☁️ Синхронізація у Webstudio Cloud
-
-Коли ви завершили генерацію або редагування сторінок, синхронізуйте весь проект у хмару однією командою:
-```bash
-webstudio import --to "https://apps.webstudio.is/builder/<projectId>?authToken=<token>"
-```
+* **Повне завантаження та переприв'язка ассетів окремим скриптом:**
+  ```bash
+  npm run upload-assets
+  ```
+* **Швидка перевірка стану проєкту через CLI:**
+  ```bash
+  npm run cli info
+  ```
 
 ---
 
