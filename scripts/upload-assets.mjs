@@ -1,9 +1,11 @@
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 /**
- * Uploads local assets to Webstudio Cloud using browser session cookies
- * and automatically updates .webstudio/data.json asset descriptors.
+ * Uploads local assets to Webstudio Cloud using browser session cookies,
+ * automatically binds image props in data.build.props and data.props,
+ * and pushes the updated project to Webstudio Cloud.
  */
 export async function uploadAssetsFromSession(options = {}) {
   const cwd = options.cwd || process.cwd();
@@ -13,6 +15,7 @@ export async function uploadAssetsFromSession(options = {}) {
   }
 
   const sessionPath = path.resolve(baseDir, '.webstudio', 'session.json');
+  const authPath = path.resolve(baseDir, '.webstudio', 'auth.json');
   const dataPath = path.resolve(baseDir, '.webstudio', 'data.json');
   const assetsDir = path.resolve(baseDir, '.webstudio', 'assets');
 
@@ -38,7 +41,7 @@ export async function uploadAssetsFromSession(options = {}) {
   }
 
   const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
-  const projectId = data.projectId || options.projectId || (data.assets?.[0]?.projectId);
+  const projectId = data.projectId || options.projectId || data.build?.projectId || (data.assets?.[0]?.projectId);
   if (!projectId) {
     throw new Error('Project ID not found in .webstudio/data.json');
   }
@@ -55,6 +58,7 @@ export async function uploadAssetsFromSession(options = {}) {
   console.log(`[Upload] Found ${files.length} asset files in .webstudio/assets/`);
 
   const assetMap = {};
+  const filenameToAssetId = {};
   const currentAssets = data.assets || [];
 
   for (const filename of files) {
@@ -62,6 +66,7 @@ export async function uploadAssetsFromSession(options = {}) {
     const stat = fs.statSync(filePath);
     if (!stat.isFile()) continue;
 
+    const baseName = path.parse(filename).name;
     const ext = path.extname(filename).slice(1).toLowerCase();
     const format = ext === 'png' ? 'png' : ext === 'jpg' || ext === 'jpeg' ? 'jpeg' : ext === 'svg' ? 'svg' : 'jpeg';
     const type = 'image';
@@ -107,8 +112,11 @@ export async function uploadAssetsFromSession(options = {}) {
       const json = await res.json();
       const uploaded = json.uploadedAssets?.[0];
       if (uploaded) {
-        console.log(`[Upload] Successfully uploaded ${filename} -> ID: ${uploaded.id}`);
-        const existingIdx = currentAssets.findIndex(a => a.name === filename || a.filename === filename || a.name?.startsWith(path.parse(filename).name));
+        console.log(`[Upload] ✅ Uploaded ${filename} -> ID: ${uploaded.id}`);
+        filenameToAssetId[filename] = uploaded.id;
+        filenameToAssetId[baseName] = uploaded.id;
+
+        const existingIdx = currentAssets.findIndex(a => a.name === filename || a.filename === filename || a.name?.startsWith(baseName));
         if (existingIdx !== -1) {
           assetMap[currentAssets[existingIdx].id] = uploaded.id;
           currentAssets[existingIdx] = uploaded;
@@ -130,17 +138,72 @@ export async function uploadAssetsFromSession(options = {}) {
 
   data.assets = currentAssets;
 
-  const propsList = Array.isArray(data.props) ? data.props : Object.values(data.props || {});
-  for (const prop of propsList) {
-    if (prop.name === 'src' && prop.value && prop.value.type === 'asset') {
-      if (assetMap[prop.value.value]) {
-        prop.value.value = assetMap[prop.value.value];
+  // Remap props in data.build.props (array of [key, propObj])
+  const updateProp = (prop) => {
+    if (!prop || prop.name !== 'src') return;
+
+    // Handle prop.type === 'asset'
+    if (prop.type === 'asset' && prop.value && assetMap[prop.value]) {
+      prop.value = assetMap[prop.value];
+    } else if (typeof prop.value === 'string') {
+      // Handle string paths e.g. "assets/hospital_building.jpg" or "hospital_building"
+      const cleanVal = prop.value.replace(/^assets\//, '').replace(/^\.\//, '');
+      const cleanBase = path.parse(cleanVal).name;
+      if (filenameToAssetId[cleanVal] || filenameToAssetId[cleanBase]) {
+        const targetId = filenameToAssetId[cleanVal] || filenameToAssetId[cleanBase];
+        prop.type = 'asset';
+        prop.value = targetId;
+        console.log(`[Remap] Bound image prop ${prop.id || prop.instanceId} to asset ID: ${targetId}`);
       }
+    }
+  };
+
+  if (data.build && Array.isArray(data.build.props)) {
+    for (const entry of data.build.props) {
+      const prop = Array.isArray(entry) ? entry[1] : entry;
+      updateProp(prop);
+    }
+  }
+
+  if (Array.isArray(data.props)) {
+    for (const prop of data.props) {
+      updateProp(prop);
+    }
+  } else if (data.props && typeof data.props === 'object') {
+    for (const prop of Object.values(data.props)) {
+      updateProp(prop);
     }
   }
 
   fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
-  console.log('[Upload] .webstudio/data.json successfully updated with all uploaded asset IDs!');
+  console.log('[Upload] ✅ .webstudio/data.json successfully updated with all active asset IDs and bindings!');
+
+  // Optional: Auto import to cloud if auth token exists
+  let shareLink = options.shareLink;
+  if (!shareLink && fs.existsSync(authPath)) {
+    try {
+      const auth = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+      if (auth.origin && auth.token && auth.projectId) {
+        shareLink = `${auth.origin}/builder/${auth.projectId}?authToken=${auth.token}`;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (shareLink || options.import !== false) {
+    try {
+      console.log('[Sync] Pushing project bundle to Webstudio Cloud...');
+      const targetLink = shareLink || `${origin}/?authToken=${options.authToken || ''}&mode=design`;
+      execSync(`npx webstudio import --to "${targetLink}"`, {
+        cwd: baseDir,
+        stdio: 'inherit'
+      });
+      console.log('[Sync] ✅ Cloud import completed successfully!');
+    } catch (e) {
+      console.log('[Sync Note] Automated import exited. You can run npx webstudio import --to "<shareLink>"');
+    }
+  }
 }
 
 if (process.argv[1] && process.argv[1].endsWith('upload-assets.mjs')) {

@@ -13,8 +13,14 @@ This repository contains the Webstudio visual web builder and an AI agent design
    npx webstudio mcp single-op-call <tool> --input-file <payload.json>
    # Setup once per project: npm i webstudio && node scripts/setup-local-mcp.mjs --local
    ```
-6. **Cloud Push Highway:** To commit changes to Webstudio Cloud:
-   ```bash
-   npx webstudio import --to "<shareLink>"
-   ```
-6. **CLI Toolkit:** Pre-built scripts are available in `scripts/ai-designer/` (`engine.mjs` and `cli.mjs`).
+6. **Asset Upload & Cloud Sync Protocol:**
+   - When generating new local images in `.webstudio/assets/`, run:
+     ```bash
+     npm run upload-assets
+     ```
+     This automatically uploads images via the session cookie in `.webstudio/session.json`, remaps all image `src` props in `data.build.props`, and syncs with Webstudio Cloud.
+   - To manually push project structure to Webstudio Cloud:
+     ```bash
+     npx webstudio import --to "<shareLink>"
+     ```
+7. **CLI Toolkit:** Pre-built scripts are available in `scripts/ai-designer/` (`engine.mjs` and `cli.mjs`) and `scripts/upload-assets.mjs`.
