@@ -4,3 +4,4 @@ Thumbs.db
 *.log
 .temp
 .webstudio/auth.json
+.webstudio/session.json
