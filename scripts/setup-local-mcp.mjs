@@ -244,6 +244,71 @@ if (transportPos !== -1 && sessionPos !== -1) {
   console.log('✅ 5. Replaced transport with 100% Local offline data.json engine');
 }
 
+// 6. Patch uploadAsset to automatically bridge browser session from .webstudio/session.json
+const uploadAssetSearch = 'const uploadAsset = async (params) => {';
+if (code.includes(uploadAssetSearch)) {
+  const uploadAssetEnd = code.indexOf('\nconst uploadAssets =', code.indexOf(uploadAssetSearch));
+  if (uploadAssetEnd !== -1) {
+    const bridgedUploadAssetCode = `const uploadAsset = async (params) => {
+  const { authToken, headers, origin, projectId, upload } = params;
+  let customHeaders = {
+    ...headers,
+    "x-auth-token": authToken,
+    "x-webstudio-asset-description": upload.asset.description ?? void 0,
+    "x-webstudio-asset-meta": JSON.stringify(upload.asset.meta),
+    "content-type": "application/octet-stream"
+  };
+
+  try {
+    const searchDirs = [process.cwd(), join$1(process.cwd(), "..")];
+    for (const d of searchDirs) {
+      const sPath = join$1(d, ".webstudio", "session.json");
+      if (existsSync(sPath)) {
+        const session = JSON.parse(readFileSync(sPath, "utf8"));
+        if (session.cookie) {
+          customHeaders["cookie"] = session.cookie;
+          if (session.csrfToken) customHeaders["x-csrf-token"] = session.csrfToken;
+          customHeaders["x-webstudio-client"] = "browser";
+          customHeaders["x-webstudio-client-version"] = session.clientVersion || "9cc23be76d4d8518981cc83feba3f090440928e7";
+          customHeaders["sec-fetch-site"] = "same-origin";
+          customHeaders["sec-fetch-mode"] = "cors";
+          customHeaders["sec-fetch-dest"] = "empty";
+          customHeaders["origin"] = origin;
+          customHeaders["referer"] = origin.endsWith("/") ? origin : origin + "/";
+          delete customHeaders["x-auth-token"];
+          break;
+        }
+      }
+    }
+  } catch (e) {}
+
+  const result2 = await requestAssetRestJson(
+    fetchJsonResponse,
+    getAssetUploadUrl({
+      asset: upload.asset,
+      force: upload.force,
+      origin,
+      projectId
+    }),
+    {
+      method: "POST",
+      body: upload.data,
+      headers: createHeaders(customHeaders)
+    }
+  );
+  if (Array.isArray(result2.uploadedAssets) === false || typeof result2.deduplicated !== "boolean") {
+    throw new Error("Assets API returned an invalid upload response");
+  }
+  return result2.deduplicated ? result2.uploadedAssets.map((asset2) => ({
+    ...asset2,
+    deduplicated: true
+  })) : result2.uploadedAssets;
+};`;
+    code = code.slice(0, code.indexOf(uploadAssetSearch)) + bridgedUploadAssetCode + code.slice(uploadAssetEnd);
+    console.log('✅ 6. Patched uploadAsset -> browser session bridge');
+  }
+}
+
 fs.writeFileSync(cliPath, code, 'utf-8');
 console.log('---------------------------------');
 console.log('🎉 Webstudio Local MCP successfully configured!');
