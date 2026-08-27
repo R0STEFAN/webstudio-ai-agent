@@ -176,7 +176,7 @@ Example:
 </radix.Dialog>
 ```
 
-### Strict Breakpoints & Responsiveness Standard:
+### 📱 Strict Breakpoints & Responsive Design Standard:
 
 Webstudio provides 4 official standard breakpoints out-of-the-box:
 1. `Base` — Desktop / default styles (no media query)
@@ -184,26 +184,42 @@ Webstudio provides 4 official standard breakpoints out-of-the-box:
 3. `Mobile landscape` — `@media (max-width: 767px)`
 4. `Mobile portrait` — `@media (max-width: 479px)`
 
-> 🚨 **CRITICAL RULE:**
+> 🚨 **CRITICAL BREAKPOINT RULE:**
 > **NEVER** write arbitrary media queries (such as `@media (max-width: 768px)`, `@media (max-width: 640px)`, `@media (max-width: 600px)`, or `@media (max-width: 575px)`).
-> If you use arbitrary pixel numbers, Webstudio's JSX compiler will create unwanted custom breakpoints in the builder toolbar.
+> If you use arbitrary pixel numbers, Webstudio's JSX compiler will automatically create unwanted custom breakpoints in the builder toolbar.
 > **ONLY** use `max-width: 991px`, `max-width: 767px`, and `max-width: 479px`.
 
-#### Responsiveness Checklist for Every Component:
-- **Grids & Layouts:**
-  - Desktop: Multi-column (e.g. `grid-template-columns: repeat(4, 1fr)` or `1.2fr 0.8fr`).
-  - Tablet (`max-width: 991px`): 2-columns (e.g. `grid-template-columns: repeat(2, 1fr)`).
-  - Mobile (`max-width: 767px`): 1-column (`grid-template-columns: 1fr; width: 100%;`).
-- **Flex Containers & Actions:**
-  - Multi-button strips must switch to `flex-direction: column; width: 100%;` on mobile (`max-width: 767px`).
-  - All CTA buttons must have full width or centered content on mobile screens.
-- **Typography Scale:**
-  - Hero H1: Desktop `46-52px` ➔ Tablet `36-38px` ➔ Mobile `28-30px`.
-  - Section H2: Desktop `32-36px` ➔ Tablet `28-30px` ➔ Mobile `24-26px`.
-  - Body Text: Desktop `16-18px` ➔ Mobile `14-15px`.
-- **Containers & Paddings:**
-  - Sections must have `width: 100%; box-sizing: border-box;`.
-  - Padding: Desktop `64px 24px` ➔ Mobile `36px 16px`. No horizontal scrollbars!
+#### 📱 Comprehensive Responsiveness Checklist for Every Screen:
+
+1. **Grids, Bento Blocks & Multi-column Layouts:**
+   - **Desktop:** Multi-column (e.g. `grid-template-columns: repeat(4, 1fr)` or Bento `repeat(12, 1fr)` with `span 8 / 4`).
+   - **Tablet (`max-width: 991px`):** Collapse to 2 columns (`grid-template-columns: repeat(2, 1fr)` or Bento `span 12 / 6`).
+   - **Mobile (`max-width: 767px` & `479px`):** Strict 1-column layout (`grid-template-columns: 1fr; width: 100%;`). Bento items must be `grid-column: span 12;`.
+
+2. **Buttons, Links & Touch Target Usability:**
+   - Multi-button action strips must switch to `flex-direction: column; width: 100%;` on mobile (`max-width: 767px`).
+   - All CTA buttons must be full width (`width: 100%`) or neatly centered on mobile screens.
+   - Minimum touch target size of **44×44px** for buttons, tabs, and interactive elements.
+
+3. **Typography Scale (Responsive Hierarchy):**
+   - **Hero H1:** Desktop `46-52px` ➔ Tablet `36-38px` ➔ Mobile `28-32px` (line-height: 1.2-1.25).
+   - **Section H2:** Desktop `32-36px` ➔ Tablet `28-30px` ➔ Mobile `24-26px`.
+   - **Card Titles H3/H4:** Desktop `18-22px` ➔ Mobile `16-18px`.
+   - **Body Text:** Desktop `16-18px` ➔ Mobile `14-15px` (line-height: 1.5-1.6).
+
+4. **Forms & Input Fields:**
+   - All inputs, textareas, and select dropdowns must have `width: 100%; box-sizing: border-box;`.
+   - Set `font-size: 16px;` or `15px;` with proper vertical padding (`14-16px`) to ensure comfortable mobile typing and prevent iOS auto-zoom.
+
+5. **Images & Visual Media:**
+   - Images must have `max-width: 100%; width: 100%; object-fit: cover;`.
+   - Reduce fixed container heights on mobile (e.g. Hero visual: desktop `360-400px` ➔ mobile `220-240px`).
+
+6. **Containers & Zero Horizontal Overflow (Anti-Scroll):**
+   - Every `<section>`, `<div>`, `<main>` must have `width: 100%; box-sizing: border-box;`.
+   - Horizontal Paddings: Desktop `padding: 64px 24px` ➔ Tablet `48px 20px` ➔ Mobile `36px 16px`.
+   - Root wrapper must have `overflow-x: hidden;` to eliminate any accidental horizontal scrolling.
+
 
 ### 🎬 Native Webstudio Animation Standard:
 
