@@ -53,18 +53,20 @@ This repository contains the Webstudio visual web builder and an AI agent design
      ```bash
      npx webstudio import --to "<shareLink>"
      ```
-7. **Strict Breakpoints & Responsive Design Rules:**
+7. **Flexbox-First Layouts & Strict Breakpoint Rules:**
+   - **Flexbox-First Policy:** Always use Flexbox (`display: flex; flex-wrap: wrap; gap: ...`) for card containers, hero sections, stats bars, button strips, headers, and footers. Flexbox is simpler, more predictable, and much easier to adapt for mobile (`flex-direction: column; width: 100%`). Use CSS Grid ONLY for complex 2D layouts (like asymmetric Bento grids).
    - **ONLY Standard Webstudio Breakpoints:** Webstudio strictly supports 4 standard breakpoints:
      - `Base` (Desktop / default, no media query)
      - `@media (max-width: 991px)` (Tablet)
      - `@media (max-width: 767px)` (Mobile landscape / general mobile)
      - `@media (max-width: 479px)` (Mobile portrait)
    - **CRITICAL:** NEVER write arbitrary media queries (e.g. `@media (max-width: 768px)`, `@media (max-width: 640px)`, `@media (max-width: 575px)`). Any non-standard media query causes Webstudio to create unwanted custom breakpoints in the builder toolbar.
-   - **Mandatory Responsiveness:** Every section must be 100% responsive:
-     - Multi-column grids must collapse to 2 columns on Tablet (`max-width: 991px`) and 1 column on Mobile (`max-width: 767px`).
+   - **Mandatory Mobile Adaptation:** Every section must be 100% responsive:
+     - Multi-card flex rows collapse cleanly to `flex-direction: column; width: 100%;` on mobile (`max-width: 767px`).
      - Buttons and CTAs must be full-width (`width: 100%`) or neatly stacked in `flex-direction: column` on mobile screens.
      - Headings must scale down on mobile (Hero H1: 28-32px, Section H2: 24-26px, Body: 14-15px).
      - Containers must have `width: 100%; box-sizing: border-box;` and responsive horizontal paddings (`16px` on mobile, `24px` on desktop) to prevent any horizontal scrolling.
+
 8. **Native Webstudio Animation Standard:**
    - **Components:** Use `<animation.AnimateChildren action={...}>` (Animation Group) and `<animation.StaggerAnimation slidingWindow={1} easing="easeOut">` (Stagger Animation wrapper for grids/lists).
    - **Range Anchors:** Webstudio supports 4 standard range phases: `["cover", { type: "unit", value: 0, unit: "%" }]` (entry 0% - bottom of screen), `["contain", { type: "unit", value: 0, unit: "%" }]` (entry 100% - fully visible bottom), `["contain", { type: "unit", value: 50, unit: "%" }]` (screen center), and `["cover", { type: "unit", value: 100, unit: "%" }]` (exit 100% - top of screen).

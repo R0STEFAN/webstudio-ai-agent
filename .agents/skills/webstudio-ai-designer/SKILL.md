@@ -176,6 +176,79 @@ Example:
 </radix.Dialog>
 ```
 
+### 📐 Flexbox-First Layout Principle (Avoid CSS Grid Where Possible):
+
+> 🎯 **RULE OF THUMB:** **Always prefer Flexbox over CSS Grid.**
+> Flexbox is cleaner, more predictable, and dramatically easier to adapt on mobile devices.
+> **Use CSS Grid ONLY for inherently complex 2D layouts** (e.g. complex asymmetric Bento Grids or calendar matrices).
+> **If a layout can be accomplished with Flexbox, NEVER use CSS Grid.**
+
+#### Standard Flexbox Layout Patterns:
+
+1. **Card Container / Multi-Column Lists (Features, Doctors, Reviews, Pricing):**
+   - **Container:**
+     ```css
+     display: flex;
+     flex-wrap: wrap;
+     gap: 24px;
+     width: 100%;
+     box-sizing: border-box;
+     @media (max-width: 767px) {
+       flex-direction: column;
+       gap: 16px;
+     }
+     ```
+   - **Child Cards:**
+     ```css
+     flex: 1 1 calc(33.333% - 16px);
+     min-width: 280px;
+     max-width: 100%;
+     box-sizing: border-box;
+     @media (max-width: 991px) {
+       flex: 1 1 calc(50% - 12px);
+     }
+     @media (max-width: 767px) {
+       flex: 1 1 100%;
+       width: 100%;
+     }
+     ```
+
+2. **Two-Column Split (Hero, About, Booking Funnel):**
+   - **Container:**
+     ```css
+     display: flex;
+     align-items: center;
+     justify-content: space-between;
+     gap: 48px;
+     width: 100%;
+     box-sizing: border-box;
+     @media (max-width: 991px) {
+       flex-direction: column;
+       gap: 32px;
+       align-items: stretch;
+     }
+     ```
+   - **Columns:** `flex: 1 1 50%; width: 100%; max-width: 100%; box-sizing: border-box;`
+
+3. **Stats / Metrics Bar:**
+   - **Container:**
+     ```css
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     gap: 24px;
+     flex-wrap: wrap;
+     width: 100%;
+     box-sizing: border-box;
+     @media (max-width: 767px) {
+       flex-direction: column;
+       gap: 20px;
+     }
+     ```
+   - **Child Stat Item:** `flex: 1 1 200px; text-align: center;` ➔ Mobile: `width: 100%;`
+
+---
+
 ### 📱 Strict Breakpoints & Responsive Design Standard:
 
 Webstudio provides 4 official standard breakpoints out-of-the-box:
@@ -189,15 +262,14 @@ Webstudio provides 4 official standard breakpoints out-of-the-box:
 > If you use arbitrary pixel numbers, Webstudio's JSX compiler will automatically create unwanted custom breakpoints in the builder toolbar.
 > **ONLY** use `max-width: 991px`, `max-width: 767px`, and `max-width: 479px`.
 
-#### 📱 Comprehensive Responsiveness Checklist for Every Screen:
+#### 📱 Responsive Adaptability Rules:
 
-1. **Grids, Bento Blocks & Multi-column Layouts:**
-   - **Desktop:** Multi-column (e.g. `grid-template-columns: repeat(4, 1fr)` or Bento `repeat(12, 1fr)` with `span 8 / 4`).
-   - **Tablet (`max-width: 991px`):** Collapse to 2 columns (`grid-template-columns: repeat(2, 1fr)` or Bento `span 12 / 6`).
-   - **Mobile (`max-width: 767px` & `479px`):** Strict 1-column layout (`grid-template-columns: 1fr; width: 100%;`). Bento items must be `grid-column: span 12;`.
+1. **Flexbox-Driven Stacking:**
+   - On Tablet (`max-width: 991px`) and Mobile (`max-width: 767px`), horizontally aligned flex rows simply switch to `flex-direction: column; width: 100%;`.
+   - Card children automatically expand to full width `flex: 1 1 100%; width: 100%;`.
 
-2. **Buttons, Links & Touch Target Usability:**
-   - Multi-button action strips must switch to `flex-direction: column; width: 100%;` on mobile (`max-width: 767px`).
+2. **Buttons, Links & Touch Targets:**
+   - Multi-button action strips switch to `flex-direction: column; width: 100%;` on mobile (`max-width: 767px`).
    - All CTA buttons must be full width (`width: 100%`) or neatly centered on mobile screens.
    - Minimum touch target size of **44×44px** for buttons, tabs, and interactive elements.
 
@@ -219,6 +291,7 @@ Webstudio provides 4 official standard breakpoints out-of-the-box:
    - Every `<section>`, `<div>`, `<main>` must have `width: 100%; box-sizing: border-box;`.
    - Horizontal Paddings: Desktop `padding: 64px 24px` ➔ Tablet `48px 20px` ➔ Mobile `36px 16px`.
    - Root wrapper must have `overflow-x: hidden;` to eliminate any accidental horizontal scrolling.
+
 
 
 ### 🎬 Native Webstudio Animation Standard:
@@ -283,11 +356,11 @@ Webstudio uses CSS Scroll-Driven Animation range phases:
     ]
   }}
 >
-  <animation.StaggerAnimation slidingWindow={1} easing="easeOut" ws:style={css`display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; box-sizing: border-box; @media (max-width: 991px) { grid-template-columns: repeat(2, 1fr); } @media (max-width: 767px) { grid-template-columns: 1fr; }`}>
-    <ws.element ws:tag="div" ws:tokens={[token('card-surface', css`background: #fff; padding: 24px; border-radius: 16px;`)]}>
+  <animation.StaggerAnimation slidingWindow={1} easing="easeOut" ws:style={css`display: flex; flex-wrap: wrap; gap: 20px; width: 100%; box-sizing: border-box; @media (max-width: 767px) { flex-direction: column; }`}>
+    <ws.element ws:tag="div" ws:tokens={[token('card-surface', css`flex: 1 1 calc(50% - 10px); min-width: 260px; max-width: 100%; background: #fff; padding: 24px; border-radius: 16px; box-sizing: border-box; @media (max-width: 767px) { flex: 1 1 100%; width: 100%; }`)]}>
       Card 1
     </ws.element>
-    <ws.element ws:tag="div" ws:tokens={[token('card-surface', css`background: #fff; padding: 24px; border-radius: 16px;`)]}>
+    <ws.element ws:tag="div" ws:tokens={[token('card-surface', css`flex: 1 1 calc(50% - 10px); min-width: 260px; max-width: 100%; background: #fff; padding: 24px; border-radius: 16px; box-sizing: border-box; @media (max-width: 767px) { flex: 1 1 100%; width: 100%; }`)]}>
       Card 2
     </ws.element>
   </animation.StaggerAnimation>
