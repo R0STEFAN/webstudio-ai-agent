@@ -87,10 +87,10 @@ npx webstudio mcp single-op-call <tool-name> --input-file <payload.json>
 * `list-styles` — List all applied styles across instances.
 * `list-style-sources` — List style sources and rules.
 
-### 💎 Design Tokens & CSS Variables (DRY Protocol)
-* `list-design-tokens` — List all reusable design tokens.
-* `create-design-token` — Create reusable token (`{"name":"token-btn-primary","style":{...}}`).
-* `update-design-token` — Update styles inside a design token.
+### 💎 Design Tokens as CSS Classes (DRY Protocol)
+* `list-design-tokens` — List all reusable design tokens (CSS classes).
+* `create-design-token` — Create reusable class (`{"name":"btn-primary","style":{...}}`).
+* `update-design-token` — Update styles inside a design token class.
 * `delete-design-token` — Delete a design token.
 * `define-css-variable` — Define project-level CSS variables (`--color-primary`).
 * `delete-css-variable` — Delete CSS custom property definitions.
@@ -134,20 +134,27 @@ npx webstudio mcp single-op-call <tool-name> --input-file <payload.json>
 
 ## 4. UI Patterns & Best Practices
 
-### Design Token First Protocol:
-Whenever styling repeating UI elements, ALWAYS declare and reuse Design Tokens via `ws:tokens={[token('token-<name>', css`...`)]}` instead of hardcoded local styles.
+### Design Tokens as CSS Classes (DRY Protocol):
+In Webstudio, Design Tokens function directly as **reusable CSS Classes**. Whenever styling repeating UI elements, ALWAYS declare and reuse tokens via `ws:tokens={[token('<class-name>', css`...`)]}` instead of hardcoded local styles. Do NOT prefix with `token-`.
 
-Standard Token Taxonomy:
-- `token-btn-primary`, `token-btn-secondary`, `token-btn-outline` (Buttons)
-- `token-card-surface`, `token-card-feature` (Cards & Containers)
-- `token-badge-<color>` (Badges & Tags)
-- `token-text-heading`, `token-text-muted` (Typography)
+Standard Class Taxonomy:
+- `btn-primary`, `btn-secondary`, `btn-outline` (Buttons)
+- `card-surface`, `card-feature`, `card-glass` (Cards & Containers)
+- `badge-primary`, `badge-success`, `badge-warning` (Badges & Tags)
+- `heading-xl`, `heading-lg`, `text-body`, `text-muted` (Typography)
+
+Example:
+```jsx
+<ws.element ws:tag='button' ws:tokens={[token('btn-primary', css`background-color: #0284c7; color: #ffffff; padding: 12px 24px; border-radius: 12px; font-weight: 600; text-decoration: none; border: 0; cursor: pointer;`)]}>
+  Click Me
+</ws.element>
+```
 
 ### Mutating UI with JSX (`insert-fragment`):
 ```json
 {
   "parentInstanceId": "<parent-instance-id>",
-  "fragment": "<ws.element ws:tag='section' ws:tokens={[token('token-card', css`background-color: #fff; border-radius: 16px; padding: 24px;`)]} ws:style={css`max-width: 1200px; margin: 0 auto; display: flex; flex-direction: row; @media (max-width: 767px) { flex-direction: column; }`}><ws.element ws:tag='h2'>Title</ws.element></ws.element>"
+  "fragment": "<ws.element ws:tag='section' ws:tokens={[token('card-surface', css`background-color: #fff; border-radius: 16px; padding: 24px;`)]} ws:style={css`max-width: 1200px; margin: 0 auto; display: flex; flex-direction: row; @media (max-width: 767px) { flex-direction: column; }`}><ws.element ws:tag='h2'>Title</ws.element></ws.element>"
 }
 ```
 
