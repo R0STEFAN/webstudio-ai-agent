@@ -205,6 +205,53 @@ Webstudio provides 4 official standard breakpoints out-of-the-box:
   - Sections must have `width: 100%; box-sizing: border-box;`.
   - Padding: Desktop `64px 24px` ➔ Mobile `36px 16px`. No horizontal scrollbars!
 
+### Strict Animation & Micro-Interactions Standard:
+
+To maintain 60 FPS performance and an exquisite, refined feel:
+
+1. **Hardware-Accelerated Properties Only:**
+   - ONLY animate `transform` (e.g. `translateY`, `scale`) and `opacity`.
+   - **NEVER** animate layout triggers (`width`, `height`, `margin`, `padding`, `top`, `left`), as they cause browser layout thrashing and stutter.
+
+2. **Duration & Easing:**
+   - **Micro-interactions (Hover / Tap / Focus):** `150ms` – `200ms` with `ease` or `cubic-bezier(0.16, 1, 0.3, 1)`.
+   - **Entrances / Fade-ins:** `300ms` – `400ms` with `ease-out`.
+   - Avoid long, floaty animations (>500ms) which feel sluggish.
+
+3. **Hover & Active States for Interactive Elements:**
+   - **Buttons (`btn-primary`, `btn-secondary`):**
+     ```css
+     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.15s ease;
+     &:hover {
+       transform: translateY(-2px);
+       box-shadow: 0 12px 24px -6px rgba(5,150,105,0.35);
+     }
+     &:active {
+       transform: translateY(0) scale(0.98);
+     }
+     ```
+   - **Cards (`card-surface`):**
+     ```css
+     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.2s ease;
+     &:hover {
+       transform: translateY(-4px);
+       box-shadow: 0 20px 35px -10px rgba(15,23,42,0.08);
+       border-color: #cbd5e1;
+     }
+     ```
+
+4. **Accessibility (Reduced Motion):**
+   - Always support user preferences:
+     ```css
+     @media (prefers-reduced-motion: reduce) {
+       *, *::before, *::after {
+         animation-duration: 0.01ms !important;
+         transition-duration: 0.01ms !important;
+       }
+     }
+     ```
+
+
 
 ## 5. Cloud Push Highway
 
