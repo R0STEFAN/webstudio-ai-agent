@@ -7,14 +7,29 @@ const preferLocal = args.includes('--local');
 const preferGlobal = args.includes('--global');
 
 let cliPath = '';
+let searchDir = process.cwd();
+const candidates = [];
+while (searchDir) {
+  candidates.push(path.join(searchDir, 'node_modules', 'webstudio', 'lib', 'cli.js'));
+  const parent = path.dirname(searchDir);
+  if (parent === searchDir) break;
+  searchDir = parent;
+}
+// Also check relative to script
+const scriptDir = path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/i, '$1'));
+candidates.push(path.resolve(scriptDir, '..', '..', 'node_modules', 'webstudio', 'lib', 'cli.js'));
 
-const localCandidate = path.join(process.cwd(), 'node_modules', 'webstudio', 'lib', 'cli.js');
-if ((preferLocal || !preferGlobal) && fs.existsSync(localCandidate)) {
-  cliPath = localCandidate;
-  console.log('📦 Using local project node_modules/webstudio');
+if (preferLocal || !preferGlobal) {
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      cliPath = c;
+      console.log(`📦 Using local project node_modules/webstudio: ${cliPath}`);
+      break;
+    }
+  }
 }
 
-if (!cliPath) {
+if (!cliPath && !preferLocal) {
   try {
     const globalRoot = execSync('npm root -g', { encoding: 'utf-8' }).trim();
     const candidate = path.join(globalRoot, 'webstudio', 'lib', 'cli.js');
@@ -164,7 +179,10 @@ if (transportPos !== -1 && sessionPos !== -1) {
     } catch { return null; }
   };
   const _getLocalState = (raw) => {
-    return createBuilderStateFromSerializedSnapshot(raw.build);
+    const build = { ...raw.build };
+    build.assets = (raw.build.assets || raw.assets || []).map(a => Array.isArray(a) ? a : [a.id, a]);
+    build.assetFolders = (raw.build.assetFolders || raw.assetFolders || []).map(f => Array.isArray(f) ? f : [f.id, f]);
+    return createBuilderStateFromSerializedSnapshot(build);
   };
   return {
     async getCompatibility() {
@@ -196,6 +214,14 @@ if (transportPos !== -1 && sessionPos !== -1) {
           const res = applyBuilderPatchTransactions(state, transactions);
           const updatedState = res && res.state ? res.state : (res || state);
           const snapshot = createSerializedBuilderStateSnapshotFromState(updatedState);
+          if (snapshot.assets) {
+            raw.assets = snapshot.assets.map(item => Array.isArray(item) ? item[1] : item);
+            delete snapshot.assets;
+          }
+          if (snapshot.assetFolders) {
+            raw.assetFolders = snapshot.assetFolders.map(item => Array.isArray(item) ? item[1] : item);
+            delete snapshot.assetFolders;
+          }
           raw.build = { ...raw.build, ...snapshot, version: (raw.build.version || 1) + 1 };
           writeFileSync(_dataFile(), JSON.stringify(raw, null, 2), "utf8");
           return { version: raw.build.version, appliedTransactionCount: transactions.length };
