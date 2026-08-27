@@ -69,4 +69,10 @@ This repository contains the Webstudio visual web builder and an AI agent design
    - **Components:** Use `<animation.AnimateChildren action={...}>` (Animation Group) and `<animation.StaggerAnimation slidingWindow={1} easing="easeOut">` (Stagger Animation wrapper for grids/lists).
    - **Range Anchors:** Webstudio supports 4 standard range phases: `["cover", { type: "unit", value: 0, unit: "%" }]` (entry 0% - bottom of screen), `["contain", { type: "unit", value: 0, unit: "%" }]` (entry 100% - fully visible bottom), `["contain", { type: "unit", value: 50, unit: "%" }]` (screen center), and `["cover", { type: "unit", value: 100, unit: "%" }]` (exit 100% - top of screen).
    - **Duration:** Set fixed timing via `duration: { type: "unit", value: 400, unit: "ms" }` and `fill: "backwards"` to prevent flash before scroll trigger.
-9. **CLI Toolkit:** Pre-built scripts are available in `scripts/ai-designer/` (`engine.mjs` and `cli.mjs`) and `scripts/upload-assets.mjs`.
+9. **Native Dynamic Data & Collections Standard:**
+   - **Data Scoping to `Body`:** Always declare and scope JSON data variables to the **`Body` instance (`scopeInstanceId = bodyId`)** so they are globally accessible to all components and sections across the entire page.
+   - **Collections (`<ws.collection>`):** Use `<ws.collection data={expression`${variableName}`} item={itemParam}>` to dynamically iterate through JSON arrays and render repeated cards/items.
+   - **Field Expressions:** Bind card properties dynamically using `{expression`${itemParam}.<field>`}` (e.g. `title`, `price`, `badge`, `description`).
+   - **Static Verification:** Run `npx webstudio mcp single-op-call verify-bindings` to confirm complete static integrity and 0 broken data references.
+10. **CLI Toolkit:** Pre-built scripts are available in `scripts/ai-designer/` (`engine.mjs` and `cli.mjs`) and `scripts/upload-assets.mjs`.
+

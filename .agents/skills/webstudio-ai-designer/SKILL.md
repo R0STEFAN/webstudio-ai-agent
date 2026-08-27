@@ -278,6 +278,46 @@ Webstudio uses CSS Scroll-Driven Animation range phases:
 </animation.AnimateChildren>
 ```
 
+### 📊 Native Dynamic Data & Collections Standard (`ws.collection` & `Variable`):
+
+Webstudio provides a reactive data system where dynamic data can be declared as Variables and iterated over using native Collections.
+
+#### 1. Data Scoping to `Body` (Best Practice):
+> 💡 **IMPORTANT:** In Webstudio, dynamic data variables (JSON arrays, objects, strings, numbers) are **declared and scoped to the `Body` instance (`scopeInstanceId = bodyId`)**. This ensures the data is globally accessible to all sections, cards, and collections across the entire page.
+
+* **Creating a Data Variable:**
+  - Via MCP Tool:
+    ```bash
+    npx webstudio mcp single-op-call create-variable '{"scopeInstanceId": "<bodyInstanceId>", "name": "medicalPackages", "valueType": "json", "value": [...] }'
+    ```
+  - In JSX Fragment evaluation:
+    ```typescript
+    const checkupPackages = new Variable("checkupPackages", [
+      { title: "Базовий Чек-ап", price: "2 400 ₴", badge: "Популярний" },
+      { title: "Кардіо Скринінг", price: "4 800 ₴", badge: "Експертний" }
+    ]);
+    const pkg = new Parameter("pkg"); // Element iterator parameter
+    ```
+
+#### 2. Native Collection Component (`<ws.collection>`):
+* Wraps the template card and loops through the array data:
+  ```jsx
+  <ws.collection data={expression`${checkupPackages}`} item={pkg}>
+    <ws.element ws:tag="div" ws:tokens={[token('card-surface', css`...`)]}>
+      <ws.element ws:tag="h3">{expression`${pkg}.title`}</ws.element>
+      <ws.element ws:tag="div">{expression`${pkg}.badge`}</ws.element>
+      <ws.element ws:tag="div">{expression`${pkg}.price`}</ws.element>
+    </ws.element>
+  </ws.collection>
+  ```
+
+#### 3. Binding Verification:
+Always verify dynamic data bindings statically via MCP before deployment:
+```bash
+npx webstudio mcp single-op-call verify-bindings --input-file '{"pageId": "<pageId>"}'
+```
+Ensures 0 broken references and 100% static data integrity (`analysis.staticIntegrity: complete`).
+
 
 
 ## 5. Cloud Push Highway
