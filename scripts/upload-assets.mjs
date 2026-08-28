@@ -68,8 +68,8 @@ export async function uploadAssetsFromSession(options = {}) {
 
     const baseName = path.parse(filename).name;
     const ext = path.extname(filename).slice(1).toLowerCase();
-    const format = ext === 'png' ? 'png' : ext === 'jpg' || ext === 'jpeg' ? 'jpeg' : ext === 'svg' ? 'svg' : 'jpeg';
-    const type = 'image';
+    const format = ext === 'png' ? 'png' : ext === 'jpg' || ext === 'jpeg' ? 'jpeg' : ext === 'svg' ? 'svg' : ext === 'woff2' || ext === 'woff' || ext === 'ttf' ? ext : 'jpeg';
+    const type = ext === 'woff2' || ext === 'woff' || ext === 'ttf' || ext === 'otf' ? 'font' : 'image';
 
     const uploadUrl = new URL(`${origin}/rest/assets/uploads/${encodeURIComponent(filename)}`);
     uploadUrl.searchParams.set('projectId', projectId);

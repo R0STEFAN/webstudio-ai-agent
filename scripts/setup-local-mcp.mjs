@@ -251,14 +251,17 @@ if (code.includes(uploadAssetSearch)) {
   if (uploadAssetEnd !== -1) {
     const bridgedUploadAssetCode = `const uploadAsset = async (params) => {
   const { authToken, headers, origin, projectId, upload } = params;
+  const projectOrigin = "https://p-" + projectId + ".apps.webstudio.is";
   let customHeaders = {
     ...headers,
     "x-auth-token": authToken,
-    "x-webstudio-asset-description": upload.asset.description ?? void 0,
+    "x-webstudio-asset-description": upload.asset.description ? encodeURIComponent(upload.asset.description) : void 0,
     "x-webstudio-asset-meta": JSON.stringify(upload.asset.meta),
     "content-type": "application/octet-stream"
   };
 
+  let targetOrigin = origin;
+  let isBridged = false;
   try {
     const searchDirs = [process.cwd(), join$1(process.cwd(), "..")];
     for (const d of searchDirs) {
@@ -266,6 +269,8 @@ if (code.includes(uploadAssetSearch)) {
       if (existsSync(sPath)) {
         const session = JSON.parse(readFileSync(sPath, "utf8"));
         if (session.cookie) {
+          isBridged = true;
+          targetOrigin = projectOrigin;
           customHeaders["cookie"] = session.cookie;
           if (session.csrfToken) customHeaders["x-csrf-token"] = session.csrfToken;
           customHeaders["x-webstudio-client"] = "browser";
@@ -273,8 +278,8 @@ if (code.includes(uploadAssetSearch)) {
           customHeaders["sec-fetch-site"] = "same-origin";
           customHeaders["sec-fetch-mode"] = "cors";
           customHeaders["sec-fetch-dest"] = "empty";
-          customHeaders["origin"] = origin;
-          customHeaders["referer"] = origin.endsWith("/") ? origin : origin + "/";
+          customHeaders["origin"] = targetOrigin;
+          customHeaders["referer"] = targetOrigin + "/";
           delete customHeaders["x-auth-token"];
           break;
         }
@@ -282,14 +287,26 @@ if (code.includes(uploadAssetSearch)) {
     }
   } catch (e) {}
 
-  const result2 = await requestAssetRestJson(
-    fetchJsonResponse,
-    getAssetUploadUrl({
+  let uploadUrl;
+  if (isBridged) {
+    uploadUrl = new URL(targetOrigin + "/rest/assets/uploads/" + encodeURIComponent(upload.asset.name));
+    uploadUrl.searchParams.set("projectId", projectId);
+    uploadUrl.searchParams.set("type", upload.asset.type || "image");
+    if (upload.asset.folderId !== void 0) uploadUrl.searchParams.set("folderId", upload.asset.folderId);
+    if (upload.asset.format) uploadUrl.searchParams.set("format", upload.asset.format);
+    uploadUrl.searchParams.set("force", "true");
+  } else {
+    uploadUrl = getAssetUploadUrl({
       asset: upload.asset,
       force: upload.force,
-      origin,
+      origin: targetOrigin,
       projectId
-    }),
+    });
+  }
+
+  const result2 = await requestAssetRestJson(
+    fetchJsonResponse,
+    uploadUrl,
     {
       method: "POST",
       body: upload.data,
