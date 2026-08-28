@@ -326,3 +326,20 @@ npx webstudio import --to "https://p-<projectId>.apps.webstudio.is/?authToken=<t
 ```
 * Automatically uploads new assets via session bridge.
 * Restores complete cloud state in 3-5 seconds.
+
+---
+
+## 6. Automated Google Indexing API & Instant Search Push
+
+Whenever new pages, articles, or tattoo works are created or updated, notify Googlebot immediately to crawl and index them within minutes instead of weeks:
+
+```bash
+# 1. Submit entire sitemap to Googlebot
+npm run index
+
+# 2. Submit specific URLs
+npm run index -- https://tattoozp.com/pricing.md https://tattoozp.com/gallery/men
+```
+
+* **Service Account:** Uses `indexing-bot-*.json` key in the project root.
+* **Standard:** Links in `/llms.txt` must always be formatted as Markdown links `[Title](https://...)` per `llmstxt.org` specification.

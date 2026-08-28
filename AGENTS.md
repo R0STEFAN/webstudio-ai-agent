@@ -76,5 +76,15 @@ This repository contains the Webstudio visual web builder and an AI agent design
    - **Collections (`<ws.collection>`):** Use `<ws.collection data={expression`${variableName}`} item={itemParam}>` to dynamically iterate through JSON arrays and render repeated cards/items.
    - **Field Expressions:** Bind card properties dynamically using `{expression`${itemParam}.<field>`}` (e.g. `title`, `price`, `badge`, `description`).
    - **Static Verification:** Run `npx webstudio mcp single-op-call verify-bindings` to confirm complete static integrity and 0 broken data references.
-10. **CLI Toolkit:** Pre-built scripts are available in `scripts/ai-designer/` (`engine.mjs` and `cli.mjs`) and `scripts/upload-assets.mjs`.
-
+10. **CLI Toolkit:** Pre-built scripts are available in `scripts/ai-designer/` (`engine.mjs` and `cli.mjs`), `scripts/upload-assets.mjs`, and `scripts/google-index.mjs`.
+11. **Automated Google Indexing API & Instant Search Push:**
+    - **Purpose:** Automatically notifies Googlebot (`URL_UPDATED`) to crawl newly created or modified pages within minutes instead of weeks.
+    - **Credentials:** Uses `indexing-bot-*.json` service account key in the project root (configured as Owner in Google Search Console).
+    - **Usage via Agent / CLI:**
+      ```bash
+      # Push entire sitemap to Googlebot
+      npm run index
+      # Push specific URLs
+      npm run index -- https://tattoozp.com/pricing.md https://tattoozp.com/gallery/men
+      ```
+    - **LLMs.txt Standard:** All links in `/llms.txt` must be formatted as Markdown links `[Title](https://...)` per `llmstxt.org` specification.
