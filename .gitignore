@@ -9,3 +9,6 @@ Thumbs.db
 *service-account*.json
 *credentials*.json
 MEMORY.md
+CHAT_HISTORY.md
+*CHAT*.md
+*SESSION*.md
