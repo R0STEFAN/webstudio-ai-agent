@@ -19,6 +19,12 @@
       "skillPath": "skills/frontend-design/SKILL.md",
       "computedHash": "93f53fd1c0352d3d7ec17b8f73d7351bf76f4821e55d123c9d2abc2c53ba48e4"
     },
+    "google-search-console": {
+      "source": "kostja94/marketing-skills",
+      "sourceType": "github",
+      "skillPath": "skills/analytics/seo/google-search-console/SKILL.md",
+      "computedHash": "69869587bff3a8cb988783f2aafe5a5ba64295364ab4e16312f053a023367b13"
+    },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
