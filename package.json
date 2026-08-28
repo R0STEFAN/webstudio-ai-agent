@@ -9,6 +9,7 @@
     "cli": "node scripts/ai-designer/cli.mjs",
     "upload-assets": "node scripts/upload-assets.mjs",
     "index": "node scripts/google-index.mjs",
+    "gsc": "node scripts/gsc-analytics.mjs",
     "build": "react-router build",
     "dev": "react-router dev",
     "typecheck": "wrangler types && tsc",
