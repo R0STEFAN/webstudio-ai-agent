@@ -326,6 +326,84 @@ if (code.includes(uploadAssetSearch)) {
   }
 }
 
+// 7. Patch React Router template for complete dynamic meta tags and v8 flag
+try {
+  const templatesDir = path.resolve(path.dirname(cliPath), '..', 'templates');
+  const htmlTemplatePath = path.join(templatesDir, 'react-router', 'app', 'route-templates', 'html.tsx');
+  if (fs.existsSync(htmlTemplatePath)) {
+    let htmlTpl = fs.readFileSync(htmlTemplatePath, 'utf-8');
+    if (!htmlTpl.includes('data.pageMeta?.title')) {
+      const metaCode = `export const meta: MetaFunction<typeof loader> = ({ data }) => {
+  const metas: ReturnType<MetaFunction> = [];
+  if (data === undefined) {
+    return metas;
+  }
+
+  const origin = \`https://\${data.host}\`;
+
+  if (data.pageMeta?.title) {
+    metas.push({ title: data.pageMeta.title });
+    metas.push({ property: "og:title", content: data.pageMeta.title });
+    metas.push({ name: "twitter:title", content: data.pageMeta.title });
+  }
+
+  if (data.pageMeta?.description) {
+    metas.push({ name: "description", content: data.pageMeta.description });
+    metas.push({ property: "og:description", content: data.pageMeta.description });
+    metas.push({ name: "twitter:description", content: data.pageMeta.description });
+  }
+
+  if (data.pageMeta?.socialImageUrl) {
+    metas.push({ property: "og:image", content: data.pageMeta.socialImageUrl });
+    metas.push({ name: "twitter:image", content: data.pageMeta.socialImageUrl });
+  }
+
+  if (data.pageMeta?.excludePageFromSearch) {
+    metas.push({ name: "robots", content: "noindex, nofollow" });
+  }
+
+  if (siteName) {
+    metas.push({
+      "script:ld+json": {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: siteName,
+        url: origin,
+      },
+    });
+  }
+
+  return metas;
+};`;
+      const start = htmlTpl.indexOf('export const meta: MetaFunction<typeof loader>');
+      const end = htmlTpl.indexOf('export const links:', start);
+      if (start !== -1 && end !== -1) {
+        htmlTpl = htmlTpl.slice(0, start) + metaCode + '\n\n' + htmlTpl.slice(end);
+        fs.writeFileSync(htmlTemplatePath, htmlTpl, 'utf-8');
+        console.log('✅ 7. Patched React Router HTML template -> dynamic meta tags');
+      }
+    }
+  }
+
+  const rrConfigPath = path.join(templatesDir, 'react-router-cloudflare', 'react-router.config.ts');
+  if (fs.existsSync(rrConfigPath)) {
+    let rrConfig = fs.readFileSync(rrConfigPath, 'utf-8');
+    if (rrConfig.includes('unstable_viteEnvironmentApi')) {
+      rrConfig = rrConfig.replace('unstable_viteEnvironmentApi', 'v8_viteEnvironmentApi');
+      fs.writeFileSync(rrConfigPath, rrConfig, 'utf-8');
+    }
+  }
+
+  const wranglerConfigPath = path.join(templatesDir, 'react-router-cloudflare', 'wrangler.jsonc');
+  if (fs.existsSync(wranglerConfigPath)) {
+    let wrConfig = fs.readFileSync(wranglerConfigPath, 'utf-8');
+    if (!wrConfig.includes('nodejs_compat')) {
+      wrConfig = wrConfig.replace('"compatibility_date": "2025-04-28",', '"compatibility_date": "2025-04-28",\n  "compatibility_flags": ["nodejs_compat"],');
+      fs.writeFileSync(wranglerConfigPath, wrConfig, 'utf-8');
+    }
+  }
+} catch (e) {}
+
 fs.writeFileSync(cliPath, code, 'utf-8');
 console.log('---------------------------------');
 console.log('🎉 Webstudio Local MCP successfully configured!');
