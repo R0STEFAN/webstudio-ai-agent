@@ -402,6 +402,22 @@ try {
       fs.writeFileSync(wranglerConfigPath, wrConfig, 'utf-8');
     }
   }
+
+  // Sync custom favicon from .webstudio/assets into template public folders
+  const assetsDir = path.resolve(process.cwd(), '.webstudio', 'assets');
+  if (fs.existsSync(assetsDir)) {
+    const icoFiles = fs.readdirSync(assetsDir).filter(f => f.startsWith('favicon') && f.endsWith('.ico'));
+    if (icoFiles.length > 0) {
+      const customIco = path.join(assetsDir, icoFiles[0]);
+      const tplIco1 = path.join(templatesDir, 'defaults', 'public', 'favicon.ico');
+      const tplIco2 = path.join(templatesDir, 'react-router', 'public', 'favicon.ico');
+      if (fs.existsSync(path.dirname(tplIco1))) fs.copyFileSync(customIco, tplIco1);
+      if (fs.existsSync(path.dirname(tplIco2))) fs.copyFileSync(customIco, tplIco2);
+      const publicIco = path.resolve(process.cwd(), 'public', 'favicon.ico');
+      if (fs.existsSync(path.dirname(publicIco))) fs.copyFileSync(customIco, publicIco);
+      console.log('✅ 8. Synced custom favicon.ico into templates & public folder');
+    }
+  }
 } catch (e) {}
 
 fs.writeFileSync(cliPath, code, 'utf-8');
