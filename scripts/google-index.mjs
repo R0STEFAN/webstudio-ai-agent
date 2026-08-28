@@ -87,20 +87,23 @@ async function main() {
   const token = await getAccessToken(key.client_email, key.private_key);
   console.log('✅ Authenticated successfully!\n');
 
-  if (args.includes('--sitemap') || args.length === 0) {
+  const isDelete = args.includes('--delete');
+  const type = isDelete ? 'URL_DELETED' : 'URL_UPDATED';
+
+  if (args.includes('--sitemap') || (args.length === 0 && !isDelete)) {
     const sitemapUrl = args.find(a => a.startsWith('http') && a.includes('sitemap')) || 'https://tattoozp.com/sitemap.xml';
     console.log(`🗺️ Fetching URLs from sitemap: ${sitemapUrl}...`);
     try {
       const urls = await fetchSitemapUrls(sitemapUrl);
       console.log(`Found ${urls.length} URLs in sitemap.`);
-      console.log('🚀 Pushing URLs to Google Indexing API...\n');
+      console.log(`🚀 Pushing URLs to Google Indexing API (${type})...\n`);
 
       let success = 0;
       let failed = 0;
       for (let i = 0; i < urls.length; i++) {
         const u = urls[i];
-        process.stdout.write(`[${i + 1}/${urls.length}] Pushing: ${u} ... `);
-        const res = await pushUrl(u, token);
+        process.stdout.write(`[${i + 1}/${urls.length}] ${isDelete ? 'Deleting' : 'Pushing'}: ${u} ... `);
+        const res = await pushUrl(u, token, type);
         if (res.ok) {
           process.stdout.write('✅ OK\n');
           success++;
@@ -108,10 +111,9 @@ async function main() {
           process.stdout.write(`❌ Error: ${JSON.stringify(res.data)}\n`);
           failed++;
         }
-        // Small rate limit delay (100ms)
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise(r => setTimeout(r, 80));
       }
-      console.log(`\n🎉 Finished: ${success} URLs submitted successfully to Googlebot (${failed} failed).`);
+      console.log(`\n🎉 Finished: ${success} URLs processed successfully (${failed} failed).`);
     } catch (e) {
       console.error('Error processing sitemap:', e.message);
     }
@@ -119,10 +121,10 @@ async function main() {
     // Single or multiple specific URLs passed as arguments
     for (const u of args) {
       if (!u.startsWith('http')) continue;
-      console.log(`🚀 Pushing URL: ${u}...`);
-      const res = await pushUrl(u, token);
+      console.log(`🚀 ${isDelete ? 'Deleting' : 'Pushing'} URL: ${u}...`);
+      const res = await pushUrl(u, token, type);
       if (res.ok) {
-        console.log(`✅ Success! Googlebot received signal URL_UPDATED for ${u}`);
+        console.log(`✅ Success! Googlebot received signal ${type} for ${u}`);
       } else {
         console.error(`❌ Failed:`, res.data);
       }
