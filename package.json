@@ -7,7 +7,16 @@
   "scripts": {
     "setup": "node scripts/setup-local-mcp.mjs",
     "cli": "node scripts/ai-designer/cli.mjs",
-    "upload-assets": "node scripts/upload-assets.mjs"
+    "upload-assets": "node scripts/upload-assets.mjs",
+    "index": "node scripts/google-index.mjs",
+    "build": "react-router build",
+    "dev": "react-router dev",
+    "typecheck": "wrangler types && tsc",
+    "deploy": "react-router build && wrangler deploy",
+    "start": "react-router-serve ./build/server/index.js",
+    "typegen": "wrangler types",
+    "preview": "react-router build && vite preview",
+    "build-cf-types": "wrangler types"
   },
   "keywords": [
     "webstudio",
@@ -23,6 +32,55 @@
   "author": "R0STEFAN",
   "license": "MIT",
   "dependencies": {
-    "webstudio": "^0.293.0"
+    "webstudio": "^0.293.0",
+    "@shikijs/langs": "4.4.1",
+    "@shikijs/themes": "4.4.1",
+    "@remix-run/node": "2.16.5",
+    "@remix-run/react": "2.16.5",
+    "@remix-run/server-runtime": "2.16.5",
+    "@webstudio-is/image": "0.293.0",
+    "@webstudio-is/react-sdk": "0.293.0",
+    "@webstudio-is/sdk": "0.293.0",
+    "@webstudio-is/sdk-components-react": "0.293.0",
+    "@webstudio-is/sdk-components-animation": "0.293.0",
+    "@webstudio-is/sdk-components-react-radix": "0.293.0",
+    "@webstudio-is/sdk-components-react-remix": "0.293.0",
+    "@webstudio-is/wsauth": "0.293.0",
+    "isbot": "^5.1.25",
+    "react": "18.3.0-canary-14898b6a9-20240318",
+    "react-dom": "18.3.0-canary-14898b6a9-20240318",
+    "shiki": "4.4.1",
+    "@remix-run/cloudflare": "2.16.5",
+    "@remix-run/cloudflare-pages": "2.16.5",
+    "@cloudflare/vite-plugin": "^1.1.0",
+    "wrangler": "^4.14.1",
+    "@react-router/dev": "^7.5.3",
+    "@react-router/fs-routes": "^7.5.3",
+    "@react-router/node": "^7.5.3",
+    "@react-router/serve": "^7.5.3",
+    "@webstudio-is/sdk-components-react-router": "0.293.0",
+    "react-router": "^7.5.3",
+    "vite": "^6.3.4"
+  },
+  "private": true,
+  "sideEffects": false,
+  "devDependencies": {
+    "@remix-run/dev": "2.16.5",
+    "@types/react": "^18.2.70",
+    "@types/react-dom": "^18.2.25",
+    "typescript": "7.0.2",
+    "vite": "^6.3.4",
+    "@cloudflare/workers-types": "^4.20240620.0",
+    "wrangler": "^3.63.2"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=22.12.0",
+      "onFail": "error"
+    }
   }
 }

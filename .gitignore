@@ -5,3 +5,6 @@ Thumbs.db
 .temp
 .webstudio/auth.json
 .webstudio/session.json
+*indexing*.json
+*service-account*.json
+*credentials*.json
