@@ -49,6 +49,29 @@ async function getGscToken(clientEmail, privateKey) {
   return data.access_token;
 }
 
+export async function inspectUrl({ inspectionUrl, siteUrl = 'sc-domain:tattoozp.com', languageCode = 'uk' }) {
+  const keyPath = findKeyFile();
+  const key = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+  const token = await getGscToken(key.client_email, key.private_key);
+
+  const res = await fetch('https://searchconsole.googleapis.com/v1/urlInspection/index:inspect', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      inspectionUrl,
+      siteUrl,
+      languageCode
+    })
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(`GSC Inspection Error: ${JSON.stringify(data)}`);
+  return data;
+}
+
 export async function querySearchAnalytics({ siteUrl, startDate, endDate, dimensions = ['query'], rowLimit = 25, dimensionFilterGroups }) {
   const keyPath = findKeyFile();
   const key = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
@@ -82,9 +105,26 @@ async function main() {
   const key = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
 
   console.log(`🔍 Connecting to Google Search Console via ${key.client_email}...`);
-  const token = await getGscToken(key.client_email, key.private_key);
+  const siteUrl = 'sc-domain:tattoozp.com';
 
-  const siteUrl = args.find(a => a.startsWith('sc-domain:') || a.startsWith('http')) || 'sc-domain:tattoozp.com';
+  if (args.includes('inspect')) {
+    const url = args.find(a => a.startsWith('http')) || 'https://tattoozp.com/';
+    console.log(`🔎 Inspecting live Google Index for: ${url}\n`);
+    const data = await inspectUrl({ inspectionUrl: url, siteUrl });
+    const idx = data.inspectionResult?.indexStatusResult;
+    console.log('📌 INDEX STATUS RESULT:');
+    console.log('-----------------------------------------------------------------------------------');
+    console.log(`- Verdict:             ${idx?.verdict || 'N/A'}`);
+    console.log(`- Coverage Status:     ${idx?.coverageState || 'N/A'}`);
+    console.log(`- Last Crawled Time:   ${idx?.lastCrawlTime || 'N/A'}`);
+    console.log(`- Crawled As:          ${idx?.crawledAs || 'N/A'}`);
+    console.log(`- Google Canonical:    ${idx?.googleCanonical || 'N/A'}`);
+    console.log(`- User Canonical:      ${idx?.userCanonical || 'N/A'}`);
+    console.log(`- Robots.txt:          ${idx?.robotsTxtState || 'N/A'}`);
+    console.log(`- Page Fetch:          ${idx?.pageFetchState || 'N/A'}`);
+    console.log(`- Referring URLs:      ${idx?.referringUrls?.join(', ') || 'None'}`);
+    return;
+  }
 
   const today = new Date();
   const endDate = new Date(today.getTime() - 3 * 86400000).toISOString().split('T')[0];
