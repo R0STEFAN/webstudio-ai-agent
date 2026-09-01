@@ -88,12 +88,12 @@ export function cacheDOMElements() {
   dom.firstRunView = document.getElementById('first-run-view');
   dom.workspaceView = document.getElementById('workspace-view');
   
-  dom.terminalOutput = document.getElementById('terminal-output');
-  dom.terminalContainer = document.getElementById('terminal-container');
+  dom.terminalOutput = document.getElementById('terminal-output') || document.getElementById('setup-terminal-output');
+  dom.terminalContainer = document.getElementById('terminal-container') || document.getElementById('setup-terminal-container');
   dom.terminalStatus = document.getElementById('terminal-status');
-  dom.btnClearTerminal = document.getElementById('btn-clear-terminal');
-  dom.btnCopyTerminal = document.getElementById('btn-copy-terminal');
-  dom.btnToggleAutoScroll = document.getElementById('btn-toggle-autoscroll') || document.getElementById('checkbox-autoscroll');
+  dom.btnClearTerminal = document.getElementById('btn-clear-terminal') || document.getElementById('btn-clear-logs');
+  dom.btnCopyTerminal = document.getElementById('btn-copy-terminal') || document.getElementById('btn-copy-logs');
+  dom.btnToggleAutoScroll = document.getElementById('btn-toggle-autoscroll') || document.getElementById('checkbox-autoscroll') || document.getElementById('chk-autoscroll');
   
   dom.inputShareLink = document.getElementById('input-share-link');
   dom.inputBuildId = document.getElementById('input-build-id');
@@ -108,21 +108,21 @@ export function cacheDOMElements() {
   dom.btnUploadAssets = document.getElementById('btn-upload-assets');
   dom.btnImport = document.getElementById('btn-import');
   dom.btnCheckUpdates = document.getElementById('btn-check-updates');
-  dom.btnUpdateNow = document.getElementById('btn-update-now');
+  dom.btnUpdateNow = document.getElementById('btn-update-now') || document.getElementById('footer-update-btn');
   dom.btnHelpToggle = document.getElementById('btn-help-toggle');
-  dom.sessionHelpBox = document.getElementById('session-help-box') || document.getElementById('session-help-text');
+  dom.sessionHelpBox = document.getElementById('session-help-box') || document.getElementById('session-help-text') || document.getElementById('help-guide-box');
   
-  dom.telemetryProjectId = document.getElementById('telemetry-project-id');
-  dom.telemetryPages = document.getElementById('telemetry-pages');
-  dom.telemetryInstances = document.getElementById('telemetry-instances');
-  dom.telemetryAssets = document.getElementById('telemetry-assets');
-  dom.telemetryStatusBadge = document.getElementById('telemetry-status-badge');
-  dom.telemetryLocalMcp = document.getElementById('telemetry-local-mcp');
+  dom.telemetryProjectId = document.getElementById('telemetry-project-id') || document.getElementById('val-project-id');
+  dom.telemetryPages = document.getElementById('telemetry-pages') || document.getElementById('val-pages-count');
+  dom.telemetryInstances = document.getElementById('telemetry-instances') || document.getElementById('val-instances-count');
+  dom.telemetryAssets = document.getElementById('telemetry-assets') || document.getElementById('val-assets-count');
+  dom.telemetryStatusBadge = document.getElementById('telemetry-status-badge') || document.getElementById('val-project-status');
+  dom.telemetryLocalMcp = document.getElementById('telemetry-local-mcp') || document.getElementById('val-mcp-status');
   
-  dom.footerVersion = document.getElementById('footer-version');
-  dom.footerUpdateContainer = document.getElementById('footer-update-container');
-  dom.footerUpdateBadge = document.getElementById('footer-update-badge');
-  dom.footerUpdateBtn = document.getElementById('footer-update-btn');
+  dom.footerVersion = document.getElementById('footer-version') || document.getElementById('val-footer-version');
+  dom.footerUpdateContainer = document.getElementById('footer-update-container') || document.getElementById('container-update-available');
+  dom.footerUpdateBadge = document.getElementById('footer-update-badge') || document.getElementById('val-footer-badge');
+  dom.footerUpdateBtn = document.getElementById('footer-update-btn') || document.getElementById('btn-update-now');
   
   dom.langBtns = Array.from(document.querySelectorAll('[data-lang]'));
   dom.toastContainer = document.getElementById('toast-container');

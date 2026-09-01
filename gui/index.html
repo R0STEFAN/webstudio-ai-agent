@@ -1,13 +1,381 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ua">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Webstudio Control Center</title>
+  <title data-i18n="appTitle">Webstudio Control Center</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230066FF'/%3E%3Cpath d='M8 10h16v3H8zm0 5h12v3H8zm0 5h16v3H8z' fill='%23ffffff'/%3E%3C/svg%3E">
 </head>
-<body>
-  <div id="app">
-    <h1>Webstudio Control Center</h1>
-  </div>
+<body class="dark-theme">
+  <!-- Top Navigation / Application Header -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-container">
+        <div class="brand-icon-wrapper">
+          <svg class="brand-icon" viewBox="0 0 32 32" width="28" height="28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="8" fill="#0066FF"/>
+            <path d="M7 9H25V12.5H7V9Z" fill="white"/>
+            <path d="M7 14.5H19V18H7V14.5Z" fill="white"/>
+            <path d="M7 20H25V23.5H7V20Z" fill="white"/>
+            <circle cx="23" cy="16.25" r="2.25" fill="#22C55E"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">
+            <span data-i18n="appTitle">Webstudio Control Center</span>
+            <span class="brand-tag">// Control Center</span>
+          </h1>
+          <p class="brand-subtitle" data-i18n="appSubtitle">Панель керування та AI-агент Webstudio</p>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <div class="mcp-status-pill" id="mcp-status-pill" title="Local Model Context Protocol Status">
+          <span class="status-dot"></span>
+          <span class="status-label" id="val-mcp-status" data-i18n="workspace.telemetry.localMcp">Локальний MCP</span>
+        </div>
+
+        <div class="lang-switcher" role="group" aria-label="Language selection">
+          <button type="button" class="btn-lang" id="btn-lang-ua" data-lang="ua">UA 🇺🇦</button>
+          <button type="button" class="btn-lang" id="btn-lang-en" data-lang="en">EN 🇬🇧</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-container">
+    <!-- View 1: First-Run Setup Wizard (Displayed when dependencies are not installed) -->
+    <section id="first-run-view" class="view-section first-run-view hidden" aria-labelledby="first-run-title">
+      <div class="hero-card">
+        <div class="hero-icon-container">
+          <svg class="hero-icon" viewBox="0 0 48 48" width="56" height="56" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="48" height="48" rx="14" fill="rgba(0, 102, 255, 0.15)" stroke="#0066FF" stroke-width="2"/>
+            <path d="M24 12V28M24 28L18 22M24 28L30 22" stroke="#0066FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M14 34H34" stroke="#22C55E" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        </div>
+
+        <h2 id="first-run-title" class="hero-title" data-i18n="firstRun.title">Первинне налаштування Webstudio</h2>
+        
+        <p id="first-run-desc" class="hero-description" data-i18n="firstRun.description">
+          Webstudio CLI та робочі залежності ще не встановлені. Натисніть кнопку нижче для автоматичного встановлення всіх необхідних пакетів, конфігурації та застосування системних патчів.
+        </p>
+
+        <div class="hero-action">
+          <button type="button" class="btn btn-primary btn-hero" id="btn-install" data-i18n="firstRun.installBtn">
+            ⚡ Встановити Webstudio та залежності
+          </button>
+        </div>
+
+        <div id="first-run-note" class="info-note" data-i18n="firstRun.note">
+          Процес може тривати 1-2 хвилини залежно від швидкості інтернет-з'єднання. Журнал встановлення транслюється в реальному часі нижче.
+        </div>
+      </div>
+
+      <!-- Setup Terminal Output Window for Onboarding -->
+      <div id="setup-terminal-container" class="terminal-card terminal-card-setup">
+        <div class="terminal-header">
+          <div class="terminal-header-title">
+            <span class="window-dot red"></span>
+            <span class="window-dot yellow"></span>
+            <span class="window-dot green"></span>
+            <span class="terminal-heading" data-i18n="workspace.terminal.title">Консоль виконання (Live Output)</span>
+          </div>
+        </div>
+        <div id="setup-terminal-output" class="terminal-output-box"></div>
+      </div>
+    </section>
+
+    <!-- View 2: Active Workspace Dashboard -->
+    <section id="workspace-view" class="view-section workspace-view" aria-label="Active Workspace Dashboard">
+      <div class="workspace-grid">
+        <!-- Left Column: Actions & Configuration Cards -->
+        <div class="column-actions">
+          <!-- Card 1: Project Connection & Draft Sync -->
+          <div class="card card-project">
+            <div class="card-header">
+              <div class="card-header-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                </svg>
+              </div>
+              <h3 class="card-title" data-i18n="workspace.projectSection.title">Прив'язка та синхронізація проєкту</h3>
+            </div>
+            
+            <div class="card-body">
+              <div class="form-group">
+                <label for="input-share-link" class="form-label" data-i18n="workspace.projectSection.shareLink">
+                  Share Link (Посилання доступу)
+                </label>
+                <input 
+                  type="url" 
+                  id="input-share-link" 
+                  class="form-input" 
+                  data-i18n-placeholder="workspace.projectSection.shareLinkPlaceholder" 
+                  placeholder="https://p-bda39d1b-....apps.webstudio.is/?authToken=..." 
+                  autocomplete="off" 
+                  spellcheck="false"
+                >
+              </div>
+
+              <div class="form-group">
+                <label for="input-build-id" class="form-label" data-i18n="workspace.projectSection.buildId">
+                  Build ID (ID ревізії чернетки)
+                </label>
+                <input 
+                  type="text" 
+                  id="input-build-id" 
+                  class="form-input font-mono" 
+                  data-i18n-placeholder="workspace.projectSection.buildIdPlaceholder" 
+                  placeholder="a173613c-2453-4ebe-b2ea-a10d304741cf (необов'язково)" 
+                  autocomplete="off" 
+                  spellcheck="false"
+                >
+                <span class="form-hint" data-i18n="workspace.projectSection.buildIdHint">
+                  Build ID використовується для синхронізації неопублікованих чернеток безпосередньо з конструктора Webstudio Builder.
+                </span>
+              </div>
+
+              <div class="button-strip">
+                <button type="button" class="btn btn-primary" id="btn-link" data-i18n="workspace.projectSection.linkBtn">
+                  🔗 Прив'язати проєкт
+                </button>
+                <button type="button" class="btn btn-secondary" id="btn-sync" data-i18n="workspace.projectSection.syncBtn">
+                  🔄 Синхронізувати проєкт
+                </button>
+                <button type="button" class="btn btn-accent" id="btn-sync-draft" data-i18n="workspace.projectSection.syncDraftBtn">
+                  ⚡ Синхронізувати чернетку
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Asset Session Bridge -->
+          <div class="card card-session">
+            <div class="card-header">
+              <div class="card-header-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+              </div>
+              <h3 class="card-title" data-i18n="workspace.sessionSection.title">Сесія та авторизація (Asset Bridge)</h3>
+            </div>
+            
+            <div class="card-body">
+              <div class="form-group">
+                <label for="input-cookie" class="form-label" data-i18n="workspace.sessionSection.cookie">
+                  Cookie (Авторизаційний заголовок)
+                </label>
+                <input 
+                  type="password" 
+                  id="input-cookie" 
+                  class="form-input font-mono" 
+                  data-i18n-placeholder="workspace.sessionSection.cookiePlaceholder" 
+                  placeholder="connect.sid=s%3A...; _ws_session=..." 
+                  autocomplete="off" 
+                  spellcheck="false"
+                >
+              </div>
+
+              <div class="form-group">
+                <label for="input-csrf-token" class="form-label" data-i18n="workspace.sessionSection.csrfToken">
+                  CSRF Token
+                </label>
+                <input 
+                  type="text" 
+                  id="input-csrf-token" 
+                  class="form-input font-mono" 
+                  data-i18n-placeholder="workspace.sessionSection.csrfTokenPlaceholder" 
+                  placeholder="Вставте значення csrfToken з DevTools..." 
+                  autocomplete="off" 
+                  spellcheck="false"
+                >
+              </div>
+
+              <div class="button-strip session-actions">
+                <button type="button" class="btn btn-secondary" id="btn-save-session" data-i18n="workspace.sessionSection.saveBtn">
+                  💾 Зберегти session.json
+                </button>
+              </div>
+
+              <!-- Collapsible 10-Second Guide -->
+              <div class="help-accordion">
+                <button type="button" class="btn-help-toggle" id="btn-help-toggle" data-i18n="workspace.sessionSection.helpToggle">
+                  📖 Як отримати Cookie та CSRF токен за 10 секунд?
+                </button>
+                <div id="help-guide-box" class="help-box hidden">
+                  <div class="help-box-inner" id="session-help-text" data-i18n="workspace.sessionSection.helpText">
+                    1. Відкрийте ваш проєкт у Webstudio Builder у браузері.
+2. Відкрийте DevTools (F12) -&gt; вкладка Network (Мережа).
+3. Виконайте будь-яку дію (наприклад, клік або збереження).
+4. Знайдіть будь-який запит до api/rest, перегляньте Headers:
+   • Скопіюйте значення заголовка "Cookie".
+   • Скопіюйте значення "x-csrf-token" або "csrfToken".
+5. Вставте їх у поля вище та натисніть "Зберегти session.json".
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Cloud Synchronization -->
+          <div class="card card-cloud">
+            <div class="card-header">
+              <div class="card-header-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                </svg>
+              </div>
+              <h3 class="card-title" data-i18n="workspace.cloudSection.title">Хмарні операції</h3>
+            </div>
+            
+            <div class="card-body">
+              <div class="button-strip cloud-buttons">
+                <button type="button" class="btn btn-secondary" id="btn-upload-assets" data-i18n="workspace.cloudSection.uploadAssetsBtn">
+                  📤 Завантажити локальні асети
+                </button>
+                <button type="button" class="btn btn-primary" id="btn-import" data-i18n="workspace.cloudSection.importBtn">
+                  ☁️ Імпортувати в хмару (Cloud Import)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Terminal & Telemetry -->
+        <div class="column-output">
+          <!-- Terminal Card -->
+          <div class="card card-terminal">
+            <div class="terminal-header">
+              <div class="terminal-header-title">
+                <span class="window-dot red"></span>
+                <span class="window-dot yellow"></span>
+                <span class="window-dot green"></span>
+                <h3 class="terminal-heading" data-i18n="workspace.terminal.title">Консоль виконання (Live Output)</h3>
+              </div>
+
+              <div class="terminal-toolbar">
+                <span id="terminal-status" class="terminal-status offline">OFFLINE</span>
+                
+                <label class="autoscroll-control" for="chk-autoscroll">
+                  <input type="checkbox" id="chk-autoscroll" checked>
+                  <span data-i18n="workspace.terminal.autoScroll">Автопрокрутка</span>
+                </label>
+
+                <button type="button" class="btn-terminal-action" id="btn-copy-logs" data-i18n="workspace.terminal.copy">
+                  Копіювати
+                </button>
+                
+                <button type="button" class="btn-terminal-action" id="btn-clear-logs" data-i18n="workspace.terminal.clear">
+                  Очистити
+                </button>
+              </div>
+            </div>
+
+            <!-- Terminal Output Viewport -->
+            <div id="terminal-container" class="terminal-container">
+              <div id="terminal-output" class="terminal-output" role="log" aria-live="polite"></div>
+            </div>
+          </div>
+
+          <!-- Telemetry Card -->
+          <div class="card card-telemetry">
+            <div class="card-header">
+              <div class="card-header-icon">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20V10"></path>
+                  <path d="M18 20V4"></path>
+                  <path d="M6 20v-4"></path>
+                </svg>
+              </div>
+              <h3 class="card-title" data-i18n="workspace.telemetry.title">Телеметрія проєкту</h3>
+            </div>
+
+            <div class="card-body">
+              <div class="telemetry-grid">
+                <!-- Status -->
+                <div class="telemetry-cell">
+                  <span class="telemetry-label" data-i18n="workspace.telemetry.status">Статус</span>
+                  <span class="status-badge status-disconnected" id="val-project-status" data-i18n="workspace.telemetry.notConnected">
+                    Не підключено
+                  </span>
+                </div>
+
+                <!-- Project ID -->
+                <div class="telemetry-cell">
+                  <span class="telemetry-label" data-i18n="workspace.telemetry.projectId">ID проєкту</span>
+                  <span class="telemetry-value font-mono" id="val-project-id">—</span>
+                </div>
+
+                <!-- Pages -->
+                <div class="telemetry-cell">
+                  <span class="telemetry-label" data-i18n="workspace.telemetry.pages">Сторінок</span>
+                  <span class="telemetry-value metric-value" id="val-pages-count">0</span>
+                </div>
+
+                <!-- Instances -->
+                <div class="telemetry-cell">
+                  <span class="telemetry-label" data-i18n="workspace.telemetry.instances">Елементів (Instances)</span>
+                  <span class="telemetry-value metric-value" id="val-instances-count">0</span>
+                </div>
+
+                <!-- Assets -->
+                <div class="telemetry-cell">
+                  <span class="telemetry-label" data-i18n="workspace.telemetry.assets">Асетів</span>
+                  <span class="telemetry-value metric-value" id="val-assets-count">0</span>
+                </div>
+
+                <!-- Local MCP -->
+                <div class="telemetry-cell">
+                  <span class="telemetry-label" data-i18n="workspace.telemetry.localMcp">Локальний MCP</span>
+                  <span class="badge badge-muted" id="val-mcp-status" data-i18n="workspace.telemetry.inactive">
+                    Неактивний
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Application Footer Status Bar -->
+  <footer class="app-footer">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <div class="footer-version-info">
+          <span id="val-footer-version" class="footer-version-text" data-i18n="workspace.footer.notInstalled">
+            Webstudio: не встановлено
+          </span>
+          <span id="val-footer-badge" class="footer-badge hidden"></span>
+        </div>
+      </div>
+
+      <div class="footer-center">
+        <button type="button" class="btn btn-sm btn-outline" id="btn-check-updates" data-i18n="workspace.footer.checkUpdatesBtn">
+          🔍 Перевірити оновлення
+        </button>
+      </div>
+
+      <div class="footer-right">
+        <div id="container-update-available" class="update-banner hidden">
+          <button type="button" class="btn btn-sm btn-accent btn-update" id="btn-update-now" data-i18n="workspace.footer.updateNowBtn">
+            ⚡ Оновити
+          </button>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Floating Toast Notifications Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Client Application Script Entry Point -->
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
