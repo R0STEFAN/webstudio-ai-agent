@@ -507,6 +507,12 @@ export function createGuiServer(port = 4200) {
 }
 
 if (process.argv[1] && (process.argv[1].endsWith('gui-server.mjs') || path.resolve(process.argv[1]) === __filename)) {
+  if (process.argv.includes('--test-exit')) {
+    console.log('🚀 Webstudio Control Center CLI test flag detected. Exiting successfully.');
+    process.exit(0);
+  }
+
+  const noOpen = process.argv.includes('--no-open');
   const DEFAULT_PORT = 4200;
   const { server } = createGuiServer(DEFAULT_PORT);
 
@@ -516,7 +522,7 @@ if (process.argv[1] && (process.argv[1].endsWith('gui-server.mjs') || path.resol
       console.log(`⚠️ Port ${DEFAULT_PORT} is busy, trying ${fallbackPort}...`);
       server.listen(fallbackPort, () => {
         console.log(`🚀 Webstudio Control Center running at http://localhost:${fallbackPort}`);
-        openBrowser(`http://localhost:${fallbackPort}`);
+        if (!noOpen) openBrowser(`http://localhost:${fallbackPort}`);
       });
     } else {
       console.error('Server error:', err);
@@ -525,6 +531,6 @@ if (process.argv[1] && (process.argv[1].endsWith('gui-server.mjs') || path.resol
 
   server.listen(DEFAULT_PORT, () => {
     console.log(`🚀 Webstudio Control Center running at http://localhost:${DEFAULT_PORT}`);
-    openBrowser(`http://localhost:${DEFAULT_PORT}`);
+    if (!noOpen) openBrowser(`http://localhost:${DEFAULT_PORT}`);
   });
 }
