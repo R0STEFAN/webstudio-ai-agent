@@ -225,17 +225,25 @@ export function applyTranslations() {
 export function ansiToHtml(text) {
   if (!text || typeof text !== 'string') return '';
   
-  // HTML escape
-  let escaped = text
+  // 1. Strip DEC Private Mode escape sequences (\x1b[?25h, \x1b[?25l) and bare artifacts ([?25h, [?25l)
+  let cleaned = text
+    .replace(/\x1b\[\?[0-9;]*[a-zA-Z]/g, '')
+    .replace(/\[\?[0-9;]+[a-zA-Z]/g, '')
+    .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
+    .replace(/\x1b\[[0-9;]*[ABCDEFGHJKSTfsulh]/g, '');
+
+  // 2. HTML escape
+  let escaped = cleaned
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
     
-  // ANSI colors map
+  // 3. ANSI colors map
   const ansiCodes = [
-    { code: /\x1b\[0m/g, html: '</span>' },
+    { code: /\x1b\[0m|\x1b\[39m|\x1b\[49m/g, html: '</span>' },
     { code: /\x1b\[1m/g, html: '<span class="ansi-bold">' },
+    { code: /\x1b\[2m/g, html: '<span class="ansi-dim">' },
     { code: /\x1b\[30m/g, html: '<span class="ansi-black">' },
     { code: /\x1b\[31m/g, html: '<span class="ansi-red">' },
     { code: /\x1b\[32m/g, html: '<span class="ansi-green">' },
@@ -252,8 +260,9 @@ export function ansiToHtml(text) {
     { code: /\x1b\[95m/g, html: '<span class="ansi-bright-magenta">' },
     { code: /\x1b\[96m/g, html: '<span class="ansi-bright-cyan">' },
     { code: /\x1b\[97m/g, html: '<span class="ansi-bright-white">' },
-    // Strip other unhandled ANSI sequences
-    { code: /\x1b\[[0-9;]*[a-zA-Z]/g, html: '' }
+    // Catch any remaining unhandled ANSI CSI escape sequences
+    { code: /\x1b\[[0-9;?]*[a-zA-Z]/g, html: '' },
+    { code: /\x1b/g, html: '' }
   ];
   
   for (const item of ansiCodes) {

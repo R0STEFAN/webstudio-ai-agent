@@ -24,8 +24,13 @@ const MIME_TYPES = {
 export const sseClients = new Set();
 
 export function broadcastLog(text, type = 'stdout') {
+  if (text === void 0 || text === null) return;
+  // Clean up DEC mode control codes (\x1b[?25h, \x1b[?25l) and bare artifacts ([?25h, [?25l)
+  const cleanedText = String(text)
+    .replace(/\x1b\[\?[0-9;]*[a-zA-Z]/g, '')
+    .replace(/\[\?[0-9;]+[a-zA-Z]/g, '');
   const timestamp = new Date().toISOString();
-  const payload = `event: log\ndata: ${JSON.stringify({ text, type, timestamp })}\n\n`;
+  const payload = `event: log\ndata: ${JSON.stringify({ text: cleanedText, type, timestamp })}\n\n`;
   for (const client of sseClients) {
     try {
       client.write(payload);
