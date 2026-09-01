@@ -87,6 +87,142 @@ export async function getLatestVersion(forceRefresh = false) {
   return cachedLatestVersion;
 }
 
+export const TEMPLATE_PRESETS = {
+  'react-router-cloudflare': ['react-router', 'react-router-cloudflare'],
+  'remix-cloudflare': ['cloudflare'],
+  'react-router-vercel': ['react-router', 'react-router-vercel'],
+  'react-router-netlify': ['react-router', 'react-router-netlify'],
+  'react-router-docker': ['react-router', 'react-router-docker'],
+  'ssg': ['ssg'],
+  'ssg-vercel': ['ssg', 'ssg-vercel'],
+  'ssg-netlify': ['ssg', 'ssg-netlify']
+};
+
+export function getDeployConfig(rootDir) {
+  let projectName = '';
+  let configFile = '';
+  let detectedTemplate = 'unknown';
+
+  const wranglerJsoncPath = path.join(rootDir, 'wrangler.jsonc');
+  const wranglerTomlPath = path.join(rootDir, 'wrangler.toml');
+  const vercelJsonPath = path.join(rootDir, 'vercel.json');
+  const netlifyTomlPath = path.join(rootDir, 'netlify.toml');
+  const dockerfilePath = path.join(rootDir, 'Dockerfile');
+  const packageJsonPath = path.join(rootDir, 'package.json');
+
+  if (fs.existsSync(wranglerJsoncPath)) {
+    try {
+      const content = fs.readFileSync(wranglerJsoncPath, 'utf8');
+      const match = content.match(/"name"\s*:\s*"([^"]+)"/);
+      if (match) projectName = match[1];
+      configFile = 'wrangler.jsonc';
+      detectedTemplate = 'react-router-cloudflare';
+    } catch {}
+  } else if (fs.existsSync(wranglerTomlPath)) {
+    try {
+      const content = fs.readFileSync(wranglerTomlPath, 'utf8');
+      const match = content.match(/^name\s*=\s*"([^"]+)"/m);
+      if (match) projectName = match[1];
+      configFile = 'wrangler.toml';
+      detectedTemplate = 'remix-cloudflare';
+    } catch {}
+  } else if (fs.existsSync(vercelJsonPath)) {
+    configFile = 'vercel.json';
+    detectedTemplate = 'react-router-vercel';
+  } else if (fs.existsSync(netlifyTomlPath)) {
+    configFile = 'netlify.toml';
+    detectedTemplate = 'react-router-netlify';
+  } else if (fs.existsSync(dockerfilePath)) {
+    configFile = 'Dockerfile';
+    detectedTemplate = 'react-router-docker';
+  }
+
+  let availableScripts = [];
+  if (fs.existsSync(packageJsonPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      if (!projectName && pkg.name) {
+        projectName = pkg.name;
+      }
+      if (!configFile) {
+        configFile = 'package.json';
+      }
+      if (pkg.scripts && typeof pkg.scripts === 'object') {
+        availableScripts = Object.keys(pkg.scripts);
+      }
+      if (detectedTemplate === 'unknown') {
+        if (pkg.dependencies?.['@react-router/cloudflare'] || pkg.devDependencies?.['@react-router/cloudflare']) {
+          detectedTemplate = 'react-router-cloudflare';
+        } else if (pkg.dependencies?.['@remix-run/cloudflare'] || pkg.devDependencies?.['@remix-run/cloudflare']) {
+          detectedTemplate = 'remix-cloudflare';
+        } else if (pkg.dependencies?.['@react-router/node'] || pkg.dependencies?.['react-router']) {
+          detectedTemplate = 'react-router-docker';
+        } else if (pkg.dependencies?.['vike'] || pkg.dependencies?.['vite-plugin-ssr']) {
+          detectedTemplate = 'ssg';
+        }
+      }
+    } catch {}
+  }
+
+  return {
+    projectName: projectName || 'webstudio-app',
+    configFile: configFile || 'none',
+    detectedTemplate,
+    hasWrangler: Boolean(fs.existsSync(wranglerJsoncPath) || fs.existsSync(wranglerTomlPath)),
+    hasBuildDir: Boolean(fs.existsSync(path.join(rootDir, 'build')) || fs.existsSync(path.join(rootDir, 'dist'))),
+    availableScripts
+  };
+}
+
+export function updateProjectNameOnDisk(rootDir, newName) {
+  if (!newName || typeof newName !== 'string') return { updated: false, safeName: '' };
+  const safeName = newName.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+  if (!safeName) return { updated: false, safeName: '' };
+
+  const wranglerJsoncPath = path.join(rootDir, 'wrangler.jsonc');
+  const wranglerTomlPath = path.join(rootDir, 'wrangler.toml');
+  const packageJsonPath = path.join(rootDir, 'package.json');
+
+  let updated = false;
+
+  if (fs.existsSync(wranglerJsoncPath)) {
+    try {
+      let content = fs.readFileSync(wranglerJsoncPath, 'utf8');
+      if (/"name"\s*:\s*"[^"]+"/.test(content)) {
+        content = content.replace(/"name"\s*:\s*"[^"]+"/, `"name": "${safeName}"`);
+      } else {
+        content = content.replace(/\{/, `{\n  "name": "${safeName}",`);
+      }
+      fs.writeFileSync(wranglerJsoncPath, content, 'utf8');
+      updated = true;
+    } catch {}
+  }
+
+  if (fs.existsSync(wranglerTomlPath)) {
+    try {
+      let content = fs.readFileSync(wranglerTomlPath, 'utf8');
+      if (/^name\s*=\s*"[^"]+"/m.test(content)) {
+        content = content.replace(/^name\s*=\s*"[^"]+"/m, `name = "${safeName}"`);
+      } else {
+        content = `name = "${safeName}"\n` + content;
+      }
+      fs.writeFileSync(wranglerTomlPath, content, 'utf8');
+      updated = true;
+    } catch {}
+  }
+
+  if (fs.existsSync(packageJsonPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      pkg.name = safeName;
+      fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+      updated = true;
+    } catch {}
+  }
+
+  return { updated, safeName };
+}
+
 export async function getProjectStatus() {
   const cliPath = path.join(rootDir, 'node_modules', 'webstudio', 'lib', 'cli.js');
   const pkgPath = path.join(rootDir, 'node_modules', 'webstudio', 'package.json');
@@ -182,9 +318,12 @@ export async function getProjectStatus() {
       pages: pagesCount,
       instances: instancesCount,
       assets: assetsCount
-    }
+    },
+    deploy: getDeployConfig(rootDir)
   };
 }
+
+export const getSystemStatus = getProjectStatus;
 
 export function executeShellCommand(action, command) {
   broadcastLog(`$ ${command}`, 'stdout');
@@ -363,6 +502,48 @@ export function handleAction(action, params = {}) {
           broadcastComplete('check-updates', false, 1);
         }
       })();
+      break;
+    }
+    case 'generate-template': {
+      const preset = params.templatePreset || params.template || 'react-router-cloudflare';
+      const templates = TEMPLATE_PRESETS[preset] || (Array.isArray(preset) ? preset : [preset]);
+      let cmd = 'npx webstudio build';
+      for (const t of templates) {
+        cmd += ` --template ${t}`;
+      }
+      executeShellCommand('generate-template', cmd);
+      break;
+    }
+    case 'update-project-name': {
+      const newName = params.projectName || params.name || '';
+      const result = updateProjectNameOnDisk(rootDir, newName);
+      if (result.updated || result.safeName) {
+        broadcastLog(`✅ Project name updated to: ${result.safeName}`, 'stdout');
+        broadcastComplete('update-project-name', true, 0);
+      } else {
+        broadcastLog('❌ Failed to update project name: invalid name provided', 'stderr');
+        broadcastComplete('update-project-name', false, 1);
+      }
+      break;
+    }
+    case 'check-auth': {
+      executeShellCommand('check-auth', 'npx wrangler whoami');
+      break;
+    }
+    case 'login-auth': {
+      executeShellCommand('login-auth', 'npx wrangler login');
+      break;
+    }
+    case 'build-project': {
+      executeShellCommand('build-project', 'npm run build');
+      break;
+    }
+    case 'preview-project': {
+      executeShellCommand('preview-project', 'npm run preview');
+      break;
+    }
+    case 'deploy-project': {
+      executeShellCommand('deploy-project', 'npm run deploy');
       break;
     }
     default: {
