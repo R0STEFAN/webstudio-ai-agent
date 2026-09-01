@@ -5,6 +5,7 @@
   "type": "module",
   "main": "scripts/setup-local-mcp.mjs",
   "scripts": {
+    "postinstall": "node scripts/setup-local-mcp.mjs",
     "setup": "node scripts/setup-local-mcp.mjs",
     "cli": "node scripts/ai-designer/cli.mjs",
     "upload-assets": "node scripts/upload-assets.mjs",
