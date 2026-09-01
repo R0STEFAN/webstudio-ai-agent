@@ -53,6 +53,11 @@ const requiredIds = [
   'first-run-view',
   'workspace-view',
   
+  // Tab Navigation & Views
+  'btn-tab-workspace',
+  'btn-tab-deploy',
+  'tab-view-workspace',
+  'tab-view-deploy',
   // First-Run Wizard
   'first-run-title',
   'first-run-desc',
@@ -87,6 +92,24 @@ const requiredIds = [
   'btn-clear-logs',
   'btn-copy-logs',
   'chk-autoscroll',
+  
+  // Deploy Tab Form & Lifecycle Elements
+  'select-template-preset',
+  'btn-generate-template',
+  'input-project-name',
+  'val-detected-config',
+  'btn-update-project-name',
+  'val-hosting-status',
+  'btn-check-auth',
+  'btn-login-auth',
+  'btn-deploy-install',
+  'btn-deploy-build',
+  'btn-deploy-preview',
+  'btn-deploy-publish',
+  'val-deploy-template',
+  'val-deploy-hosting',
+  'val-deploy-config-file',
+  'val-deploy-scripts-count',
   
   // Telemetry Card
   'val-project-status',
@@ -161,7 +184,31 @@ for (const id of appJsLookedUpIds) {
       'btn-toggle-autoscroll',
       'checkbox-autoscroll',
       'install-btn',
-      'session-help-box'
+      'session-help-box',
+      'btn-tab-workspace',
+      'btn-tab-deploy',
+      'tab-btn-workspace',
+      'tab-btn-deploy',
+      'tab-view-workspace',
+      'tab-view-deploy',
+      'select-template-preset',
+      'select-preset',
+      'btn-generate-template',
+      'input-project-name',
+      'btn-update-project-name',
+      'val-detected-config',
+      'val-hosting-status',
+      'btn-check-auth',
+      'btnLoginAuth',
+      'btn-login-auth',
+      'btn-deploy-install',
+      'btn-deploy-build',
+      'btn-deploy-preview',
+      'btn-deploy-publish',
+      'val-deploy-template',
+      'val-deploy-hosting',
+      'val-deploy-config-file',
+      'val-deploy-scripts-count'
     ].includes(id);
     assert.ok(isKnownFallback, `Unresolved ID in app.js with no fallback in HTML: ${id}`);
     console.log(`   ℹ️ Fallback ID in app.js: ${id} (resolved via alternative in HTML)`);
@@ -239,6 +286,13 @@ assert.ok(css.includes('.btn.loading'), 'CSS must include .btn.loading state');
 assert.ok(css.includes('.toast-container'), 'CSS must style .toast-container');
 assert.ok(css.includes('.toast-success'), 'CSS must style .toast-success');
 assert.ok(css.includes('.toast-error'), 'CSS must style .toast-error');
+
+// Check Tab Navigation, Form Select & Deploy Lifecycle Styling
+assert.ok(css.includes('.tab-navigation'), 'CSS must style .tab-navigation');
+assert.ok(css.includes('.tab-btn'), 'CSS must style .tab-btn');
+assert.ok(css.includes('.form-select'), 'CSS must style .form-select');
+assert.ok(css.includes('.config-badge'), 'CSS must style .config-badge');
+assert.ok(css.includes('.lifecycle-grid'), 'CSS must style .lifecycle-grid');
 console.log('   ✅ CSS design tokens, responsive breakpoints, and UI component classes verified.');
 
 // 7. Test App.js Multi-Viewport Terminal Output & Header MCP Status Separation

@@ -90,9 +90,17 @@
 
     <!-- View 2: Active Workspace Dashboard -->
     <section id="workspace-view" class="view-section workspace-view" aria-label="Active Workspace Dashboard">
-      <div class="workspace-grid">
-        <!-- Left Column: Actions & Configuration Cards -->
-        <div class="column-actions">
+      <!-- Tab Navigation Bar -->
+      <div class="tab-navigation" role="tablist" aria-label="Dashboard Navigation">
+        <button type="button" id="btn-tab-workspace" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-view-workspace" data-i18n="tabs.workspace">⚡ Керування проєктом</button>
+        <button type="button" id="btn-tab-deploy" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-view-deploy" data-i18n="tabs.deploy">🚀 Деплой та Шаблони</button>
+      </div>
+
+      <!-- Tab View 1: Project Workspace Dashboard -->
+      <div id="tab-view-workspace" class="tab-view-content" role="tabpanel" aria-labelledby="btn-tab-workspace">
+        <div class="workspace-grid">
+          <!-- Left Column: Actions & Configuration Cards -->
+          <div class="column-actions col-actions">
           <!-- Card 1: Project Connection & Draft Sync -->
           <div class="card card-project">
             <div class="card-header">
@@ -247,7 +255,7 @@
         </div>
 
         <!-- Right Column: Terminal & Telemetry -->
-        <div class="column-output">
+        <div class="column-output col-telemetry">
           <!-- Terminal Card -->
           <div class="card card-terminal">
             <div class="terminal-header">
@@ -335,6 +343,199 @@
                   <span class="badge badge-muted" id="val-mcp-status" data-i18n="workspace.telemetry.inactive">
                     Неактивний
                   </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab View 2: Deploy & Framework Templates -->
+      <div id="tab-view-deploy" class="tab-view-content hidden" role="tabpanel" aria-labelledby="btn-tab-deploy">
+        <div class="workspace-grid">
+          <!-- Left Column: Deploy Actions -->
+          <div class="column-actions col-actions">
+            <!-- Card 1: Template Selection -->
+            <div class="card card-template">
+              <div class="card-header">
+                <div class="card-header-icon">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                  </svg>
+                </div>
+                <h3 class="card-title" data-i18n="deploy.templateSection.title">1. Вибір шаблону фреймворку</h3>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label for="select-template-preset" class="form-label" data-i18n="deploy.templateSection.presetLabel">
+                    Шаблон хостингу
+                  </label>
+                  <select id="select-template-preset" class="form-select">
+                    <option value="react-router-cloudflare">⚡ React Router v7 + Cloudflare Workers</option>
+                    <option value="remix-cloudflare">⚡ Remix + Cloudflare Pages</option>
+                    <option value="react-router-vercel">▲ React Router v7 + Vercel</option>
+                    <option value="react-router-netlify">🌐 React Router v7 + Netlify</option>
+                    <option value="react-router-docker">🐳 React Router v7 + Docker</option>
+                    <option value="ssg">📄 Static Site (SSG / Vike)</option>
+                    <option value="ssg-vercel">▲ SSG + Vercel Static</option>
+                    <option value="ssg-netlify">🌐 SSG + Netlify Static</option>
+                  </select>
+                </div>
+                <p class="form-hint" data-i18n="deploy.templateSection.hint">
+                  Webstudio згенерує повну структуру файлів проєкту для обраного хостингу
+                </p>
+                <div class="button-strip">
+                  <button type="button" class="btn btn-primary btn-block" id="btn-generate-template" data-i18n="deploy.templateSection.generateBtn">
+                    🏗️ Згенерувати код за шаблоном
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2: Project Naming -->
+            <div class="card card-name">
+              <div class="card-header">
+                <div class="card-header-icon">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </div>
+                <h3 class="card-title" data-i18n="deploy.nameSection.title">2. Назва проєкту для хостингу</h3>
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label for="input-project-name" class="form-label" data-i18n="deploy.nameSection.projectNameLabel">
+                    Ім'я проєкту (Project Name)
+                  </label>
+                  <input 
+                    type="text" 
+                    id="input-project-name" 
+                    class="form-input font-mono" 
+                    data-i18n-placeholder="deploy.nameSection.placeholder" 
+                    placeholder="my-webstudio-app" 
+                    autocomplete="off" 
+                    spellcheck="false"
+                  >
+                </div>
+                <div id="val-detected-config" class="config-badge" data-i18n="deploy.nameSection.detectedConfig">
+                  Конфігураційний файл: —
+                </div>
+                <p class="form-hint" data-i18n="deploy.nameSection.hint">
+                  Автоматично оновлює назву у wrangler.jsonc, wrangler.toml та package.json
+                </p>
+                <div class="button-strip">
+                  <button type="button" class="btn btn-secondary btn-block" id="btn-update-project-name" data-i18n="deploy.nameSection.applyBtn">
+                    💾 Застосувати назву
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 3: Hosting Authentication -->
+            <div class="card card-auth">
+              <div class="card-header">
+                <div class="card-header-icon">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                </div>
+                <h3 class="card-title" data-i18n="deploy.authSection.title">3. Авторизація хостингу</h3>
+              </div>
+              <div class="card-body">
+                <div class="auth-status-row">
+                  <span class="auth-status-label" data-i18n="deploy.authSection.statusLabel">Статус облікового запису:</span>
+                  <span id="val-hosting-status" class="badge badge-neutral">Не перевірено</span>
+                </div>
+                <p class="form-hint" data-i18n="deploy.authSection.hint">
+                  Потрібно для публікації на Cloudflare / Vercel
+                </p>
+                <div class="button-strip">
+                  <button type="button" class="btn btn-outline" id="btn-check-auth" data-i18n="deploy.authSection.checkStatusBtn">
+                    🔍 Перевірити статус
+                  </button>
+                  <button type="button" class="btn btn-outline" id="btn-login-auth" data-i18n="deploy.authSection.loginBtn">
+                    🔑 Увійти в акаунт (Login)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 4: Deploy Lifecycle Actions -->
+            <div class="card card-lifecycle">
+              <div class="card-header">
+                <div class="card-header-icon">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+                  </svg>
+                </div>
+                <h3 class="card-title" data-i18n="deploy.lifecycleSection.title">4. Послідовні кроки деплою</h3>
+              </div>
+              <div class="card-body">
+                <p class="form-hint" data-i18n="deploy.lifecycleSection.hint">
+                  Універсальні команди: npm install ➔ npm run build ➔ npm run preview ➔ npm run deploy
+                </p>
+                <div class="lifecycle-grid">
+                  <button type="button" class="btn btn-outline btn-block" id="btn-deploy-install" data-i18n="deploy.lifecycleSection.installBtn">
+                    📦 Встановити залежності
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-block" id="btn-deploy-build" data-i18n="deploy.lifecycleSection.buildBtn">
+                    🔨 Зібрати проєкт (Build)
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-block" id="btn-deploy-preview" data-i18n="deploy.lifecycleSection.previewBtn">
+                    👁️ Попередній перегляд
+                  </button>
+                  <button type="button" class="btn btn-accent btn-block" id="btn-deploy-publish" data-i18n="deploy.lifecycleSection.deployBtn">
+                    🚀 Опублікувати (Deploy)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Deploy Telemetry -->
+          <div class="column-output col-telemetry">
+            <!-- Deploy Telemetry Card -->
+            <div class="card card-telemetry">
+              <div class="card-header">
+                <div class="card-header-icon">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                  </svg>
+                </div>
+                <h3 class="card-title" data-i18n="deploy.telemetry.title">📊 Стан збірки та деплою</h3>
+              </div>
+
+              <div class="card-body">
+                <div class="telemetry-grid">
+                  <!-- Current Template -->
+                  <div class="telemetry-cell">
+                    <span class="telemetry-label" data-i18n="deploy.telemetry.currentTemplate">Поточний шаблон</span>
+                    <span class="telemetry-value metric-val" id="val-deploy-template">—</span>
+                  </div>
+
+                  <!-- Target Hosting -->
+                  <div class="telemetry-cell">
+                    <span class="telemetry-label" data-i18n="deploy.telemetry.targetHosting">Цільовий хостинг</span>
+                    <span class="telemetry-value metric-val" id="val-deploy-hosting">—</span>
+                  </div>
+
+                  <!-- Config File -->
+                  <div class="telemetry-cell">
+                    <span class="telemetry-label" data-i18n="deploy.telemetry.configFiles">Файли конфігурації</span>
+                    <span class="telemetry-value metric-val font-mono" id="val-deploy-config-file">—</span>
+                  </div>
+
+                  <!-- NPM Scripts Count -->
+                  <div class="telemetry-cell">
+                    <span class="telemetry-label" data-i18n="deploy.telemetry.scriptsCount">Доступно npm-скриптів</span>
+                    <span class="telemetry-value metric-val metric-value" id="val-deploy-scripts-count">0</span>
+                  </div>
                 </div>
               </div>
             </div>
