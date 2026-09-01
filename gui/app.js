@@ -110,8 +110,8 @@ export function cacheDOMElements() {
   dom.btnCheckUpdates = document.getElementById('btn-check-updates');
   dom.btnUpdateNow = document.getElementById('btn-update-now') || document.getElementById('footer-update-btn');
   dom.btnHelpToggle = document.getElementById('btn-help-toggle');
-  dom.sessionHelpBox = document.getElementById('session-help-box') || document.getElementById('session-help-text') || document.getElementById('help-guide-box');
-  
+  dom.sessionHelpBox = document.getElementById('help-guide-box') || document.getElementById('session-help-box') || document.getElementById('session-help-text');
+
   dom.telemetryProjectId = document.getElementById('telemetry-project-id') || document.getElementById('val-project-id');
   dom.telemetryPages = document.getElementById('telemetry-pages') || document.getElementById('val-pages-count');
   dom.telemetryInstances = document.getElementById('telemetry-instances') || document.getElementById('val-instances-count');
