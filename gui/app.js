@@ -141,9 +141,13 @@ export function cacheDOMElements() {
   dom.terminalContainer = document.getElementById('terminal-container') || document.getElementById('setup-terminal-container');
   dom.setupTerminalContainer = document.getElementById('setup-terminal-container');
   dom.terminalStatus = document.getElementById('terminal-status');
+  dom.deployTerminalStatus = document.getElementById('deploy-terminal-status');
   dom.btnClearTerminal = document.getElementById('btn-clear-terminal') || document.getElementById('btn-clear-logs');
+  dom.btnClearDeployTerminal = document.getElementById('btn-clear-deploy-logs');
   dom.btnCopyTerminal = document.getElementById('btn-copy-terminal') || document.getElementById('btn-copy-logs');
+  dom.btnCopyDeployTerminal = document.getElementById('btn-copy-deploy-logs');
   dom.btnToggleAutoScroll = document.getElementById('btn-toggle-autoscroll') || document.getElementById('checkbox-autoscroll') || document.getElementById('chk-autoscroll');
+  dom.chkDeployAutoScroll = document.getElementById('chk-deploy-autoscroll');
   dom.inputShareLink = document.getElementById('input-share-link');
   dom.inputBuildId = document.getElementById('input-build-id');
   dom.inputCookie = document.getElementById('input-cookie');
@@ -413,7 +417,7 @@ export function appendLog(text, type = 'stdout', timestamp = null) {
   
   if (typeof document === 'undefined') return;
 
-  const outputs = document.querySelectorAll('#terminal-output, #setup-terminal-output');
+  const outputs = document.querySelectorAll('#terminal-output, #setup-terminal-output, #deploy-terminal-output, .terminal-output');
   if (!outputs.length) return;
 
   const htmlFormatted = ansiToHtml(text);
@@ -437,7 +441,7 @@ export function appendLog(text, type = 'stdout', timestamp = null) {
   
   // Auto-scroll to bottom if enabled
   if (state.autoScroll) {
-    const scrollTargets = document.querySelectorAll('#terminal-container, #setup-terminal-container, #terminal-output, #setup-terminal-output');
+    const scrollTargets = document.querySelectorAll('#terminal-container, #setup-terminal-container, #deploy-terminal-container, #terminal-output, #setup-terminal-output, #deploy-terminal-output, .terminal-container, .terminal-output');
     scrollTargets.forEach((target) => {
       target.scrollTop = target.scrollHeight;
     });
@@ -450,7 +454,7 @@ export function appendLog(text, type = 'stdout', timestamp = null) {
 export function clearTerminal() {
   state.logs = [];
   if (typeof document !== 'undefined') {
-    const outputs = document.querySelectorAll('#terminal-output, #setup-terminal-output');
+    const outputs = document.querySelectorAll('#terminal-output, #setup-terminal-output, #deploy-terminal-output, .terminal-output');
     outputs.forEach((output) => {
       output.innerHTML = '';
     });
@@ -480,16 +484,17 @@ export async function copyTerminalLogs() {
       document.body.removeChild(textarea);
     }
     
-    if (dom.btnCopyTerminal) {
-      dom.btnCopyTerminal.textContent = t('workspace.terminal.copied', {}, state.lang);
-      dom.btnCopyTerminal.classList.add('copied');
-      setTimeout(() => {
-        if (dom.btnCopyTerminal) {
-          dom.btnCopyTerminal.textContent = t('workspace.terminal.copy', {}, state.lang);
-          dom.btnCopyTerminal.classList.remove('copied');
-        }
-      }, 2000);
-    }
+    const copyButtons = [dom.btnCopyTerminal, dom.btnCopyDeployTerminal].filter(Boolean);
+    copyButtons.forEach((btn) => {
+      btn.textContent = t('workspace.terminal.copied', {}, state.lang);
+      btn.classList.add('copied');
+    });
+    setTimeout(() => {
+      copyButtons.forEach((btn) => {
+        btn.textContent = t('workspace.terminal.copy', {}, state.lang);
+        btn.classList.remove('copied');
+      });
+    }, 2000);
   } catch (err) {
     console.error('Failed to copy logs:', err);
   }
@@ -551,10 +556,10 @@ export function initSSE() {
   
   eventSource.addEventListener('open', () => {
     state.sseConnected = true;
-    if (dom.terminalStatus) {
-      dom.terminalStatus.textContent = 'ONLINE';
-      dom.terminalStatus.className = 'terminal-status online';
-    }
+    document.querySelectorAll('#terminal-status, #deploy-terminal-status, .terminal-status').forEach((el) => {
+      el.textContent = 'ONLINE';
+      el.className = 'terminal-status online';
+    });
   });
   
   eventSource.addEventListener('connected', (e) => {
@@ -604,10 +609,10 @@ export function initSSE() {
   
   eventSource.addEventListener('error', () => {
     state.sseConnected = false;
-    if (dom.terminalStatus) {
-      dom.terminalStatus.textContent = 'RECONNECTING';
-      dom.terminalStatus.className = 'terminal-status reconnecting';
-    }
+    document.querySelectorAll('#terminal-status, #deploy-terminal-status, .terminal-status').forEach((el) => {
+      el.textContent = 'RECONNECTING';
+      el.className = 'terminal-status reconnecting';
+    });
   });
 }
 
@@ -1095,31 +1100,40 @@ export function setupEventListeners() {
     });
   }
   
-  // Clear Terminal Button
+  // Clear Terminal Buttons (Workspace & Deploy)
   if (dom.btnClearTerminal) {
     dom.btnClearTerminal.addEventListener('click', () => {
       clearTerminal();
     });
   }
+  if (dom.btnClearDeployTerminal) {
+    dom.btnClearDeployTerminal.addEventListener('click', () => {
+      clearTerminal();
+    });
+  }
   
-  // Copy Terminal Button
+  // Copy Terminal Buttons (Workspace & Deploy)
   if (dom.btnCopyTerminal) {
     dom.btnCopyTerminal.addEventListener('click', () => {
       copyTerminalLogs();
     });
   }
-  
-  // Toggle Auto-Scroll Button / Checkbox
-  if (dom.btnToggleAutoScroll) {
-    dom.btnToggleAutoScroll.addEventListener('click', () => {
-      state.autoScroll = !state.autoScroll;
-      if (dom.btnToggleAutoScroll.type === 'checkbox') {
-        dom.btnToggleAutoScroll.checked = state.autoScroll;
-      } else {
-        dom.btnToggleAutoScroll.classList.toggle('active', state.autoScroll);
-      }
+  if (dom.btnCopyDeployTerminal) {
+    dom.btnCopyDeployTerminal.addEventListener('click', () => {
+      copyTerminalLogs();
     });
   }
+  
+  // Toggle Auto-Scroll Buttons / Checkboxes
+  const autoScrollToggles = [dom.btnToggleAutoScroll, dom.chkDeployAutoScroll].filter(Boolean);
+  autoScrollToggles.forEach((el) => {
+    el.addEventListener('change', (e) => {
+      state.autoScroll = e.target.checked;
+      autoScrollToggles.forEach((other) => {
+        if (other.type === 'checkbox') other.checked = state.autoScroll;
+      });
+    });
+  });
 }
 
 /**

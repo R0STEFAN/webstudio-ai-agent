@@ -497,8 +497,42 @@
             </div>
           </div>
 
-          <!-- Right Column: Deploy Telemetry -->
+          <!-- Right Column: Deploy Terminal & Telemetry -->
           <div class="column-output col-telemetry">
+            <!-- Terminal Card (Deploy View) -->
+            <div class="card card-terminal">
+              <div class="terminal-header">
+                <div class="terminal-header-title">
+                  <span class="window-dot red"></span>
+                  <span class="window-dot yellow"></span>
+                  <span class="window-dot green"></span>
+                  <h3 class="terminal-heading" data-i18n="workspace.terminal.title">Консоль виконання (Live Output)</h3>
+                </div>
+
+                <div class="terminal-toolbar">
+                  <span id="deploy-terminal-status" class="terminal-status offline">OFFLINE</span>
+                  
+                  <label class="autoscroll-control" for="chk-deploy-autoscroll">
+                    <input type="checkbox" id="chk-deploy-autoscroll" checked>
+                    <span data-i18n="workspace.terminal.autoScroll">Автопрокрутка</span>
+                  </label>
+
+                  <button type="button" class="btn-terminal-action" id="btn-copy-deploy-logs" data-i18n="workspace.terminal.copy">
+                    Копіювати
+                  </button>
+                  
+                  <button type="button" class="btn-terminal-action" id="btn-clear-deploy-logs" data-i18n="workspace.terminal.clear">
+                    Очистити
+                  </button>
+                </div>
+              </div>
+
+              <!-- Terminal Output Viewport -->
+              <div id="deploy-terminal-container" class="terminal-container">
+                <div id="deploy-terminal-output" class="terminal-output" role="log" aria-live="polite"></div>
+              </div>
+            </div>
+
             <!-- Deploy Telemetry Card -->
             <div class="card card-telemetry">
               <div class="card-header">

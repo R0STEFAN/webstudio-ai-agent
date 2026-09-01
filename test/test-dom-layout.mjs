@@ -338,19 +338,21 @@ console.log('\n6. Verifying Multi-Viewport Terminal Output & Header MCP Status i
   const mockTelemetryBadge = createMockElement('val-mcp-status', 'span');
   const mockMainOutput = createMockElement('terminal-output');
   const mockSetupOutput = createMockElement('setup-terminal-output');
+  const mockDeployOutput = createMockElement('deploy-terminal-output');
   const mockMainContainer = createMockElement('terminal-container');
   const mockSetupContainer = createMockElement('setup-terminal-container');
+  const mockDeployContainer = createMockElement('deploy-terminal-container');
 
   const mockDoc = {
     getElementById(id) {
       return elementMap.get(id) || null;
     },
     querySelectorAll(selector) {
-      if (selector === '#terminal-output, #setup-terminal-output') {
-        return [mockMainOutput, mockSetupOutput];
+      if (selector.includes('terminal-output')) {
+        return [mockMainOutput, mockSetupOutput, mockDeployOutput];
       }
-      if (selector === '#terminal-container, #setup-terminal-container, #terminal-output, #setup-terminal-output') {
-        return [mockMainContainer, mockSetupContainer, mockMainOutput, mockSetupOutput];
+      if (selector.includes('terminal-container')) {
+        return [mockMainContainer, mockSetupContainer, mockDeployContainer, mockMainOutput, mockSetupOutput, mockDeployOutput];
       }
       return [];
     },
@@ -369,15 +371,17 @@ console.log('\n6. Verifying Multi-Viewport Terminal Output & Header MCP Status i
   assert.strictEqual(dom.headerMcpStatus, mockHeaderStatus, 'dom.headerMcpStatus must point to #val-header-mcp-status');
   assert.strictEqual(dom.telemetryLocalMcp, mockTelemetryBadge, 'dom.telemetryLocalMcp must point to #val-mcp-status');
 
-  // Test clearTerminal clears both outputs
+  // Test clearTerminal clears all outputs
   clearTerminal();
   assert.strictEqual(mockMainOutput.children.length, 1, 'Main terminal must receive ready log');
   assert.strictEqual(mockSetupOutput.children.length, 1, 'Setup terminal must receive ready log');
+  assert.strictEqual(mockDeployOutput.children.length, 1, 'Deploy terminal must receive ready log');
 
-  // Test appendLog appends to both outputs
+  // Test appendLog appends to all outputs
   appendLog('Installation started...', 'stdout');
   assert.strictEqual(mockMainOutput.children.length, 2, 'Main terminal must have 2 lines');
   assert.strictEqual(mockSetupOutput.children.length, 2, 'Setup terminal must have 2 lines');
+  assert.strictEqual(mockDeployOutput.children.length, 2, 'Deploy terminal must have 2 lines');
 
   // Test renderView updates both header and telemetry without collision
   state.status = {
