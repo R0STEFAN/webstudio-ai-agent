@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import { i18n, t } from '../gui/i18n.js';
 import { ansiToHtml, state, appendLog, setLanguage } from '../gui/app.js';
 
-console.log('🧪 Running Task 3 verification tests...\n');
+console.log('🧪 Running Task 2 & GUI i18n verification tests...\n');
 
 // 1. Verify i18n Root Dictionaries
 console.log('1. Verifying i18n Root Objects...');
@@ -40,11 +40,13 @@ assert.strictEqual(uaKeys.length, enKeys.length, 'Key counts must match exactly'
 console.log(`   ✅ Exact parity confirmed across all ${uaKeys.length} translation keys.`);
 
 // 3. Verify Required Acceptance Dictionary Keys
-console.log('\n3. Verifying Required Acceptance Keys...');
+console.log('\n3. Verifying Required Acceptance Keys (Workspace & Deploy)...');
 const requiredKeys = [
   'appTitle',
   'appSubtitle',
   'langSwitch',
+  'tabs.workspace',
+  'tabs.deploy',
   'firstRun.title',
   'firstRun.description',
   'firstRun.installBtn',
@@ -101,12 +103,61 @@ const requiredKeys = [
   'workspace.footer.updateAvailable',
   'workspace.footer.updateNowBtn',
   'workspace.footer.updating',
+  'deploy.templateSection.title',
+  'deploy.templateSection.presetLabel',
+  'deploy.templateSection.presets.react-router-cloudflare',
+  'deploy.templateSection.presets.remix-cloudflare',
+  'deploy.templateSection.presets.react-router-vercel',
+  'deploy.templateSection.presets.react-router-netlify',
+  'deploy.templateSection.presets.react-router-docker',
+  'deploy.templateSection.presets.ssg',
+  'deploy.templateSection.presets.ssg-vercel',
+  'deploy.templateSection.presets.ssg-netlify',
+  'deploy.templateSection.generateBtn',
+  'deploy.templateSection.generating',
+  'deploy.templateSection.hint',
+  'deploy.nameSection.title',
+  'deploy.nameSection.projectNameLabel',
+  'deploy.nameSection.placeholder',
+  'deploy.nameSection.applyBtn',
+  'deploy.nameSection.applied',
+  'deploy.nameSection.detectedConfig',
+  'deploy.nameSection.hint',
+  'deploy.authSection.title',
+  'deploy.authSection.statusLabel',
+  'deploy.authSection.checkStatusBtn',
+  'deploy.authSection.loginBtn',
+  'deploy.authSection.checking',
+  'deploy.authSection.authorized',
+  'deploy.authSection.notAuthorized',
+  'deploy.authSection.hint',
+  'deploy.lifecycleSection.title',
+  'deploy.lifecycleSection.installBtn',
+  'deploy.lifecycleSection.buildBtn',
+  'deploy.lifecycleSection.previewBtn',
+  'deploy.lifecycleSection.deployBtn',
+  'deploy.lifecycleSection.installing',
+  'deploy.lifecycleSection.building',
+  'deploy.lifecycleSection.previewing',
+  'deploy.lifecycleSection.deploying',
+  'deploy.lifecycleSection.hint',
+  'deploy.telemetry.title',
+  'deploy.telemetry.currentTemplate',
+  'deploy.telemetry.targetHosting',
+  'deploy.telemetry.configFiles',
+  'deploy.telemetry.scriptsCount',
+  'deploy.telemetry.lastBuild',
   'messages.validationError',
   'messages.shareLinkRequired',
   'messages.buildIdRequired',
   'messages.sessionSaved',
+  'messages.projectNameUpdated',
+  'messages.templateGenerated',
   'messages.actionError',
-  'messages.networkError'
+  'messages.networkError',
+  'messages.actionStarted',
+  'messages.actionSuccess',
+  'messages.actionFailed'
 ];
 
 for (const key of requiredKeys) {
@@ -122,6 +173,18 @@ console.log('\n4. Verifying t() Translation & Interpolation Engine...');
 assert.strictEqual(t('appTitle', {}, 'ua'), 'Webstudio Control Center');
 assert.strictEqual(t('appTitle', {}, 'en'), 'Webstudio Control Center');
 
+// Tabs keys
+assert.strictEqual(t('tabs.workspace', {}, 'ua'), '⚡ Керування проєктом');
+assert.strictEqual(t('tabs.workspace', {}, 'en'), '⚡ Project Workspace');
+assert.strictEqual(t('tabs.deploy', {}, 'ua'), '🚀 Деплой та Шаблони');
+assert.strictEqual(t('tabs.deploy', {}, 'en'), '🚀 Build & Deploy');
+
+// Deploy keys
+assert.strictEqual(t('deploy.templateSection.title', {}, 'ua'), '1. Вибір шаблону фреймворку');
+assert.strictEqual(t('deploy.templateSection.title', {}, 'en'), '1. Framework & Target Template');
+assert.strictEqual(t('deploy.templateSection.presets.react-router-cloudflare', {}, 'ua'), '⚡ React Router v7 + Cloudflare Workers');
+assert.strictEqual(t('deploy.templateSection.presets.ssg', {}, 'en'), '📄 Static Site (SSG / Vike)');
+
 // Nested key
 assert.strictEqual(t('workspace.terminal.clear', {}, 'ua'), 'Очистити');
 assert.strictEqual(t('workspace.terminal.clear', {}, 'en'), 'Clear');
@@ -131,6 +194,27 @@ const uaVersion = t('workspace.footer.installedVersion', { version: '0.296.0' },
 const enVersion = t('workspace.footer.installedVersion', { version: '0.296.0' }, 'en');
 assert.strictEqual(uaVersion, 'Webstudio CLI: v0.296.0');
 assert.strictEqual(enVersion, 'Webstudio CLI: v0.296.0');
+
+// Deploy variable interpolations
+const uaConfig = t('deploy.nameSection.detectedConfig', { file: 'wrangler.jsonc' }, 'ua');
+const enConfig = t('deploy.nameSection.detectedConfig', { file: 'wrangler.jsonc' }, 'en');
+assert.strictEqual(uaConfig, 'Конфігураційний файл: wrangler.jsonc');
+assert.strictEqual(enConfig, 'Configuration file: wrangler.jsonc');
+
+const uaAuth = t('deploy.authSection.authorized', { account: 'user@example.com' }, 'ua');
+const enAuth = t('deploy.authSection.authorized', { account: 'user@example.com' }, 'en');
+assert.strictEqual(uaAuth, 'Авторизовано (user@example.com)');
+assert.strictEqual(enAuth, 'Authorized (user@example.com)');
+
+const uaProjectName = t('messages.projectNameUpdated', { name: 'my-webstudio-app' }, 'ua');
+const enProjectName = t('messages.projectNameUpdated', { name: 'my-webstudio-app' }, 'en');
+assert.strictEqual(uaProjectName, 'Назву проєкту успішно оновлено на: my-webstudio-app');
+assert.strictEqual(enProjectName, 'Project name successfully updated to: my-webstudio-app');
+
+const uaTmplGen = t('messages.templateGenerated', { preset: 'react-router-cloudflare' }, 'ua');
+const enTmplGen = t('messages.templateGenerated', { preset: 'react-router-cloudflare' }, 'en');
+assert.strictEqual(uaTmplGen, 'Код за шаблоном react-router-cloudflare успішно згенеровано!');
+assert.strictEqual(enTmplGen, 'Template react-router-cloudflare code successfully generated!');
 
 // Multiple variable interpolation
 const uaFailed = t('messages.actionFailed', { action: 'sync', code: 127 }, 'ua');
@@ -177,4 +261,4 @@ for (let i = 0; i < 2600; i++) {
 assert.ok(state.logs.length <= 2500, `Logs length must be capped, got ${state.logs.length}`);
 console.log('   ✅ Reactive state defaults and memory cap verified.');
 
-console.log('\n🎉 ALL TASK 3 UNIT TESTS PASSED SUCCESSFULLY!\n');
+console.log('\n🎉 ALL TASK 2 UNIT TESTS PASSED SUCCESSFULLY!\n');

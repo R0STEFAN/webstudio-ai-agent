@@ -8,6 +8,10 @@ export const i18n = {
     appTitle: 'Webstudio Control Center',
     appSubtitle: 'Панель керування та AI-агент Webstudio',
     langSwitch: 'Мова',
+    tabs: {
+      workspace: '⚡ Керування проєктом',
+      deploy: '🚀 Деплой та Шаблони'
+    },
     firstRun: {
       title: 'Первинне налаштування Webstudio',
       description: 'Webstudio CLI та робочі залежності ще не встановлені. Натисніть кнопку нижче для автоматичного встановлення всіх необхідних пакетів, конфігурації та застосування системних патчів.',
@@ -80,11 +84,71 @@ export const i18n = {
         updating: 'Оновлення...'
       }
     },
+    deploy: {
+      templateSection: {
+        title: '1. Вибір шаблону фреймворку',
+        presetLabel: 'Шаблон хостингу',
+        presets: {
+          'react-router-cloudflare': '⚡ React Router v7 + Cloudflare Workers',
+          'remix-cloudflare': '⚡ Remix + Cloudflare Pages',
+          'react-router-vercel': '▲ React Router v7 + Vercel',
+          'react-router-netlify': '🌐 React Router v7 + Netlify',
+          'react-router-docker': '🐳 React Router v7 + Docker',
+          'ssg': '📄 Static Site (SSG / Vike)',
+          'ssg-vercel': '▲ SSG + Vercel Static',
+          'ssg-netlify': '🌐 SSG + Netlify Static'
+        },
+        generateBtn: '🏗️ Згенерувати код за шаблоном',
+        generating: 'Генерація коду...',
+        hint: 'Webstudio згенерує повну структуру файлів проєкту для обраного хостингу'
+      },
+      nameSection: {
+        title: '2. Назва проєкту для хостингу',
+        projectNameLabel: 'Ім\'я проєкту (Project Name)',
+        placeholder: 'my-webstudio-app',
+        applyBtn: '💾 Застосувати назву',
+        applied: 'Назву оновлено!',
+        detectedConfig: 'Конфігураційний файл: {file}',
+        hint: 'Автоматично оновлює назву у wrangler.jsonc, wrangler.toml та package.json'
+      },
+      authSection: {
+        title: '3. Авторизація хостингу',
+        statusLabel: 'Статус облікового запису:',
+        checkStatusBtn: '🔍 Перевірити статус',
+        loginBtn: '🔑 Увійти в акаунт (Login)',
+        checking: 'Перевірка авторизації...',
+        authorized: 'Авторизовано ({account})',
+        notAuthorized: 'Не авторизовано',
+        hint: 'Потрібно для публікації на Cloudflare / Vercel'
+      },
+      lifecycleSection: {
+        title: '4. Послідовні кроки деплою',
+        installBtn: '📦 Встановити залежності',
+        buildBtn: '🔨 Зібрати проєкт (Build)',
+        previewBtn: '👁️ Попередній перегляд',
+        deployBtn: '🚀 Опублікувати (Deploy)',
+        installing: 'Встановлення...',
+        building: 'Збірка проєкту...',
+        previewing: 'Запуск прев\'ю...',
+        deploying: 'Публікація...',
+        hint: 'Універсальні команди: npm install ➔ npm run build ➔ npm run preview ➔ npm run deploy'
+      },
+      telemetry: {
+        title: '📊 Стан збірки та деплою',
+        currentTemplate: 'Поточний шаблон',
+        targetHosting: 'Цільовий хостинг',
+        configFiles: 'Файли конфігурації',
+        scriptsCount: 'Доступно npm-скриптів',
+        lastBuild: 'Остання збірка'
+      }
+    },
     messages: {
       validationError: 'Помилка валідації',
       shareLinkRequired: 'Будь ласка, вкажіть коректне посилання Share Link (повинно починатися з https://)',
       buildIdRequired: 'Для синхронізації чернетки необхідно вказати Build ID або Share Link',
       sessionSaved: 'Сесію успішно збережено у .webstudio/session.json',
+      projectNameUpdated: 'Назву проєкту успішно оновлено на: {name}',
+      templateGenerated: 'Код за шаблоном {preset} успішно згенеровано!',
       actionError: 'Виникла помилка під час виконання дії',
       networkError: 'Помилка зв\'язку із сервером GUI. Перевірте з\'єднання.',
       actionStarted: 'Запуск дії: {action}...',
@@ -96,6 +160,10 @@ export const i18n = {
     appTitle: 'Webstudio Control Center',
     appSubtitle: 'Control Panel & Webstudio AI Agent',
     langSwitch: 'Language',
+    tabs: {
+      workspace: '⚡ Project Workspace',
+      deploy: '🚀 Build & Deploy'
+    },
     firstRun: {
       title: 'Webstudio Initial Setup',
       description: 'Webstudio CLI and workspace dependencies are not yet installed. Click the button below to automatically install all required packages, configure the workspace, and apply system patches.',
@@ -168,11 +236,71 @@ export const i18n = {
         updating: 'Updating...'
       }
     },
+    deploy: {
+      templateSection: {
+        title: '1. Framework & Target Template',
+        presetLabel: 'Deployment Preset',
+        presets: {
+          'react-router-cloudflare': '⚡ React Router v7 + Cloudflare Workers',
+          'remix-cloudflare': '⚡ Remix + Cloudflare Pages',
+          'react-router-vercel': '▲ React Router v7 + Vercel',
+          'react-router-netlify': '🌐 React Router v7 + Netlify',
+          'react-router-docker': '🐳 React Router v7 + Docker',
+          'ssg': '📄 Static Site (SSG / Vike)',
+          'ssg-vercel': '▲ SSG + Vercel Static',
+          'ssg-netlify': '🌐 SSG + Netlify Static'
+        },
+        generateBtn: '🏗️ Generate Code from Template',
+        generating: 'Generating code...',
+        hint: 'Webstudio scaffolds complete framework project files for the selected target'
+      },
+      nameSection: {
+        title: '2. Project Name for Hosting',
+        projectNameLabel: 'Project Name',
+        placeholder: 'my-webstudio-app',
+        applyBtn: '💾 Apply Project Name',
+        applied: 'Project name updated!',
+        detectedConfig: 'Configuration file: {file}',
+        hint: 'Automatically updates project name across wrangler.jsonc, wrangler.toml, and package.json'
+      },
+      authSection: {
+        title: '3. Hosting Authentication',
+        statusLabel: 'Account Status:',
+        checkStatusBtn: '🔍 Check Auth Status',
+        loginBtn: '🔑 Login to Account',
+        checking: 'Checking auth...',
+        authorized: 'Authorized ({account})',
+        notAuthorized: 'Not authorized',
+        hint: 'Required for publishing to Cloudflare / Vercel'
+      },
+      lifecycleSection: {
+        title: '4. Deploy Lifecycle Actions',
+        installBtn: '📦 Install Dependencies',
+        buildBtn: '🔨 Build Project',
+        previewBtn: '👁️ Preview Locally',
+        deployBtn: '🚀 Deploy to Hosting',
+        installing: 'Installing...',
+        building: 'Building...',
+        previewing: 'Starting preview...',
+        deploying: 'Deploying...',
+        hint: 'Universal commands: npm install ➔ npm run build ➔ npm run preview ➔ npm run deploy'
+      },
+      telemetry: {
+        title: '📊 Build & Deploy Status',
+        currentTemplate: 'Current Template',
+        targetHosting: 'Target Hosting',
+        configFiles: 'Config Files',
+        scriptsCount: 'Available NPM Scripts',
+        lastBuild: 'Last Build'
+      }
+    },
     messages: {
       validationError: 'Validation Error',
       shareLinkRequired: 'Please provide a valid Share Link (must start with https://)',
       buildIdRequired: 'To sync a draft, please specify a Build ID or Share Link',
       sessionSaved: 'Session successfully saved to .webstudio/session.json',
+      projectNameUpdated: 'Project name successfully updated to: {name}',
+      templateGenerated: 'Template {preset} code successfully generated!',
       actionError: 'An error occurred while executing the action',
       networkError: 'Server communication error. Check your connection.',
       actionStarted: 'Starting action: {action}...',
