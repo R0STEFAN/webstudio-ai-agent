@@ -310,16 +310,28 @@ export function applyTranslations() {
   if (dom.selectTemplatePreset) {
     const currentValue = dom.selectTemplatePreset.value;
     const presets = i18n[state.lang]?.deploy?.templateSection?.presets || {};
-    
+    const PRIMARY_PRESETS = [
+      'react-router-cloudflare',
+      'remix-cloudflare',
+      'react-router-vercel',
+      'react-router-netlify',
+      'react-router-docker',
+      'ssg',
+      'ssg-vercel',
+      'ssg-netlify'
+    ];
+
     // Clear and rebuild options
     dom.selectTemplatePreset.innerHTML = '';
-    for (const [presetKey, presetLabel] of Object.entries(presets)) {
+    for (const presetKey of PRIMARY_PRESETS) {
+      const presetLabel = presets[presetKey];
+      if (!presetLabel) continue;
       const option = document.createElement('option');
       option.value = presetKey;
       option.textContent = presetLabel;
       dom.selectTemplatePreset.appendChild(option);
     }
-    
+
     // Preserve previously selected value or default to first option
     if (currentValue && presets[currentValue]) {
       dom.selectTemplatePreset.value = currentValue;

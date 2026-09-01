@@ -162,22 +162,20 @@ class SseTestClient {
 }
 
 async function runTestSuite() {
-  console.log('📦 1. Test Case 1: Template Preset Overlay Mapping Verification...');
+  const expectedPresets = {
+    'react-router-cloudflare': ['react-router', 'react-router-cloudflare'],
+    'remix-cloudflare': ['defaults', 'cloudflare'],
+    'react-router-vercel': ['react-router', 'react-router-vercel'],
+    'react-router-netlify': ['react-router', 'react-router-netlify'],
+    'react-router-docker': ['react-router', 'react-router-docker'],
+    'ssg': ['ssg'],
+    'ssg-vercel': ['ssg', 'ssg-vercel'],
+    'ssg-netlify': ['ssg', 'ssg-netlify']
+  };
 
   // 1.1 Verify all 8 presets in TEMPLATE_PRESETS dictionary
   it('should define all 8 expected template presets with exact CLI overlay mappings', () => {
-    const expectedPresets = {
-      'react-router-cloudflare': ['react-router', 'react-router-cloudflare'],
-      'remix-cloudflare': ['cloudflare'],
-      'react-router-vercel': ['react-router', 'react-router-vercel'],
-      'react-router-netlify': ['react-router', 'react-router-netlify'],
-      'react-router-docker': ['react-router', 'react-router-docker'],
-      'ssg': ['ssg'],
-      'ssg-vercel': ['ssg', 'ssg-vercel'],
-      'ssg-netlify': ['ssg', 'ssg-netlify']
-    };
-
-    assert.strictEqual(Object.keys(TEMPLATE_PRESETS).length, 8, 'Must contain exactly 8 presets');
+    assert.ok(Object.keys(TEMPLATE_PRESETS).length >= 8, 'Must contain all 8 presets plus aliases');
     for (const [key, expectedFlags] of Object.entries(expectedPresets)) {
       assert.ok(key in TEMPLATE_PRESETS, `Preset ${key} must exist in TEMPLATE_PRESETS`);
       assert.deepStrictEqual(TEMPLATE_PRESETS[key], expectedFlags, `Preset ${key} flags mismatch`);
@@ -194,8 +192,8 @@ async function runTestSuite() {
       assert.ok(cmd.startsWith('npx webstudio build --template '), `Command must start with build template flag`);
       if (preset === 'react-router-cloudflare') {
         assert.strictEqual(cmd, 'npx webstudio build --template react-router --template react-router-cloudflare');
-      } else if (preset === 'remix-cloudflare') {
-        assert.strictEqual(cmd, 'npx webstudio build --template cloudflare');
+      } else if (preset === 'remix-cloudflare' || preset === 'cloudflare') {
+        assert.strictEqual(cmd, 'npx webstudio build --template defaults --template cloudflare');
       } else if (preset === 'ssg') {
         assert.strictEqual(cmd, 'npx webstudio build --template ssg');
       } else if (preset === 'ssg-vercel') {
@@ -231,7 +229,7 @@ async function runTestSuite() {
     const optionValues = [...selectBody.matchAll(/<option[^>]*value=["']([^"']+)["']/g)].map(m => m[1]);
 
     assert.strictEqual(optionValues.length, 8, 'Select dropdown must have exactly 8 options in HTML');
-    for (const key of Object.keys(TEMPLATE_PRESETS)) {
+    for (const key of Object.keys(expectedPresets)) {
       assert.ok(optionValues.includes(key), `Dropdown option for preset "${key}" must exist in HTML`);
     }
   });

@@ -91,9 +91,13 @@ export const i18n = {
         presets: {
           'react-router-cloudflare': '⚡ React Router v7 + Cloudflare Workers',
           'remix-cloudflare': '⚡ Remix + Cloudflare Pages',
+          'cloudflare': '⚡ Remix + Cloudflare Pages',
           'react-router-vercel': '▲ React Router v7 + Vercel',
+          'vercel': '▲ React Router v7 + Vercel',
           'react-router-netlify': '🌐 React Router v7 + Netlify',
+          'netlify': '🌐 React Router v7 + Netlify',
           'react-router-docker': '🐳 React Router v7 + Docker',
+          'docker': '🐳 React Router v7 + Docker',
           'ssg': '📄 Static Site (SSG / Vike)',
           'ssg-vercel': '▲ SSG + Vercel Static',
           'ssg-netlify': '🌐 SSG + Netlify Static'
@@ -243,9 +247,13 @@ export const i18n = {
         presets: {
           'react-router-cloudflare': '⚡ React Router v7 + Cloudflare Workers',
           'remix-cloudflare': '⚡ Remix + Cloudflare Pages',
+          'cloudflare': '⚡ Remix + Cloudflare Pages',
           'react-router-vercel': '▲ React Router v7 + Vercel',
+          'vercel': '▲ React Router v7 + Vercel',
           'react-router-netlify': '🌐 React Router v7 + Netlify',
+          'netlify': '🌐 React Router v7 + Netlify',
           'react-router-docker': '🐳 React Router v7 + Docker',
+          'docker': '🐳 React Router v7 + Docker',
           'ssg': '📄 Static Site (SSG / Vike)',
           'ssg-vercel': '▲ SSG + Vercel Static',
           'ssg-netlify': '🌐 SSG + Netlify Static'

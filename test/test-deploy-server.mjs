@@ -60,15 +60,13 @@ it('should export all 8 predefined template presets with correct CLI flags', () 
   assert.strictEqual(typeof TEMPLATE_PRESETS, 'object', 'TEMPLATE_PRESETS should be an object');
   
   assert.deepStrictEqual(TEMPLATE_PRESETS['react-router-cloudflare'], ['react-router', 'react-router-cloudflare']);
-  assert.deepStrictEqual(TEMPLATE_PRESETS['remix-cloudflare'], ['cloudflare']);
+  assert.deepStrictEqual(TEMPLATE_PRESETS['remix-cloudflare'], ['defaults', 'cloudflare']);
   assert.deepStrictEqual(TEMPLATE_PRESETS['react-router-vercel'], ['react-router', 'react-router-vercel']);
   assert.deepStrictEqual(TEMPLATE_PRESETS['react-router-netlify'], ['react-router', 'react-router-netlify']);
   assert.deepStrictEqual(TEMPLATE_PRESETS['react-router-docker'], ['react-router', 'react-router-docker']);
   assert.deepStrictEqual(TEMPLATE_PRESETS['ssg'], ['ssg']);
   assert.deepStrictEqual(TEMPLATE_PRESETS['ssg-vercel'], ['ssg', 'ssg-vercel']);
   assert.deepStrictEqual(TEMPLATE_PRESETS['ssg-netlify'], ['ssg', 'ssg-netlify']);
-
-  assert.strictEqual(Object.keys(TEMPLATE_PRESETS).length, 8);
 });
 
 // -------------------------------------------------------------
