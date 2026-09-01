@@ -89,10 +89,15 @@ export async function getLatestVersion(forceRefresh = false) {
 
 export const TEMPLATE_PRESETS = {
   'react-router-cloudflare': ['react-router', 'react-router-cloudflare'],
-  'remix-cloudflare': ['cloudflare'],
+  'cloudflare-new': ['react-router', 'react-router-cloudflare'],
+  'remix-cloudflare': ['defaults', 'cloudflare'],
+  'cloudflare': ['defaults', 'cloudflare'],
   'react-router-vercel': ['react-router', 'react-router-vercel'],
+  'vercel': ['react-router', 'react-router-vercel'],
   'react-router-netlify': ['react-router', 'react-router-netlify'],
+  'netlify': ['react-router', 'react-router-netlify'],
   'react-router-docker': ['react-router', 'react-router-docker'],
+  'docker': ['react-router', 'react-router-docker'],
   'ssg': ['ssg'],
   'ssg-vercel': ['ssg', 'ssg-vercel'],
   'ssg-netlify': ['ssg', 'ssg-netlify']

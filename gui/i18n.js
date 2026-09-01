@@ -90,6 +90,7 @@ export const i18n = {
         presetLabel: 'Шаблон хостингу',
         presets: {
           'react-router-cloudflare': '⚡ React Router v7 + Cloudflare Workers',
+          'cloudflare-new': '⚡ React Router v7 + Cloudflare Workers',
           'remix-cloudflare': '⚡ Remix + Cloudflare Pages',
           'cloudflare': '⚡ Remix + Cloudflare Pages',
           'react-router-vercel': '▲ React Router v7 + Vercel',
@@ -246,6 +247,7 @@ export const i18n = {
         presetLabel: 'Deployment Preset',
         presets: {
           'react-router-cloudflare': '⚡ React Router v7 + Cloudflare Workers',
+          'cloudflare-new': '⚡ React Router v7 + Cloudflare Workers',
           'remix-cloudflare': '⚡ Remix + Cloudflare Pages',
           'cloudflare': '⚡ Remix + Cloudflare Pages',
           'react-router-vercel': '▲ React Router v7 + Vercel',
