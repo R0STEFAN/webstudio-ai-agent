@@ -49,11 +49,16 @@ if (!cliPath) {
 console.log(`📍 Found Webstudio CLI at: ${cliPath}`);
 const backupPath = `${cliPath}.backup`;
 
-if (!fs.existsSync(backupPath)) {
-  fs.copyFileSync(cliPath, backupPath);
-}
+let code = fs.readFileSync(cliPath, 'utf-8');
+const isAlreadyPatched = code.includes('import fs$local from "node:fs";');
 
-let code = fs.readFileSync(backupPath, 'utf-8');
+if (!isAlreadyPatched) {
+  // Fresh unpatched file from npm -> create/refresh clean backup
+  fs.copyFileSync(cliPath, backupPath);
+} else if (fs.existsSync(backupPath)) {
+  // Already patched -> read clean code from backup
+  code = fs.readFileSync(backupPath, 'utf-8');
+}
 
 if (!code.includes('import fs$local from "node:fs";')) {
   code = 'import fs$local from "node:fs";\nimport path$local from "node:path";\n' + code;

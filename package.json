@@ -7,6 +7,7 @@
   "scripts": {
     "postinstall": "node scripts/setup-local-mcp.mjs",
     "setup": "node scripts/setup-local-mcp.mjs",
+    "update-webstudio": "npm i webstudio@latest @webstudio-is/image@latest @webstudio-is/react-sdk@latest @webstudio-is/sdk@latest @webstudio-is/sdk-components-animation@latest @webstudio-is/sdk-components-react@latest @webstudio-is/sdk-components-react-radix@latest @webstudio-is/sdk-components-react-remix@latest @webstudio-is/sdk-components-react-router@latest @webstudio-is/wsauth@latest",
     "cli": "node scripts/ai-designer/cli.mjs",
     "upload-assets": "node scripts/upload-assets.mjs",
     "index": "node scripts/google-index.mjs",
