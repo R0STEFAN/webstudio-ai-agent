@@ -3,8 +3,7 @@ node_modules
 Thumbs.db
 *.log
 .temp
-.webstudio/auth.json
-.webstudio/session.json
+.webstudio/
 *indexing*.json
 *service-account*.json
 *credentials*.json
@@ -12,3 +11,5 @@ MEMORY.md
 CHAT_HISTORY.md
 *CHAT*.md
 *SESSION*.md
+scripts/build-page*.mjs
+scripts/generate-payload*.mjs

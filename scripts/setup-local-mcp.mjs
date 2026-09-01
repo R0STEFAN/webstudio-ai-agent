@@ -55,14 +55,9 @@ if (!fs.existsSync(backupPath)) {
 
 let code = fs.readFileSync(backupPath, 'utf-8');
 
-// Ensure readFileSync and writeFileSync are imported from "node:fs"
-code = code.replace(/import\s*\{([^}]+)\}\s*from\s*["']node:fs["'];/, (match, p1) => {
-  const imports = new Set(p1.split(',').map(s => s.trim()).filter(Boolean));
-  imports.add('readFileSync');
-  imports.add('writeFileSync');
-  imports.add('existsSync');
-  return `import { ${Array.from(imports).join(', ')} } from "node:fs";`;
-});
+if (!code.includes('import fs$local from "node:fs";')) {
+  code = 'import fs$local from "node:fs";\nimport path$local from "node:path";\n' + code;
+}
 
 // 1. Patch hasProjectSessionPermit -> always true
 const permitSearch = 'const hasProjectSessionPermit = (permissions, permit) => {';
@@ -161,22 +156,22 @@ if (code.includes(parentsSearch)) {
 // 5. Replace createCliProjectSessionTransport with 100% Local data.json Transport
 const transportSearch = 'const createCliProjectSessionTransport = ({';
 const transportPos = code.indexOf(transportSearch);
-const sessionSearch = 'const createCliProjectSession = ({';
-const sessionPos = code.indexOf(sessionSearch);
+const assetRepoSearch = 'const createCliAssetContentRepository = ({';
+const assetRepoPos = code.indexOf(assetRepoSearch, transportPos);
 
-if (transportPos !== -1 && sessionPos !== -1) {
+if (transportPos !== -1 && assetRepoPos !== -1) {
   const localTransportCode = `const createCliProjectSessionTransport = ({
   connection,
   executeServerOperation,
   getBuildSnapshot: getBuildSnapshot$1 = getBuildSnapshot,
   getPermissions
 }) => {
-  const _dataFile = () => join$1(process.cwd(), ".webstudio", "data.json");
+  const _dataFile = () => path$local.join(process.cwd(), ".webstudio", "data.json");
   const _readBuildData = () => {
     const fp = _dataFile();
-    if (!existsSync(fp)) return null;
+    if (!fs$local.existsSync(fp)) return null;
     try {
-      const raw = JSON.parse(readFileSync(fp, "utf8"));
+      const raw = JSON.parse(fs$local.readFileSync(fp, "utf8"));
       if (!raw || !raw.build) return null;
       return raw;
     } catch { return null; }
@@ -226,7 +221,7 @@ if (transportPos !== -1 && sessionPos !== -1) {
             delete snapshot.assetFolders;
           }
           raw.build = { ...raw.build, ...snapshot, version: (raw.build.version || 1) + 1 };
-          writeFileSync(_dataFile(), JSON.stringify(raw, null, 2), "utf8");
+          fs$local.writeFileSync(_dataFile(), JSON.stringify(raw, null, 2), "utf8");
           return { version: raw.build.version, appliedTransactionCount: transactions.length };
         } catch (e) {
           console.error("Local commitPatch error:", e);
@@ -243,7 +238,7 @@ if (transportPos !== -1 && sessionPos !== -1) {
 };
 
 `;
-  code = code.slice(0, transportPos) + localTransportCode + code.slice(sessionPos);
+  code = code.slice(0, transportPos) + localTransportCode + code.slice(assetRepoPos);
   console.log('✅ 5. Replaced transport with 100% Local offline data.json engine');
 }
 
@@ -266,11 +261,11 @@ if (code.includes(uploadAssetSearch)) {
   let targetOrigin = origin;
   let isBridged = false;
   try {
-    const searchDirs = [process.cwd(), join$1(process.cwd(), "..")];
+    const searchDirs = [process.cwd(), path$local.join(process.cwd(), "..")];
     for (const d of searchDirs) {
-      const sPath = join$1(d, ".webstudio", "session.json");
-      if (existsSync(sPath)) {
-        const session = JSON.parse(readFileSync(sPath, "utf8"));
+      const sPath = path$local.join(d, ".webstudio", "session.json");
+      if (fs$local.existsSync(sPath)) {
+        const session = JSON.parse(fs$local.readFileSync(sPath, "utf8"));
         if (session.cookie) {
           isBridged = true;
           targetOrigin = projectOrigin;
@@ -328,6 +323,7 @@ if (code.includes(uploadAssetSearch)) {
     console.log('✅ 6. Patched uploadAsset -> browser session bridge');
   }
 }
+
 
 // 7. Patch React Router template for complete dynamic meta tags and v8 flag
 try {
