@@ -13,3 +13,27 @@ CHAT_HISTORY.md
 *SESSION*.md
 scripts/build-page*.mjs
 scripts/generate-payload*.mjs
+
+# Generated Framework & Template Build Files
+/app/
+/workers/
+/pages/
+/renderer/
+/functions/
+/public/
+/build/
+/dist/
+/.wrangler/
+react-router.config.ts
+vite.config.ts
+tsconfig.json
+wrangler.jsonc
+wrangler.toml
+netlify.toml
+vercel.json
+Dockerfile
+.dockerignore
+vike.d.ts
+worker-configuration.d.ts
+load-context.ts
+WS_CF_README.md
