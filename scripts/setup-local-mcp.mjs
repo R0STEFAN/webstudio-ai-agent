@@ -56,10 +56,13 @@ if (!fs.existsSync(backupPath)) {
 let code = fs.readFileSync(backupPath, 'utf-8');
 
 // Ensure readFileSync and writeFileSync are imported from "node:fs"
-const importTarget = 'import { readdirSync,';
-if (code.includes(importTarget) && !code.includes('readFileSync,')) {
-  code = code.replace(importTarget, 'import { readdirSync, readFileSync, writeFileSync,');
-}
+code = code.replace(/import\s*\{([^}]+)\}\s*from\s*["']node:fs["'];/, (match, p1) => {
+  const imports = new Set(p1.split(',').map(s => s.trim()).filter(Boolean));
+  imports.add('readFileSync');
+  imports.add('writeFileSync');
+  imports.add('existsSync');
+  return `import { ${Array.from(imports).join(', ')} } from "node:fs";`;
+});
 
 // 1. Patch hasProjectSessionPermit -> always true
 const permitSearch = 'const hasProjectSessionPermit = (permissions, permit) => {';
