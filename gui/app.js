@@ -853,6 +853,46 @@ export function renderView() {
       dom.valDeployHosting.textContent = hosting;
     }
   }
+  // Auto-fill Input Fields from Saved Server State or LocalStorage
+  if (dom.inputShareLink && !dom.inputShareLink.value) {
+    if (state.status.savedShareLink) {
+      dom.inputShareLink.value = state.status.savedShareLink;
+    } else {
+      try {
+        const localLink = localStorage.getItem('ws_share_link');
+        if (localLink) dom.inputShareLink.value = localLink;
+      } catch {}
+    }
+  }
+
+  if (dom.inputBuildId && !dom.inputBuildId.value) {
+    try {
+      const localBuildId = localStorage.getItem('ws_build_id');
+      if (localBuildId) dom.inputBuildId.value = localBuildId;
+    } catch {}
+  }
+
+  if (dom.inputCookie && !dom.inputCookie.value) {
+    if (state.status.sessionData?.cookie) {
+      dom.inputCookie.value = state.status.sessionData.cookie;
+    } else {
+      try {
+        const localCookie = localStorage.getItem('ws_cookie');
+        if (localCookie) dom.inputCookie.value = localCookie;
+      } catch {}
+    }
+  }
+
+  if (dom.inputCsrfToken && !dom.inputCsrfToken.value) {
+    if (state.status.sessionData?.csrfToken) {
+      dom.inputCsrfToken.value = state.status.sessionData.csrfToken;
+    } else {
+      try {
+        const localCsrf = localStorage.getItem('ws_csrf_token');
+        if (localCsrf) dom.inputCsrfToken.value = localCsrf;
+      } catch {}
+    }
+  }
 
   // Footer Updates
   if (dom.footerVersion) {
@@ -994,6 +1034,33 @@ export function setupEventListeners() {
     });
   }
   
+  // Input Persistence Listeners (Auto-save on input)
+  if (dom.inputShareLink) {
+    dom.inputShareLink.addEventListener('input', () => {
+      try { localStorage.setItem('ws_share_link', dom.inputShareLink.value.trim()); } catch {}
+    });
+  }
+  if (dom.inputBuildId) {
+    dom.inputBuildId.addEventListener('input', () => {
+      try { localStorage.setItem('ws_build_id', dom.inputBuildId.value.trim()); } catch {}
+    });
+  }
+  if (dom.inputCookie) {
+    dom.inputCookie.addEventListener('input', () => {
+      try { localStorage.setItem('ws_cookie', dom.inputCookie.value.trim()); } catch {}
+    });
+  }
+  if (dom.inputCsrfToken) {
+    dom.inputCsrfToken.addEventListener('input', () => {
+      try { localStorage.setItem('ws_csrf_token', dom.inputCsrfToken.value.trim()); } catch {}
+    });
+  }
+  if (dom.inputProjectName) {
+    dom.inputProjectName.addEventListener('input', () => {
+      try { localStorage.setItem('ws_project_name', dom.inputProjectName.value.trim()); } catch {}
+    });
+  }
+
   // Save Session Button
   if (dom.btnSaveSession) {
     dom.btnSaveSession.addEventListener('click', () => {

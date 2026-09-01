@@ -279,8 +279,25 @@ export async function getProjectStatus() {
 
   const projectId = config?.projectId || data?.projectId || data?.build?.projectId || null;
   const origin = (projectId ? `https://p-${projectId}.apps.webstudio.is` : data?.origin) || 'https://apps.webstudio.is';
-  const hasAuthToken = Boolean(auth?.authToken || auth?.token || data?.authToken);
+  
+  let authToken = auth?.authToken || auth?.token || '';
+  if (!authToken && auth?.routes) {
+    for (const route of Object.values(auth.routes)) {
+      if (route && route.authToken) {
+        authToken = route.authToken;
+        break;
+      }
+    }
+  }
+  const hasAuthToken = Boolean(authToken || data?.authToken);
   const hasSession = Boolean(session?.cookie && session?.csrfToken);
+
+  let savedShareLink = '';
+  if (projectId && authToken) {
+    savedShareLink = `https://p-${projectId}.apps.webstudio.is/?authToken=${authToken}`;
+  } else if (projectId) {
+    savedShareLink = `https://p-${projectId}.apps.webstudio.is`;
+  }
 
   let pagesCount = 0;
   if (Array.isArray(data?.pages)) {
@@ -319,6 +336,8 @@ export async function getProjectStatus() {
     origin,
     hasAuthToken,
     hasSession,
+    savedShareLink,
+    sessionData: session ? { cookie: session.cookie || '', csrfToken: session.csrfToken || '' } : null,
     projectStats: {
       pages: pagesCount,
       instances: instancesCount,
