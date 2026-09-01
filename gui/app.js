@@ -14,10 +14,21 @@ function getInitialLang() {
   return 'ua';
 }
 
+function getInitialTab() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('ws_active_tab') || 'workspace';
+    }
+  } catch {}
+  return 'workspace';
+}
+
 // Global application state
 export const state = {
   lang: getInitialLang(),
+  currentTab: getInitialTab(),
   status: null,
+  deploy: null,
   logs: [],
   isRunning: false,
   currentAction: null,
@@ -31,7 +42,11 @@ export const dom = {
   headerMcpStatus: null,
   headerMcpPill: null,
 
-  // Views
+  // Tab Navigation & Views
+  btnTabWorkspace: null,
+  btnTabDeploy: null,
+  tabViewWorkspace: null,
+  tabViewDeploy: null,
   firstRunView: null,
   workspaceView: null,
   
@@ -64,6 +79,24 @@ export const dom = {
   btnHelpToggle: null,
   sessionHelpBox: null,
   
+  // Deploy Form Elements
+  selectTemplatePreset: null,
+  btnGenerateTemplate: null,
+  inputProjectName: null,
+  btnUpdateProjectName: null,
+  valDetectedConfig: null,
+  valHostingStatus: null,
+  btnCheckAuth: null,
+  btnLoginAuth: null,
+  btnDeployInstall: null,
+  btnDeployBuild: null,
+  btnDeployPreview: null,
+  btnDeployPublish: null,
+  valDeployTemplate: null,
+  valDeployHosting: null,
+  valDeployConfigFile: null,
+  valDeployScriptsCount: null,
+
   // Telemetry
   telemetryProjectId: null,
   telemetryPages: null,
@@ -96,6 +129,12 @@ export function cacheDOMElements() {
 
   dom.firstRunView = document.getElementById('first-run-view');
   dom.workspaceView = document.getElementById('workspace-view');
+
+  // Tab Controls
+  dom.btnTabWorkspace = document.getElementById('btn-tab-workspace') || document.getElementById('tab-btn-workspace');
+  dom.btnTabDeploy = document.getElementById('btn-tab-deploy') || document.getElementById('tab-btn-deploy');
+  dom.tabViewWorkspace = document.getElementById('tab-view-workspace');
+  dom.tabViewDeploy = document.getElementById('tab-view-deploy');
   
   dom.terminalOutput = document.getElementById('terminal-output') || document.getElementById('setup-terminal-output');
   dom.setupTerminalOutput = document.getElementById('setup-terminal-output');
@@ -121,6 +160,24 @@ export function cacheDOMElements() {
   dom.btnUpdateNow = document.getElementById('btn-update-now') || document.getElementById('footer-update-btn');
   dom.btnHelpToggle = document.getElementById('btn-help-toggle');
   dom.sessionHelpBox = document.getElementById('help-guide-box') || document.getElementById('session-help-box') || document.getElementById('session-help-text');
+
+  // Deploy Form Elements
+  dom.selectTemplatePreset = document.getElementById('select-template-preset') || document.getElementById('select-preset');
+  dom.btnGenerateTemplate = document.getElementById('btn-generate-template');
+  dom.inputProjectName = document.getElementById('input-project-name');
+  dom.btnUpdateProjectName = document.getElementById('btn-update-project-name');
+  dom.valDetectedConfig = document.getElementById('val-detected-config');
+  dom.valHostingStatus = document.getElementById('val-hosting-status');
+  dom.btnCheckAuth = document.getElementById('btn-check-auth');
+  dom.btnLoginAuth = document.getElementById('btn-login-auth');
+  dom.btnDeployInstall = document.getElementById('btn-deploy-install');
+  dom.btnDeployBuild = document.getElementById('btn-deploy-build');
+  dom.btnDeployPreview = document.getElementById('btn-deploy-preview');
+  dom.btnDeployPublish = document.getElementById('btn-deploy-publish');
+  dom.valDeployTemplate = document.getElementById('val-deploy-template');
+  dom.valDeployHosting = document.getElementById('val-deploy-hosting');
+  dom.valDeployConfigFile = document.getElementById('val-deploy-config-file');
+  dom.valDeployScriptsCount = document.getElementById('val-deploy-scripts-count');
 
   dom.telemetryProjectId = document.getElementById('telemetry-project-id') || document.getElementById('val-project-id');
   dom.telemetryPages = document.getElementById('telemetry-pages') || document.getElementById('val-pages-count');
@@ -175,6 +232,36 @@ export function setLanguage(lang) {
 }
 
 /**
+ * Switches active dashboard tab between 'workspace' and 'deploy'.
+ * 
+ * @param {'workspace' | 'deploy'} tabId - Tab identifier
+ */
+export function switchTab(tabId) {
+  if (tabId !== 'workspace' && tabId !== 'deploy') tabId = 'workspace';
+  state.currentTab = tabId;
+
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('ws_active_tab', tabId);
+    }
+  } catch {}
+
+  if (typeof document !== 'undefined') {
+    if (tabId === 'workspace') {
+      if (dom.btnTabWorkspace) dom.btnTabWorkspace.classList.add('active');
+      if (dom.btnTabDeploy) dom.btnTabDeploy.classList.remove('active');
+      if (dom.tabViewWorkspace) dom.tabViewWorkspace.classList.remove('hidden');
+      if (dom.tabViewDeploy) dom.tabViewDeploy.classList.add('hidden');
+    } else {
+      if (dom.btnTabWorkspace) dom.btnTabWorkspace.classList.remove('active');
+      if (dom.btnTabDeploy) dom.btnTabDeploy.classList.add('active');
+      if (dom.tabViewWorkspace) dom.tabViewWorkspace.classList.add('hidden');
+      if (dom.tabViewDeploy) dom.tabViewDeploy.classList.remove('hidden');
+    }
+  }
+}
+
+/**
  * Traverses DOM and updates all elements with translation directives:
  * - data-i18n: updates textContent (or innerHTML if data-i18n-html="true")
  * - data-i18n-placeholder: updates placeholder attribute
@@ -214,6 +301,28 @@ export function applyTranslations() {
       el.setAttribute('title', t(key, {}, state.lang));
     }
   });
+
+  // Populate deploy template presets dropdown while preserving selected value
+  if (dom.selectTemplatePreset) {
+    const currentValue = dom.selectTemplatePreset.value;
+    const presets = i18n[state.lang]?.deploy?.templateSection?.presets || {};
+    
+    // Clear and rebuild options
+    dom.selectTemplatePreset.innerHTML = '';
+    for (const [presetKey, presetLabel] of Object.entries(presets)) {
+      const option = document.createElement('option');
+      option.value = presetKey;
+      option.textContent = presetLabel;
+      dom.selectTemplatePreset.appendChild(option);
+    }
+    
+    // Preserve previously selected value or default to first option
+    if (currentValue && presets[currentValue]) {
+      dom.selectTemplatePreset.value = currentValue;
+    } else if (dom.selectTemplatePreset.options && dom.selectTemplatePreset.options.length > 0) {
+      dom.selectTemplatePreset.selectedIndex = 0;
+    }
+  }
 }
 
 /**
@@ -515,7 +624,15 @@ export function updateButtonStates() {
     dom.btnUploadAssets,
     dom.btnImport,
     dom.btnCheckUpdates,
-    dom.btnUpdateNow
+    dom.btnUpdateNow,
+    dom.btnGenerateTemplate,
+    dom.btnUpdateProjectName,
+    dom.btnCheckAuth,
+    dom.btnLoginAuth,
+    dom.btnDeployInstall,
+    dom.btnDeployBuild,
+    dom.btnDeployPreview,
+    dom.btnDeployPublish
   ].filter(Boolean);
   
   actionButtons.forEach((btn) => {
@@ -532,6 +649,9 @@ export function updateButtonStates() {
   if (state.isRunning && state.currentAction) {
     if (state.currentAction === 'install' && dom.btnInstall) {
       dom.btnInstall.textContent = t('firstRun.installing', {}, state.lang);
+    }
+    if (state.currentAction === 'install' && dom.btnDeployInstall) {
+      dom.btnDeployInstall.textContent = t('deploy.lifecycleSection.installing', {}, state.lang);
     }
     if (state.currentAction === 'link' && dom.btnLink) {
       dom.btnLink.textContent = t('workspace.projectSection.linking', {}, state.lang);
@@ -554,6 +674,24 @@ export function updateButtonStates() {
     if (state.currentAction === 'update' && dom.btnUpdateNow) {
       dom.btnUpdateNow.textContent = t('workspace.footer.updating', {}, state.lang);
     }
+    if (state.currentAction === 'generate-template' && dom.btnGenerateTemplate) {
+      dom.btnGenerateTemplate.textContent = t('deploy.templateSection.generating', {}, state.lang);
+    }
+    if (state.currentAction === 'update-project-name' && dom.btnUpdateProjectName) {
+      dom.btnUpdateProjectName.textContent = t('deploy.nameSection.applied', {}, state.lang);
+    }
+    if (state.currentAction === 'check-auth' && dom.btnCheckAuth) {
+      dom.btnCheckAuth.textContent = t('deploy.authSection.checking', {}, state.lang);
+    }
+    if (state.currentAction === 'build-project' && dom.btnDeployBuild) {
+      dom.btnDeployBuild.textContent = t('deploy.lifecycleSection.building', {}, state.lang);
+    }
+    if (state.currentAction === 'preview-project' && dom.btnDeployPreview) {
+      dom.btnDeployPreview.textContent = t('deploy.lifecycleSection.previewing', {}, state.lang);
+    }
+    if (state.currentAction === 'deploy-project' && dom.btnDeployPublish) {
+      dom.btnDeployPublish.textContent = t('deploy.lifecycleSection.deploying', {}, state.lang);
+    }
   } else {
     // Reset labels on completion
     applyTranslations();
@@ -573,6 +711,9 @@ export async function fetchStatus() {
     }
     const data = await response.json();
     state.status = data;
+    if (data && data.deploy) {
+      state.deploy = data.deploy;
+    }
     renderView();
     return data;
   } catch (err) {
@@ -588,7 +729,10 @@ export async function fetchStatus() {
 export function renderView() {
   if (!state.status) return;
   
-  const { installed, webstudioVersion, latestVersion, updateAvailable, projectId, origin, projectStats } = state.status;
+  const { installed, webstudioVersion, latestVersion, updateAvailable, projectId, origin, projectStats, deploy } = state.status;
+  if (deploy) {
+    state.deploy = deploy;
+  }
   
   // Two-Phase UI View Switching
   if (!installed) {
@@ -598,6 +742,9 @@ export function renderView() {
     if (dom.firstRunView) dom.firstRunView.classList.add('hidden');
     if (dom.workspaceView) dom.workspaceView.classList.remove('hidden');
   }
+
+  // Active Tab Visibility
+  switchTab(state.currentTab);
   
   // Header MCP Status Pill
   if (dom.headerMcpStatus) {
@@ -642,6 +789,54 @@ export function renderView() {
     dom.telemetryLocalMcp.className = installed ? 'badge badge-success' : 'badge badge-muted';
   }
   
+  // Deploy State and Telemetry Updates
+  const deployData = deploy || state.deploy;
+  if (deployData) {
+    // Template
+    if (dom.valDeployTemplate) {
+      const presets = i18n[state.lang]?.deploy?.templateSection?.presets || {};
+      const templateName = presets[deployData.detectedTemplate] || deployData.detectedTemplate || '—';
+      dom.valDeployTemplate.textContent = templateName;
+    }
+
+    // Config file
+    if (dom.valDeployConfigFile) {
+      dom.valDeployConfigFile.textContent = deployData.configFile || '—';
+    }
+
+    // Project name input (only if user is not actively typing/focused)
+    if (dom.inputProjectName && typeof document !== 'undefined' && document.activeElement !== dom.inputProjectName) {
+      if (deployData.projectName) {
+        dom.inputProjectName.value = deployData.projectName;
+      }
+    }
+
+    // Detected config label
+    if (dom.valDetectedConfig) {
+      dom.valDetectedConfig.textContent = t('deploy.nameSection.detectedConfig', { file: deployData.configFile || 'none' }, state.lang);
+    }
+
+    // Available scripts count
+    if (dom.valDeployScriptsCount) {
+      const count = Array.isArray(deployData.availableScripts) ? deployData.availableScripts.length : 0;
+      dom.valDeployScriptsCount.textContent = String(count);
+    }
+
+    // Target Hosting
+    if (dom.valDeployHosting) {
+      let hosting = '—';
+      if (deployData.detectedTemplate) {
+        if (deployData.detectedTemplate.includes('cloudflare')) hosting = 'Cloudflare';
+        else if (deployData.detectedTemplate.includes('vercel')) hosting = 'Vercel';
+        else if (deployData.detectedTemplate.includes('netlify')) hosting = 'Netlify';
+        else if (deployData.detectedTemplate.includes('docker')) hosting = 'Docker';
+        else if (deployData.detectedTemplate.includes('ssg')) hosting = 'Static / CDN';
+        else hosting = deployData.detectedTemplate;
+      }
+      dom.valDeployHosting.textContent = hosting;
+    }
+  }
+
   // Footer Updates
   if (dom.footerVersion) {
     if (installed && webstudioVersion) {
@@ -725,6 +920,20 @@ export function setupEventListeners() {
       if (lang) setLanguage(lang);
     });
   });
+
+  // Tab Navigation Buttons
+  if (dom.btnTabWorkspace) {
+    dom.btnTabWorkspace.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchTab('workspace');
+    });
+  }
+  if (dom.btnTabDeploy) {
+    dom.btnTabDeploy.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchTab('deploy');
+    });
+  }
   
   // Install Webstudio Button
   if (dom.btnInstall) {
@@ -798,6 +1007,69 @@ export function setupEventListeners() {
       dispatchAction('import', { shareLink });
     });
   }
+
+  // Generate Template Preset Button
+  if (dom.btnGenerateTemplate) {
+    dom.btnGenerateTemplate.addEventListener('click', () => {
+      const templatePreset = dom.selectTemplatePreset ? dom.selectTemplatePreset.value : 'react-router-cloudflare';
+      dispatchAction('generate-template', { templatePreset });
+    });
+  }
+
+  // Update Project Name Button
+  if (dom.btnUpdateProjectName) {
+    dom.btnUpdateProjectName.addEventListener('click', () => {
+      const projectName = dom.inputProjectName ? dom.inputProjectName.value.trim() : '';
+      if (!projectName) {
+        showToast(t('messages.validationError', {}, state.lang) + ': Project name is required', 'warning');
+        if (dom.inputProjectName) dom.inputProjectName.focus();
+        return;
+      }
+      dispatchAction('update-project-name', { projectName });
+    });
+  }
+
+  // Check Auth Button
+  if (dom.btnCheckAuth) {
+    dom.btnCheckAuth.addEventListener('click', () => {
+      dispatchAction('check-auth');
+    });
+  }
+
+  // Login Auth Button
+  if (dom.btnLoginAuth) {
+    dom.btnLoginAuth.addEventListener('click', () => {
+      dispatchAction('login-auth');
+    });
+  }
+
+  // Deploy Lifecycle: Install Dependencies
+  if (dom.btnDeployInstall) {
+    dom.btnDeployInstall.addEventListener('click', () => {
+      dispatchAction('install');
+    });
+  }
+
+  // Deploy Lifecycle: Build Project
+  if (dom.btnDeployBuild) {
+    dom.btnDeployBuild.addEventListener('click', () => {
+      dispatchAction('build-project');
+    });
+  }
+
+  // Deploy Lifecycle: Preview Project
+  if (dom.btnDeployPreview) {
+    dom.btnDeployPreview.addEventListener('click', () => {
+      dispatchAction('preview-project');
+    });
+  }
+
+  // Deploy Lifecycle: Publish / Deploy Project
+  if (dom.btnDeployPublish) {
+    dom.btnDeployPublish.addEventListener('click', () => {
+      dispatchAction('deploy-project');
+    });
+  }
   
   // Check Updates Button
   if (dom.btnCheckUpdates) {
@@ -856,6 +1128,7 @@ export function setupEventListeners() {
 export async function initApp() {
   cacheDOMElements();
   setLanguage(state.lang);
+  switchTab(state.currentTab);
   setupEventListeners();
   initSSE();
   clearTerminal();

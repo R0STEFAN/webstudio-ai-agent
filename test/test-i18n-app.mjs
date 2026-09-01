@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { i18n, t } from '../gui/i18n.js';
-import { ansiToHtml, state, appendLog, setLanguage } from '../gui/app.js';
+import { ansiToHtml, state, dom, appendLog, setLanguage, switchTab, applyTranslations, renderView, updateButtonStates } from '../gui/app.js';
 
 console.log('🧪 Running Task 2 & GUI i18n verification tests...\n');
 
@@ -261,4 +261,133 @@ for (let i = 0; i < 2600; i++) {
 assert.ok(state.logs.length <= 2500, `Logs length must be capped, got ${state.logs.length}`);
 console.log('   ✅ Reactive state defaults and memory cap verified.');
 
-console.log('\n🎉 ALL TASK 2 UNIT TESTS PASSED SUCCESSFULLY!\n');
+// 7. Verify Task 3: Tab Switching Controller & Deploy Telemetry
+console.log('\n7. Verifying Task 3: Tab Switching Controller & Deploy Telemetry...');
+
+// Test switchTab updates state
+switchTab('deploy');
+assert.strictEqual(state.currentTab, 'deploy', 'switchTab("deploy") must update state.currentTab to "deploy"');
+switchTab('workspace');
+assert.strictEqual(state.currentTab, 'workspace', 'switchTab("workspace") must update state.currentTab to "workspace"');
+switchTab('non-existent');
+assert.strictEqual(state.currentTab, 'workspace', 'switchTab with invalid tab must fallback to "workspace"');
+
+// Test DOM updates in simulated DOM environment
+{
+  const elementMap = new Map();
+  function createMockEl(id, tag = 'div') {
+    const el = {
+      id,
+      tagName: tag.toUpperCase(),
+      children: [],
+      options: [],
+      selectedIndex: 0,
+      value: '',
+      classList: {
+        _classes: new Set(),
+        add(c) { this._classes.add(c); },
+        remove(c) { this._classes.delete(c); },
+        contains(c) { return this._classes.has(c); },
+        toggle(c, force) { if (force !== undefined) { force ? this.add(c) : this.remove(c); } else { this.contains(c) ? this.remove(c) : this.add(c); } }
+      },
+      _innerHTML: '',
+      get innerHTML() { return this._innerHTML; },
+      set innerHTML(val) {
+        this._innerHTML = val;
+        if (val === '') {
+          this.children = [];
+          this.options = [];
+        }
+      },
+      appendChild(child) {
+        this.children.push(child);
+        if (this.tagName === 'SELECT' && child.tagName === 'OPTION') {
+          this.options.push(child);
+        }
+        return child;
+      },
+      querySelector(sel) { return null; },
+      getAttribute(attr) { return null; },
+      setAttribute(attr, val) {},
+      removeAttribute(attr) {}
+    };
+    if (id) elementMap.set(id, el);
+    return el;
+  }
+
+  const mockDoc = {
+    getElementById(id) { return elementMap.get(id) || null; },
+    querySelectorAll(sel) { return []; },
+    createElement(tag) { return createMockEl(null, tag); },
+    documentElement: { lang: 'ua' }
+  };
+
+  globalThis.document = mockDoc;
+
+  dom.btnTabWorkspace = createMockEl('btn-tab-workspace', 'button');
+  dom.btnTabDeploy = createMockEl('btn-tab-deploy', 'button');
+  dom.tabViewWorkspace = createMockEl('tab-view-workspace', 'section');
+  dom.tabViewDeploy = createMockEl('tab-view-deploy', 'section');
+
+  dom.selectTemplatePreset = createMockEl('select-template-preset', 'select');
+  dom.inputProjectName = createMockEl('input-project-name', 'input');
+  dom.valDetectedConfig = createMockEl('val-detected-config', 'span');
+  dom.valDeployTemplate = createMockEl('val-deploy-template', 'span');
+  dom.valDeployHosting = createMockEl('val-deploy-hosting', 'span');
+  dom.valDeployConfigFile = createMockEl('val-deploy-config-file', 'span');
+  dom.valDeployScriptsCount = createMockEl('val-deploy-scripts-count', 'span');
+
+  // Test switchTab toggles CSS classes
+  switchTab('deploy');
+  assert.ok(dom.btnTabDeploy.classList.contains('active'), 'Deploy tab button must have active class');
+  assert.ok(!dom.btnTabWorkspace.classList.contains('active'), 'Workspace tab button must not have active class');
+  assert.ok(!dom.tabViewDeploy.classList.contains('hidden'), 'Deploy tab view must not have hidden class');
+  assert.ok(dom.tabViewWorkspace.classList.contains('hidden'), 'Workspace tab view must have hidden class');
+
+  switchTab('workspace');
+  assert.ok(dom.btnTabWorkspace.classList.contains('active'), 'Workspace tab button must have active class');
+  assert.ok(!dom.btnTabDeploy.classList.contains('active'), 'Deploy tab button must not have active class');
+  assert.ok(!dom.tabViewWorkspace.classList.contains('hidden'), 'Workspace tab view must not have hidden class');
+  assert.ok(dom.tabViewDeploy.classList.contains('hidden'), 'Deploy tab view must have hidden class');
+
+  // Test applyTranslations populates selectTemplatePreset options
+  state.lang = 'en';
+  applyTranslations();
+  assert.strictEqual(dom.selectTemplatePreset.options.length, 8, 'Must populate all 8 preset options in EN');
+  assert.strictEqual(dom.selectTemplatePreset.options[0].value, 'react-router-cloudflare');
+  assert.strictEqual(dom.selectTemplatePreset.options[0].textContent, '⚡ React Router v7 + Cloudflare Workers');
+
+  state.lang = 'ua';
+  dom.selectTemplatePreset.value = 'remix-cloudflare';
+  applyTranslations();
+  assert.strictEqual(dom.selectTemplatePreset.options.length, 8, 'Must populate all 8 preset options in UA');
+  assert.strictEqual(dom.selectTemplatePreset.value, 'remix-cloudflare', 'Must preserve selected value when switching languages');
+
+  // Test renderView updates deploy telemetry
+  state.status = {
+    installed: true,
+    webstudioVersion: '0.296.0',
+    projectId: 'test-project-123',
+    deploy: {
+      projectName: 'my-custom-cf-app',
+      configFile: 'wrangler.jsonc',
+      detectedTemplate: 'react-router-cloudflare',
+      availableScripts: ['build', 'preview', 'deploy']
+    }
+  };
+
+  renderView();
+  assert.strictEqual(state.deploy.projectName, 'my-custom-cf-app');
+  assert.strictEqual(dom.inputProjectName.value, 'my-custom-cf-app');
+  assert.strictEqual(dom.valDeployConfigFile.textContent, 'wrangler.jsonc');
+  assert.strictEqual(dom.valDeployScriptsCount.textContent, '3');
+  assert.strictEqual(dom.valDeployHosting.textContent, 'Cloudflare');
+  assert.strictEqual(dom.valDeployTemplate.textContent, '⚡ React Router v7 + Cloudflare Workers');
+  assert.strictEqual(dom.valDetectedConfig.textContent, 'Конфігураційний файл: wrangler.jsonc');
+
+  delete globalThis.document;
+}
+
+console.log('   ✅ Tab switching, preset dropdown population, and deploy telemetry binding verified.');
+
+console.log('\n🎉 ALL TASK 2 & TASK 3 UNIT TESTS PASSED SUCCESSFULLY!\n');
