@@ -104,6 +104,8 @@ const requiredIds = [
   'btn-update-now',
   
   // Header controls & Toast
+  'mcp-status-pill',
+  'val-header-mcp-status',
   'btn-lang-ua',
   'btn-lang-en',
   'toast-container'
@@ -113,6 +115,20 @@ for (const id of requiredIds) {
   assert.ok(htmlIds.has(id), `Required DOM ID #${id} must exist in gui/index.html`);
 }
 console.log(`   ✅ All ${requiredIds.length} required DOM IDs present in gui/index.html.`);
+
+// 3b. Verify No Duplicate Element IDs in HTML
+console.log('\n2b. Verifying DOM IDs in gui/index.html are strictly unique (no duplicates)...');
+const allIdMatches = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(m => m[1]);
+const seenIds = new Set();
+const duplicateIds = [];
+for (const id of allIdMatches) {
+  if (seenIds.has(id)) {
+    duplicateIds.push(id);
+  }
+  seenIds.add(id);
+}
+assert.strictEqual(duplicateIds.length, 0, `HTML contains duplicate IDs: ${duplicateIds.join(', ')}`);
+console.log(`   ✅ All ${allIdMatches.length} DOM element IDs in gui/index.html are strictly unique.`);
 
 // 4. Test DOM IDs referenced by gui/app.js Cache & Handlers
 console.log('\n3. Verifying DOM IDs referenced in gui/app.js exist or resolve to fallbacks in HTML...');
@@ -223,7 +239,113 @@ assert.ok(css.includes('.btn.loading'), 'CSS must include .btn.loading state');
 assert.ok(css.includes('.toast-container'), 'CSS must style .toast-container');
 assert.ok(css.includes('.toast-success'), 'CSS must style .toast-success');
 assert.ok(css.includes('.toast-error'), 'CSS must style .toast-error');
-
 console.log('   ✅ CSS design tokens, responsive breakpoints, and UI component classes verified.');
+
+// 7. Test App.js Multi-Viewport Terminal Output & Header MCP Status Separation
+console.log('\n6. Verifying Multi-Viewport Terminal Output & Header MCP Status in simulated DOM...');
+{
+  const elementMap = new Map();
+  function createMockElement(id, tagName = 'div') {
+    const el = {
+      id,
+      tagName: tagName.toUpperCase(),
+      children: [],
+      classList: {
+        _classes: new Set(),
+        add(c) { this._classes.add(c); },
+        remove(c) { this._classes.delete(c); },
+        contains(c) { return this._classes.has(c); },
+        toggle(c, force) { if (force !== undefined) { force ? this.add(c) : this.remove(c); } else { this.contains(c) ? this.remove(c) : this.add(c); } }
+      },
+      style: {},
+      textContent: '',
+      innerHTML: '',
+      scrollTop: 0,
+      scrollHeight: 100,
+      appendChild(child) {
+        this.children.push(child);
+        return child;
+      },
+      querySelector(sel) {
+        if (sel === '.status-dot') {
+          return this.dotEl || (this.dotEl = createMockElement(null, 'span'));
+        }
+        return null;
+      },
+      getAttribute(attr) { return null; },
+      setAttribute(attr, val) {}
+    };
+    if (id) elementMap.set(id, el);
+    return el;
+  }
+
+  const mockHeaderPill = createMockElement('mcp-status-pill');
+  const mockHeaderStatus = createMockElement('val-header-mcp-status', 'span');
+  const mockTelemetryBadge = createMockElement('val-mcp-status', 'span');
+  const mockMainOutput = createMockElement('terminal-output');
+  const mockSetupOutput = createMockElement('setup-terminal-output');
+  const mockMainContainer = createMockElement('terminal-container');
+  const mockSetupContainer = createMockElement('setup-terminal-container');
+
+  const mockDoc = {
+    getElementById(id) {
+      return elementMap.get(id) || null;
+    },
+    querySelectorAll(selector) {
+      if (selector === '#terminal-output, #setup-terminal-output') {
+        return [mockMainOutput, mockSetupOutput];
+      }
+      if (selector === '#terminal-container, #setup-terminal-container, #terminal-output, #setup-terminal-output') {
+        return [mockMainContainer, mockSetupContainer, mockMainOutput, mockSetupOutput];
+      }
+      return [];
+    },
+    createElement(tag) {
+      return createMockElement(null, tag);
+    },
+    documentElement: { lang: 'ua' }
+  };
+
+  globalThis.document = mockDoc;
+
+  const { dom, cacheDOMElements, renderView, appendLog, clearTerminal, state } = await import('../gui/app.js');
+
+  cacheDOMElements();
+
+  assert.strictEqual(dom.headerMcpStatus, mockHeaderStatus, 'dom.headerMcpStatus must point to #val-header-mcp-status');
+  assert.strictEqual(dom.telemetryLocalMcp, mockTelemetryBadge, 'dom.telemetryLocalMcp must point to #val-mcp-status');
+
+  // Test clearTerminal clears both outputs
+  clearTerminal();
+  assert.strictEqual(mockMainOutput.children.length, 1, 'Main terminal must receive ready log');
+  assert.strictEqual(mockSetupOutput.children.length, 1, 'Setup terminal must receive ready log');
+
+  // Test appendLog appends to both outputs
+  appendLog('Installation started...', 'stdout');
+  assert.strictEqual(mockMainOutput.children.length, 2, 'Main terminal must have 2 lines');
+  assert.strictEqual(mockSetupOutput.children.length, 2, 'Setup terminal must have 2 lines');
+
+  // Test renderView updates both header and telemetry without collision
+  state.status = {
+    installed: true,
+    webstudioVersion: '0.296.0',
+    projectId: 'test-project-id'
+  };
+  renderView();
+
+  assert.strictEqual(mockHeaderStatus.textContent, 'Локальний MCP');
+  assert.strictEqual(mockTelemetryBadge.textContent, 'Активний');
+  assert.ok(mockTelemetryBadge.className.includes('badge-success'));
+
+  // Test uninstalled status
+  state.status.installed = false;
+  renderView();
+  assert.strictEqual(mockHeaderStatus.textContent, 'Локальний MCP');
+  assert.strictEqual(mockTelemetryBadge.textContent, 'Неактивний');
+  assert.ok(mockTelemetryBadge.className.includes('badge-muted'));
+
+  delete globalThis.document;
+  console.log('   ✅ Multi-viewport terminal logging and distinct MCP status DOM updates verified.');
+}
 
 console.log('\n🎉 ALL TASK 4 DOM LAYOUT & DARK THEME TESTS PASSED SUCCESSFULLY!\n');

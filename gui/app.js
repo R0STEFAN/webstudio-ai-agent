@@ -27,13 +27,19 @@ export const state = {
 
 // DOM Cache & Helpers
 export const dom = {
+  // Header
+  headerMcpStatus: null,
+  headerMcpPill: null,
+
   // Views
   firstRunView: null,
   workspaceView: null,
   
   // Terminal
   terminalOutput: null,
+  setupTerminalOutput: null,
   terminalContainer: null,
+  setupTerminalContainer: null,
   terminalStatus: null,
   btnClearTerminal: null,
   btnCopyTerminal: null,
@@ -85,16 +91,20 @@ export const dom = {
 export function cacheDOMElements() {
   if (typeof document === 'undefined') return;
 
+  dom.headerMcpStatus = document.getElementById('val-header-mcp-status');
+  dom.headerMcpPill = document.getElementById('mcp-status-pill');
+
   dom.firstRunView = document.getElementById('first-run-view');
   dom.workspaceView = document.getElementById('workspace-view');
   
   dom.terminalOutput = document.getElementById('terminal-output') || document.getElementById('setup-terminal-output');
+  dom.setupTerminalOutput = document.getElementById('setup-terminal-output');
   dom.terminalContainer = document.getElementById('terminal-container') || document.getElementById('setup-terminal-container');
+  dom.setupTerminalContainer = document.getElementById('setup-terminal-container');
   dom.terminalStatus = document.getElementById('terminal-status');
   dom.btnClearTerminal = document.getElementById('btn-clear-terminal') || document.getElementById('btn-clear-logs');
   dom.btnCopyTerminal = document.getElementById('btn-copy-terminal') || document.getElementById('btn-copy-logs');
   dom.btnToggleAutoScroll = document.getElementById('btn-toggle-autoscroll') || document.getElementById('checkbox-autoscroll') || document.getElementById('chk-autoscroll');
-  
   dom.inputShareLink = document.getElementById('input-share-link');
   dom.inputBuildId = document.getElementById('input-build-id');
   dom.inputCookie = document.getElementById('input-cookie');
@@ -283,29 +293,36 @@ export function appendLog(text, type = 'stdout', timestamp = null) {
     state.logs.splice(0, 500);
   }
   
-  if (!dom.terminalOutput) return;
-  
-  const row = document.createElement('div');
-  row.className = `terminal-line line-${type}`;
-  
-  const timeSpan = document.createElement('span');
-  timeSpan.className = 'terminal-timestamp';
-  timeSpan.textContent = `[${time}] `;
-  
-  const textSpan = document.createElement('span');
-  textSpan.className = 'terminal-text';
-  textSpan.innerHTML = ansiToHtml(text);
-  
-  row.appendChild(timeSpan);
-  row.appendChild(textSpan);
-  dom.terminalOutput.appendChild(row);
+  if (typeof document === 'undefined') return;
+
+  const outputs = document.querySelectorAll('#terminal-output, #setup-terminal-output');
+  if (!outputs.length) return;
+
+  const htmlFormatted = ansiToHtml(text);
+
+  outputs.forEach((output) => {
+    const row = document.createElement('div');
+    row.className = `terminal-line line-${type}`;
+    
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'terminal-timestamp';
+    timeSpan.textContent = `[${time}] `;
+    
+    const textSpan = document.createElement('span');
+    textSpan.className = 'terminal-text';
+    textSpan.innerHTML = htmlFormatted;
+    
+    row.appendChild(timeSpan);
+    row.appendChild(textSpan);
+    output.appendChild(row);
+  });
   
   // Auto-scroll to bottom if enabled
   if (state.autoScroll) {
-    const scrollTarget = dom.terminalContainer || dom.terminalOutput;
-    if (scrollTarget) {
-      scrollTarget.scrollTop = scrollTarget.scrollHeight;
-    }
+    const scrollTargets = document.querySelectorAll('#terminal-container, #setup-terminal-container, #terminal-output, #setup-terminal-output');
+    scrollTargets.forEach((target) => {
+      target.scrollTop = target.scrollHeight;
+    });
   }
 }
 
@@ -314,8 +331,11 @@ export function appendLog(text, type = 'stdout', timestamp = null) {
  */
 export function clearTerminal() {
   state.logs = [];
-  if (dom.terminalOutput) {
-    dom.terminalOutput.innerHTML = '';
+  if (typeof document !== 'undefined') {
+    const outputs = document.querySelectorAll('#terminal-output, #setup-terminal-output');
+    outputs.forEach((output) => {
+      output.innerHTML = '';
+    });
   }
   appendLog(t('workspace.terminal.ready', {}, state.lang), 'system');
 }
@@ -570,6 +590,22 @@ export function renderView() {
     if (dom.workspaceView) dom.workspaceView.classList.remove('hidden');
   }
   
+  // Header MCP Status Pill
+  if (dom.headerMcpStatus) {
+    dom.headerMcpStatus.textContent = t('workspace.telemetry.localMcp', {}, state.lang);
+  }
+  if (dom.headerMcpPill) {
+    dom.headerMcpPill.title = installed
+      ? `Webstudio MCP: ${t('workspace.telemetry.active', {}, state.lang)}`
+      : `Webstudio MCP: ${t('workspace.telemetry.inactive', {}, state.lang)}`;
+    const dot = dom.headerMcpPill.querySelector('.status-dot');
+    if (dot) {
+      dot.style.backgroundColor = installed ? 'var(--color-success)' : 'var(--text-muted)';
+      dot.style.boxShadow = installed ? '0 0 8px var(--color-success)' : 'none';
+      dot.style.animation = installed ? 'pulse-dot 2.5s infinite' : 'none';
+    }
+  }
+
   // Telemetry Card Updates
   if (dom.telemetryProjectId) {
     dom.telemetryProjectId.textContent = projectId || '—';
