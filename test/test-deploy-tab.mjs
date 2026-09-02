@@ -777,6 +777,7 @@ async function runTestSuite() {
     }
     assert.ok(connectionRefused, 'Server must no longer accept connections after close');
 
+
     // Clean up temporary test directories
     for (const dir of tempDirsToClean) {
       try {

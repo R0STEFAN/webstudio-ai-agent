@@ -384,12 +384,19 @@
                     <option value="ssg-netlify">🌐 SSG + Netlify Static</option>
                   </select>
                 </div>
+                <div class="template-status-row">
+                  <span class="template-status-label" data-i18n="deploy.templateSection.activeStatusLabel">Активний шаблон:</span>
+                  <span id="val-active-template-badge" class="badge badge-neutral" data-i18n="deploy.templateSection.notGenerated">Не згенеровано</span>
+                </div>
                 <p class="form-hint" data-i18n="deploy.templateSection.hint">
                   Webstudio згенерує повну структуру файлів проєкту для обраного хостингу
                 </p>
                 <div class="button-strip">
-                  <button type="button" class="btn btn-primary btn-block" id="btn-generate-template" data-i18n="deploy.templateSection.generateBtn">
+                  <button type="button" class="btn btn-primary btn-block" id="btn-generate-template" data-i18n="deploy.templateSection.generateBtn" style="flex: 1.3;">
                     🏗️ Згенерувати код за шаблоном
+                  </button>
+                  <button type="button" class="btn btn-outline-danger btn-block" id="btn-clean-template" data-i18n="deploy.templateSection.cleanBtn" style="flex: 1;">
+                    🗑️ Очистити генерацію
                   </button>
                 </div>
               </div>

@@ -103,8 +103,12 @@ export const i18n = {
           'ssg-vercel': '▲ SSG + Vercel Static',
           'ssg-netlify': '🌐 SSG + Netlify Static'
         },
+        activeStatusLabel: 'Активний шаблон:',
+        notGenerated: 'Не згенеровано',
         generateBtn: '🏗️ Згенерувати код за шаблоном',
         generating: 'Генерація коду...',
+        cleanBtn: '🗑️ Очистити генерацію',
+        cleaning: 'Очищення...',
         hint: 'Webstudio згенерує повну структуру файлів проєкту для обраного хостингу'
       },
       nameSection: {
@@ -124,6 +128,7 @@ export const i18n = {
         checking: 'Перевірка авторизації...',
         authorized: 'Авторизовано ({account})',
         notAuthorized: 'Не авторизовано',
+        notChecked: 'Не перевірено',
         hint: 'Потрібно для публікації на Cloudflare / Vercel'
       },
       lifecycleSection: {
@@ -131,10 +136,12 @@ export const i18n = {
         installBtn: '📦 Встановити залежності',
         buildBtn: '🔨 Зібрати проєкт (Build)',
         previewBtn: '👁️ Попередній перегляд',
+        stopPreviewBtn: '⏹️ Зупинити попередній перегляд',
         deployBtn: '🚀 Опублікувати (Deploy)',
         installing: 'Встановлення...',
         building: 'Збірка проєкту...',
         previewing: 'Запуск прев\'ю...',
+        stopping: 'Зупинка сервера...',
         deploying: 'Публікація...',
         hint: 'Універсальні команди: npm install ➔ npm run build ➔ npm run preview ➔ npm run deploy'
       },
@@ -158,7 +165,8 @@ export const i18n = {
       networkError: 'Помилка зв\'язку із сервером GUI. Перевірте з\'єднання.',
       actionStarted: 'Запуск дії: {action}...',
       actionSuccess: 'Дію {action} успішно завершено.',
-      actionFailed: 'Дія {action} завершилася з помилкою (код {code}).'
+      actionFailed: 'Дія {action} завершилася з помилкою (код {code}).',
+      templateCleaned: 'Згенерований шаблон та тимчасові файли успішно очищено',
     }
   },
   en: {
@@ -260,8 +268,12 @@ export const i18n = {
           'ssg-vercel': '▲ SSG + Vercel Static',
           'ssg-netlify': '🌐 SSG + Netlify Static'
         },
+        activeStatusLabel: 'Active Template:',
+        notGenerated: 'Not generated',
         generateBtn: '🏗️ Generate Code from Template',
         generating: 'Generating code...',
+        cleanBtn: '🗑️ Clean Template Files',
+        cleaning: 'Cleaning...',
         hint: 'Webstudio scaffolds complete framework project files for the selected target'
       },
       nameSection: {
@@ -281,6 +293,7 @@ export const i18n = {
         checking: 'Checking auth...',
         authorized: 'Authorized ({account})',
         notAuthorized: 'Not authorized',
+        notChecked: 'Not checked',
         hint: 'Required for publishing to Cloudflare / Vercel'
       },
       lifecycleSection: {
@@ -288,10 +301,12 @@ export const i18n = {
         installBtn: '📦 Install Dependencies',
         buildBtn: '🔨 Build Project',
         previewBtn: '👁️ Preview Locally',
+        stopPreviewBtn: '⏹️ Stop Preview Server',
         deployBtn: '🚀 Deploy to Hosting',
         installing: 'Installing...',
         building: 'Building...',
         previewing: 'Starting preview...',
+        stopping: 'Stopping preview...',
         deploying: 'Deploying...',
         hint: 'Universal commands: npm install ➔ npm run build ➔ npm run preview ➔ npm run deploy'
       },
@@ -315,7 +330,8 @@ export const i18n = {
       networkError: 'Server communication error. Check your connection.',
       actionStarted: 'Starting action: {action}...',
       actionSuccess: 'Action {action} completed successfully.',
-      actionFailed: 'Action {action} failed with code {code}.'
+      actionFailed: 'Action {action} failed with code {code}.',
+      templateCleaned: 'Generated template files and dependencies cleaned successfully',
     }
   }
 };

@@ -211,6 +211,9 @@ async function fetchJson(url, options = {}) {
 
 async function runServerTests() {
   const { server } = createGuiServer(TEST_PORT);
+  const rootPkgPath = path.join(rootDir, 'package.json');
+  const initialPkgContent = fs.existsSync(rootPkgPath) ? fs.readFileSync(rootPkgPath, 'utf8') : null;
+
 
   await new Promise((resolve, reject) => {
     server.listen(TEST_PORT, (err) => {
@@ -292,6 +295,11 @@ async function runServerTests() {
   } finally {
     // Teardown server
     await new Promise((resolve) => server.close(resolve));
+
+    // Restore original package.json if modified during tests
+    if (initialPkgContent !== null) {
+      fs.writeFileSync(rootPkgPath, initialPkgContent, 'utf8');
+    }
 
     // Cleanup temp dirs
     for (const dir of tempDirsToClean) {

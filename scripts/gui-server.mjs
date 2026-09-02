@@ -1,9 +1,9 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawn, exec } from 'node:child_process';
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
@@ -102,12 +102,353 @@ export const TEMPLATE_PRESETS = {
   'ssg-vercel': ['ssg', 'ssg-vercel'],
   'ssg-netlify': ['ssg', 'ssg-netlify']
 };
+export function cleanFrameworkArtifacts(rootDir, preset) {
+  const pkgPath = path.join(rootDir, 'package.json');
+  let pkg = null;
+  if (fs.existsSync(pkgPath)) {
+    try {
+      pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    } catch {}
+  }
 
-export function getDeployConfig(rootDir) {
+  const isRemix = preset.includes('remix') || preset === 'cloudflare';
+  const isReactRouter = preset.includes('react-router') || preset === 'cloudflare-new' || preset === 'docker';
+
+  const removePaths = [];
+  const depsToRemove = [];
+
+  if (isRemix) {
+    removePaths.push(
+      path.join(rootDir, 'app', 'entry.server.tsx'),
+      path.join(rootDir, 'app', 'routes.ts'),
+      path.join(rootDir, 'workers'),
+      path.join(rootDir, 'react-router.config.ts'),
+      path.join(rootDir, 'wrangler.jsonc'),
+      path.join(rootDir, 'vercel.json'),
+      path.join(rootDir, 'netlify.toml'),
+      path.join(rootDir, 'Dockerfile')
+    );
+    depsToRemove.push(
+      '@react-router/dev',
+      '@react-router/fs-routes',
+      '@react-router/node',
+      '@react-router/serve',
+      'react-router',
+      '@webstudio-is/sdk-components-react-router',
+      '@cloudflare/vite-plugin'
+    );
+  } else if (isReactRouter) {
+    removePaths.push(
+      path.join(rootDir, 'functions'),
+      path.join(rootDir, 'wrangler.toml'),
+      path.join(rootDir, 'vercel.json'),
+      path.join(rootDir, 'netlify.toml')
+    );
+    depsToRemove.push(
+      '@remix-run/cloudflare',
+      '@remix-run/cloudflare-pages',
+      '@remix-run/node',
+      '@remix-run/react',
+      '@remix-run/server-runtime',
+      '@remix-run/dev',
+      '@webstudio-is/sdk-components-react-remix'
+    );
+  }
+
+  for (const p of removePaths) {
+    if (fs.existsSync(p)) {
+      try {
+        fs.rmSync(p, { recursive: true, force: true });
+      } catch {}
+    }
+  }
+
+  if (pkg) {
+    let modified = false;
+    for (const dep of depsToRemove) {
+      if (pkg.dependencies?.[dep]) {
+        delete pkg.dependencies[dep];
+        modified = true;
+      }
+      if (pkg.devDependencies?.[dep]) {
+        delete pkg.devDependencies[dep];
+        modified = true;
+      }
+    }
+    if (modified) {
+      try {
+        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+      } catch {}
+    }
+  }
+}
+export function cleanAllTemplateGenerations(rootDir) {
+  const pathsToRemove = [
+    path.join(rootDir, 'app'),
+    path.join(rootDir, 'functions'),
+    path.join(rootDir, 'workers'),
+    path.join(rootDir, 'public'),
+    path.join(rootDir, 'build'),
+    path.join(rootDir, 'dist'),
+    path.join(rootDir, '.wrangler'),
+    path.join(rootDir, 'wrangler.jsonc'),
+    path.join(rootDir, 'wrangler.toml'),
+    path.join(rootDir, 'vercel.json'),
+    path.join(rootDir, 'netlify.toml'),
+    path.join(rootDir, 'Dockerfile'),
+    path.join(rootDir, 'vite.config.ts'),
+    path.join(rootDir, 'react-router.config.ts'),
+    path.join(rootDir, 'worker-configuration.d.ts')
+  ];
+
+  for (const p of pathsToRemove) {
+    if (fs.existsSync(p)) {
+      try {
+        fs.rmSync(p, { recursive: true, force: true });
+      } catch {}
+    }
+  }
+
+  const pkgPath = path.join(rootDir, 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      const templateDeps = [
+        '@react-router/dev',
+        '@react-router/fs-routes',
+        '@react-router/node',
+        '@react-router/serve',
+        'react-router',
+        '@remix-run/cloudflare',
+        '@remix-run/cloudflare-pages',
+        '@remix-run/node',
+        '@remix-run/react',
+        '@remix-run/server-runtime',
+        '@remix-run/dev',
+        '@cloudflare/vite-plugin',
+        '@cloudflare/workers-types',
+        '@webstudio-is/sdk-components-react-remix',
+        '@webstudio-is/sdk-components-react-router',
+        'isbot',
+        'react',
+        'react-dom',
+        'shiki',
+        '@shikijs/langs',
+        '@shikijs/themes',
+        '@types/react',
+        '@types/react-dom',
+        'typescript',
+        'vite'
+      ];
+
+      for (const dep of templateDeps) {
+        if (pkg.dependencies?.[dep]) delete pkg.dependencies[dep];
+        if (pkg.devDependencies?.[dep]) delete pkg.devDependencies[dep];
+      }
+      if (!pkg.scripts) pkg.scripts = {};
+      pkg.scripts.build = 'remix vite:build';
+      pkg.scripts.dev = 'remix vite:dev';
+      pkg.scripts.preview = 'npm run build && wrangler pages dev ./build/client';
+      pkg.scripts.deploy = 'npm run build && wrangler pages deploy ./build/client';
+
+      fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+    } catch {}
+  }
+}
+
+
+let cachedHostingAccounts = {
+  Cloudflare: null,
+  Vercel: null,
+  Netlify: null,
+  Docker: null
+};
+
+export function getHostingAuth(rootDir, targetHosting = null) {
+  let provider = targetHosting;
+  if (!provider) {
+    const wranglerJsonc = path.join(rootDir, 'wrangler.jsonc');
+    const wranglerToml = path.join(rootDir, 'wrangler.toml');
+    const vercelJson = path.join(rootDir, 'vercel.json');
+    const netlifyToml = path.join(rootDir, 'netlify.toml');
+    const dockerfile = path.join(rootDir, 'Dockerfile');
+    const packageJson = path.join(rootDir, 'package.json');
+
+    if (fs.existsSync(vercelJson)) provider = 'Vercel';
+    else if (fs.existsSync(netlifyToml)) provider = 'Netlify';
+    else if (fs.existsSync(dockerfile)) provider = 'Docker';
+    else if (fs.existsSync(wranglerJsonc) || fs.existsSync(wranglerToml)) provider = 'Cloudflare';
+    else if (fs.existsSync(packageJson)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(packageJson, 'utf8'));
+        if (pkg.dependencies?.['@remix-run/cloudflare'] || pkg.devDependencies?.['@remix-run/cloudflare'] || pkg.dependencies?.['@react-router/cloudflare'] || pkg.devDependencies?.['@react-router/cloudflare']) {
+          provider = 'Cloudflare';
+        }
+      } catch {}
+      provider = provider || 'Cloudflare';
+    } else {
+      provider = 'Cloudflare';
+    }
+  }
+
+  const home = os.homedir();
+  const appdata = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
+  const localappdata = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
+
+  if (provider === 'Vercel') {
+    if (process.env.VERCEL_TOKEN || process.env.VERCEL_AUTH_TOKEN) {
+      return {
+        authenticated: true,
+        account: cachedHostingAccounts.Vercel || 'Vercel (API Token)',
+        provider: 'Vercel',
+        checked: true
+      };
+    }
+
+    const vercelPaths = [
+      path.join(appdata, 'xdg.data', 'com.vercel.cli', 'auth.json'),
+      path.join(appdata, 'com.vercel.cli', 'auth.json'),
+      path.join(localappdata, 'com.vercel.cli', 'auth.json'),
+      path.join(home, '.vercel', 'auth.json'),
+      path.join(home, '.local', 'share', 'com.vercel.cli', 'auth.json'),
+      path.join(home, '.config', 'com.vercel.cli', 'auth.json')
+    ];
+    for (const p of vercelPaths) {
+      if (fs.existsSync(p)) {
+        try {
+          const content = fs.readFileSync(p, 'utf8');
+          const data = JSON.parse(content);
+          if (data.token || data.auth) {
+            return {
+              authenticated: true,
+              account: cachedHostingAccounts.Vercel || data.user?.username || data.user?.email || 'Vercel',
+              provider: 'Vercel',
+              checked: true
+            };
+          }
+        } catch {}
+      }
+    }
+
+    return {
+      authenticated: Boolean(cachedHostingAccounts.Vercel),
+      account: cachedHostingAccounts.Vercel || null,
+      provider: 'Vercel',
+      checked: true
+    };
+  }
+
+  if (provider === 'Netlify') {
+    if (process.env.NETLIFY_AUTH_TOKEN) {
+      return {
+        authenticated: true,
+        account: cachedHostingAccounts.Netlify || 'Netlify (API Token)',
+        provider: 'Netlify',
+        checked: true
+      };
+    }
+
+    const netlifyPaths = [
+      path.join(appdata, 'xdg.config', 'netlify', 'config.json'),
+      path.join(appdata, 'xdg.data', 'netlify', 'config.json'),
+      path.join(appdata, 'netlify', 'Config', 'config.json'),
+      path.join(appdata, 'netlify', 'config.json'),
+      path.join(home, '.netlify', 'config.json'),
+      path.join(home, '.config', 'netlify', 'config.json')
+    ];
+    for (const p of netlifyPaths) {
+      if (fs.existsSync(p)) {
+        try {
+          const content = fs.readFileSync(p, 'utf8');
+          const data = JSON.parse(content);
+          if (data.userId || data.accessToken || (data.users && Object.keys(data.users).length > 0)) {
+            const userObj = data.users ? Object.values(data.users)[0] : null;
+            return {
+              authenticated: true,
+              account: cachedHostingAccounts.Netlify || userObj?.email || userObj?.name || 'Netlify',
+              provider: 'Netlify',
+              checked: true
+            };
+          }
+        } catch {}
+      }
+    }
+
+    return {
+      authenticated: Boolean(cachedHostingAccounts.Netlify),
+      account: cachedHostingAccounts.Netlify || null,
+      provider: 'Netlify',
+      checked: true
+    };
+  }
+
+  if (provider === 'Docker') {
+    return {
+      authenticated: true,
+      account: cachedHostingAccounts.Docker || 'Docker Engine',
+      provider: 'Docker',
+      checked: true
+    };
+  }
+
+  if (provider === 'Static' || provider === 'Static / CDN') {
+    return {
+      authenticated: true,
+      account: 'Static / CDN',
+      provider: 'Static',
+      checked: true
+    };
+  }
+
+  // Default: Cloudflare
+  if (process.env.CLOUDFLARE_API_TOKEN || (process.env.CLOUDFLARE_EMAIL && process.env.CLOUDFLARE_API_KEY)) {
+    return {
+      authenticated: true,
+      account: cachedHostingAccounts.Cloudflare || process.env.CLOUDFLARE_EMAIL || 'Cloudflare (API Token)',
+      provider: 'Cloudflare',
+      checked: true
+    };
+  }
+
+  const wranglerConfigPaths = [
+    path.join(home, '.wrangler', 'config', 'default.toml'),
+    path.join(home, 'AppData', 'Roaming', 'xdg.config', '.wrangler', 'config', 'default.toml'),
+    path.join(home, '.config', '.wrangler', 'config', 'default.toml'),
+    path.join(home, 'AppData', 'Local', '.wrangler', 'config', 'default.toml')
+  ];
+
+  if (process.env.XDG_CONFIG_HOME) {
+    wranglerConfigPaths.unshift(path.join(process.env.XDG_CONFIG_HOME, '.wrangler', 'config', 'default.toml'));
+  }
+
+  for (const configPath of wranglerConfigPaths) {
+    if (configPath && fs.existsSync(configPath)) {
+      try {
+        const content = fs.readFileSync(configPath, 'utf8');
+        if (content.includes('oauth_token') || content.includes('refresh_token') || content.includes('api_token')) {
+          return {
+            authenticated: true,
+            account: cachedHostingAccounts.Cloudflare || 'Cloudflare',
+            provider: 'Cloudflare',
+            checked: true
+          };
+        }
+      } catch {}
+    }
+  }
+
+  return {
+    authenticated: Boolean(cachedHostingAccounts.Cloudflare),
+    account: cachedHostingAccounts.Cloudflare || null,
+    provider: 'Cloudflare',
+    checked: true
+  };
+}
+
+export function getDeployConfig(rootDir, requestedHosting = null, requestedTemplate = null) {
   let projectName = '';
   let configFile = '';
   let detectedTemplate = 'unknown';
-
   const wranglerJsoncPath = path.join(rootDir, 'wrangler.jsonc');
   const wranglerTomlPath = path.join(rootDir, 'wrangler.toml');
   const vercelJsonPath = path.join(rootDir, 'vercel.json');
@@ -115,67 +456,107 @@ export function getDeployConfig(rootDir) {
   const dockerfilePath = path.join(rootDir, 'Dockerfile');
   const packageJsonPath = path.join(rootDir, 'package.json');
 
-  if (fs.existsSync(wranglerJsoncPath)) {
-    try {
-      const content = fs.readFileSync(wranglerJsoncPath, 'utf8');
-      const match = content.match(/"name"\s*:\s*"([^"]+)"/);
-      if (match) projectName = match[1];
-      configFile = 'wrangler.jsonc';
-      detectedTemplate = 'react-router-cloudflare';
-    } catch {}
-  } else if (fs.existsSync(wranglerTomlPath)) {
-    try {
-      const content = fs.readFileSync(wranglerTomlPath, 'utf8');
-      const match = content.match(/^name\s*=\s*"([^"]+)"/m);
-      if (match) projectName = match[1];
-      configFile = 'wrangler.toml';
-      detectedTemplate = 'remix-cloudflare';
-    } catch {}
-  } else if (fs.existsSync(vercelJsonPath)) {
-    configFile = 'vercel.json';
-    detectedTemplate = 'react-router-vercel';
-  } else if (fs.existsSync(netlifyTomlPath)) {
-    configFile = 'netlify.toml';
-    detectedTemplate = 'react-router-netlify';
-  } else if (fs.existsSync(dockerfilePath)) {
-    configFile = 'Dockerfile';
-    detectedTemplate = 'react-router-docker';
-  }
-
+  let pkg = null;
   let availableScripts = [];
   if (fs.existsSync(packageJsonPath)) {
     try {
-      const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-      if (!projectName && pkg.name) {
-        projectName = pkg.name;
-      }
-      if (!configFile) {
-        configFile = 'package.json';
-      }
+      pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      if (pkg.name) projectName = pkg.name;
       if (pkg.scripts && typeof pkg.scripts === 'object') {
         availableScripts = Object.keys(pkg.scripts);
       }
-      if (detectedTemplate === 'unknown') {
-        if (pkg.dependencies?.['@react-router/cloudflare'] || pkg.devDependencies?.['@react-router/cloudflare']) {
-          detectedTemplate = 'react-router-cloudflare';
-        } else if (pkg.dependencies?.['@remix-run/cloudflare'] || pkg.devDependencies?.['@remix-run/cloudflare']) {
-          detectedTemplate = 'remix-cloudflare';
-        } else if (pkg.dependencies?.['@react-router/node'] || pkg.dependencies?.['react-router']) {
-          detectedTemplate = 'react-router-docker';
-        } else if (pkg.dependencies?.['vike'] || pkg.dependencies?.['vite-plugin-ssr']) {
-          detectedTemplate = 'ssg';
-        }
-      }
     } catch {}
+  }
+
+  const candidateConfigs = [
+    { file: 'wrangler.toml', path: wranglerTomlPath, template: 'remix-cloudflare' },
+    { file: 'wrangler.jsonc', path: wranglerJsoncPath, template: 'react-router-cloudflare' },
+    { file: 'vercel.json', path: vercelJsonPath, template: 'react-router-vercel' },
+    { file: 'netlify.toml', path: netlifyTomlPath, template: 'react-router-netlify' },
+    { file: 'Dockerfile', path: dockerfilePath, template: 'react-router-docker' }
+  ].filter(c => fs.existsSync(c.path));
+
+  let primaryCandidate = null;
+  if (pkg) {
+    if ((pkg.dependencies?.['@remix-run/cloudflare'] || pkg.devDependencies?.['@remix-run/cloudflare'] || pkg.dependencies?.['@remix-run/react'] || pkg.devDependencies?.['@remix-run/react']) && fs.existsSync(wranglerTomlPath)) {
+      primaryCandidate = candidateConfigs.find(c => c.file === 'wrangler.toml');
+    } else if ((pkg.dependencies?.['@react-router/cloudflare'] || pkg.devDependencies?.['@react-router/cloudflare']) && fs.existsSync(wranglerJsoncPath)) {
+      primaryCandidate = candidateConfigs.find(c => c.file === 'wrangler.jsonc');
+    } else if (fs.existsSync(dockerfilePath)) {
+      primaryCandidate = candidateConfigs.find(c => c.file === 'Dockerfile');
+    }
+  }
+
+  if (!primaryCandidate && candidateConfigs.length > 0) {
+    if (candidateConfigs.length === 1) {
+      primaryCandidate = candidateConfigs[0];
+    } else {
+      candidateConfigs.sort((a, b) => {
+        const mtimeA = fs.statSync(a.path).mtimeMs || 0;
+        const mtimeB = fs.statSync(b.path).mtimeMs || 0;
+        return mtimeB - mtimeA;
+      });
+      primaryCandidate = candidateConfigs[0];
+    }
+  }
+
+  if (primaryCandidate) {
+    configFile = primaryCandidate.file;
+    detectedTemplate = primaryCandidate.template;
+
+    if (primaryCandidate.file === 'wrangler.jsonc') {
+      try {
+        const content = fs.readFileSync(wranglerJsoncPath, 'utf8');
+        const match = content.match(/"name"\s*:\s*"([^"]+)"/);
+        if (match) projectName = match[1];
+      } catch {}
+    } else if (primaryCandidate.file === 'wrangler.toml') {
+      try {
+        const content = fs.readFileSync(wranglerTomlPath, 'utf8');
+        const match = content.match(/^name\s*=\s*"([^"]+)"/m);
+        if (match) projectName = match[1];
+      } catch {}
+    }
+  } else if (!configFile && fs.existsSync(packageJsonPath)) {
+    configFile = 'package.json';
+    if (detectedTemplate === 'unknown') {
+      if (pkg?.dependencies?.['@react-router/cloudflare'] || pkg?.devDependencies?.['@react-router/cloudflare']) {
+        detectedTemplate = 'react-router-cloudflare';
+      } else if (pkg?.dependencies?.['@remix-run/cloudflare'] || pkg?.devDependencies?.['@remix-run/cloudflare']) {
+        detectedTemplate = 'remix-cloudflare';
+      } else if (fs.existsSync(dockerfilePath)) {
+        detectedTemplate = 'react-router-docker';
+      } else if (pkg?.dependencies?.['vike'] || pkg?.dependencies?.['vite-plugin-ssr']) {
+        detectedTemplate = 'ssg';
+      }
+    }
+  }
+
+  let targetHosting = requestedHosting;
+  if (!targetHosting && requestedTemplate) {
+    if (requestedTemplate.includes('vercel')) targetHosting = 'Vercel';
+    else if (requestedTemplate.includes('netlify')) targetHosting = 'Netlify';
+    else if (requestedTemplate.includes('docker')) targetHosting = 'Docker';
+    else if (requestedTemplate.includes('ssg')) targetHosting = 'Static';
+    else if (requestedTemplate.includes('cloudflare')) targetHosting = 'Cloudflare';
+  }
+  if (!targetHosting) {
+    if (detectedTemplate.includes('vercel')) targetHosting = 'Vercel';
+    else if (detectedTemplate.includes('netlify')) targetHosting = 'Netlify';
+    else if (detectedTemplate.includes('docker')) targetHosting = 'Docker';
+    else if (detectedTemplate.includes('ssg')) targetHosting = 'Static';
+    else targetHosting = 'Cloudflare';
   }
 
   return {
     projectName: projectName || 'webstudio-app',
     configFile: configFile || 'none',
     detectedTemplate,
+    targetHosting,
     hasWrangler: Boolean(fs.existsSync(wranglerJsoncPath) || fs.existsSync(wranglerTomlPath)),
     hasBuildDir: Boolean(fs.existsSync(path.join(rootDir, 'build')) || fs.existsSync(path.join(rootDir, 'dist'))),
-    availableScripts
+    availableScripts,
+    hostingAuth: getHostingAuth(rootDir, targetHosting)
   };
 }
 
@@ -228,10 +609,9 @@ export function updateProjectNameOnDisk(rootDir, newName) {
   return { updated, safeName };
 }
 
-export async function getProjectStatus() {
+export async function getProjectStatus(targetHosting = null, targetTemplate = null) {
   const cliPath = path.join(rootDir, 'node_modules', 'webstudio', 'lib', 'cli.js');
   const pkgPath = path.join(rootDir, 'node_modules', 'webstudio', 'package.json');
-  
   let installed = false;
   let webstudioVersion = null;
   
@@ -343,14 +723,38 @@ export async function getProjectStatus() {
       instances: instancesCount,
       assets: assetsCount
     },
-    deploy: getDeployConfig(rootDir)
+    deploy: getDeployConfig(rootDir, targetHosting, targetTemplate),
+    hostingAuth: getHostingAuth(rootDir, targetHosting),
+    previewServer: {
+      running: Boolean(activePreviewProcess),
+      url: activePreviewUrl
+    }
   };
 }
 
 export const getSystemStatus = getProjectStatus;
 
-export function executeShellCommand(action, command) {
+export let activePreviewProcess = null;
+export let activePreviewUrl = null;
+
+export function stopPreviewServer() {
+  if (activePreviewProcess) {
+    try {
+      if (process.platform === 'win32') {
+        exec(`taskkill /pid ${activePreviewProcess.pid} /T /F`);
+      } else {
+        activePreviewProcess.kill('SIGTERM');
+      }
+    } catch {}
+    activePreviewProcess = null;
+  }
+  activePreviewUrl = null;
+}
+
+export function executeShellCommand(action, command, options = {}) {
   broadcastLog(`$ ${command}`, 'stdout');
+  console.log(`\n\x1b[36m[Webstudio CLI]\x1b[0m \x1b[1m$ ${command}\x1b[0m`);
+
   const child = spawn(command, {
     cwd: rootDir,
     shell: true,
@@ -358,14 +762,35 @@ export function executeShellCommand(action, command) {
   });
 
   child.stdout.on('data', (chunk) => {
-    broadcastLog(chunk.toString(), 'stdout');
+    process.stdout.write(chunk);
+    const text = chunk.toString();
+    broadcastLog(text, 'stdout');
+
+    if (action === 'check-auth' || action === 'login-auth') {
+      const prov = options.provider || 'Cloudflare';
+      if (prov === 'Cloudflare') {
+        const emailMatch = text.match(/email\s+'([^']+)'/i) || text.match(/associated with the email\s+'([^']+)'/i) || text.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+        if (emailMatch) cachedHostingAccounts.Cloudflare = emailMatch[1];
+        const accMatch = text.match(/Account Name:\s*([^\r\n]+)/i);
+        if (accMatch) cachedHostingAccounts.Cloudflare = accMatch[1].trim();
+      } else if (prov === 'Vercel') {
+        const cleaned = text.replace(/Vercel CLI[^\r\n]*/ig, '').replace(/>[^\r\n]*/g, '').trim();
+        const userMatch = text.match(/>\s*Logged in to vercel as\s+([^\s(]+)/i) || text.match(/User:\s*([^\s]+)/i) || text.match(/email:\s*([^\s]+)/i) || (cleaned && !cleaned.includes(' ') && !cleaned.includes('\n') && !cleaned.includes('Error') ? [null, cleaned] : null);
+        if (userMatch) cachedHostingAccounts.Vercel = userMatch[1].trim();
+      } else if (prov === 'Netlify') {
+        const netMatch = text.match(/Email:\s*([^\r\n]+)/i) || text.match(/Name:\s*([^\r\n]+)/i);
+        if (netMatch) cachedHostingAccounts.Netlify = netMatch[1].trim();
+      }
+    }
   });
 
   child.stderr.on('data', (chunk) => {
+    process.stderr.write(chunk);
     broadcastLog(chunk.toString(), 'stderr');
   });
 
   child.on('error', (err) => {
+    console.error(`\x1b[31m[Webstudio CLI] Process error: ${err.message}\x1b[0m`);
     broadcastLog(`Process error: ${err.message}`, 'stderr');
     broadcastComplete(action, false, 1);
   });
@@ -373,11 +798,89 @@ export function executeShellCommand(action, command) {
   child.on('close', (code) => {
     const success = code === 0;
     if (success) {
+      console.log(`\x1b[32m[Webstudio CLI] Action "${action}" completed successfully.\x1b[0m\n`);
       broadcastLog(`Action "${action}" completed successfully.`, 'stdout');
     } else {
+      console.log(`\x1b[31m[Webstudio CLI] Action "${action}" exited with code ${code}.\x1b[0m\n`);
       broadcastLog(`Action "${action}" exited with code ${code}.`, 'stderr');
     }
     broadcastComplete(action, success, code ?? 0);
+  });
+
+  return child;
+}
+
+export function executePreviewCommand() {
+  stopPreviewServer();
+
+  broadcastLog('$ npm run preview', 'stdout');
+  console.log(`\n\x1b[36m[Webstudio CLI]\x1b[0m \x1b[1m$ npm run preview\x1b[0m`);
+
+  const child = spawn('npm run preview', {
+    cwd: rootDir,
+    shell: true,
+    env: process.env
+  });
+
+  activePreviewProcess = child;
+  let readyDetected = false;
+
+  child.stdout.on('data', (chunk) => {
+    process.stdout.write(chunk);
+    const text = chunk.toString();
+    broadcastLog(text, 'stdout');
+
+    if (!readyDetected) {
+      const urlMatch = text.match(/https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):[0-9]+/i);
+      if (urlMatch) {
+        readyDetected = true;
+        activePreviewUrl = urlMatch[0];
+        console.log(`\x1b[32m[Webstudio CLI] 🚀 Preview server ready at ${activePreviewUrl}\x1b[0m`);
+        broadcastLog(`🚀 Preview server ready at ${activePreviewUrl}`, 'stdout');
+        openBrowser(activePreviewUrl);
+        broadcastComplete('preview-project', true, 0);
+      }
+    }
+  });
+
+  child.stderr.on('data', (chunk) => {
+    process.stderr.write(chunk);
+    const text = chunk.toString();
+    broadcastLog(text, 'stderr');
+
+    if (!readyDetected) {
+      const urlMatch = text.match(/https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):[0-9]+/i);
+      if (urlMatch) {
+        readyDetected = true;
+        activePreviewUrl = urlMatch[0];
+        console.log(`\x1b[32m[Webstudio CLI] 🚀 Preview server ready at ${activePreviewUrl}\x1b[0m`);
+        broadcastLog(`🚀 Preview server ready at ${activePreviewUrl}`, 'stdout');
+        openBrowser(activePreviewUrl);
+        broadcastComplete('preview-project', true, 0);
+      }
+    }
+  });
+
+  child.on('error', (err) => {
+    activePreviewProcess = null;
+    activePreviewUrl = null;
+    console.error(`\x1b[31m[Webstudio CLI] Preview process error: ${err.message}\x1b[0m`);
+    broadcastLog(`Process error: ${err.message}`, 'stderr');
+    broadcastComplete('preview-project', false, 1);
+  });
+
+  child.on('close', (code) => {
+    activePreviewProcess = null;
+    activePreviewUrl = null;
+    if (code !== null && code !== 0) {
+      console.log(`\x1b[33m[Webstudio CLI] Preview server exited with code ${code}\x1b[0m`);
+      broadcastLog(`Preview server exited with code ${code}.`, 'stderr');
+      broadcastComplete('preview-project', false, code);
+    } else {
+      console.log(`\x1b[32m[Webstudio CLI] Preview server stopped.\x1b[0m`);
+      broadcastLog(`Preview server stopped.`, 'stdout');
+      broadcastComplete('stop-preview', true, 0);
+    }
   });
 
   return child;
@@ -530,12 +1033,22 @@ export function handleAction(action, params = {}) {
     }
     case 'generate-template': {
       const preset = params.templatePreset || params.template || 'react-router-cloudflare';
+      cleanFrameworkArtifacts(rootDir, preset);
+
       const templates = TEMPLATE_PRESETS[preset] || (Array.isArray(preset) ? preset : [preset]);
       let cmd = 'npx webstudio build';
       for (const t of templates) {
         cmd += ` --template ${t}`;
       }
       executeShellCommand('generate-template', cmd);
+      break;
+    }
+    case 'clean-template': {
+      stopPreviewServer();
+      cleanAllTemplateGenerations(rootDir);
+      console.log('\x1b[33m[Webstudio CLI] 🗑️ Cleaned all generated template files, configs, and dependencies.\x1b[0m\n');
+      broadcastLog('🗑️ Cleaned all generated template files, configs, and dependencies.', 'stdout');
+      broadcastComplete('clean-template', true, 0);
       break;
     }
     case 'update-project-name': {
@@ -551,11 +1064,41 @@ export function handleAction(action, params = {}) {
       break;
     }
     case 'check-auth': {
-      executeShellCommand('check-auth', 'npx wrangler whoami');
+      const deployConfig = getDeployConfig(rootDir);
+      let provider = params.provider;
+      if (!provider && params.template) {
+        if (params.template.includes('vercel')) provider = 'Vercel';
+        else if (params.template.includes('netlify')) provider = 'Netlify';
+        else if (params.template.includes('docker')) provider = 'Docker';
+        else if (params.template.includes('cloudflare')) provider = 'Cloudflare';
+      }
+      if (!provider) {
+        provider = deployConfig.hostingAuth?.provider || deployConfig.targetHosting || 'Cloudflare';
+      }
+      let cmd = 'npx wrangler whoami';
+      if (provider === 'Vercel') cmd = 'npx vercel whoami';
+      else if (provider === 'Netlify') cmd = 'npx netlify status';
+      else if (provider === 'Docker') cmd = 'docker info';
+      executeShellCommand('check-auth', cmd, { provider });
       break;
     }
     case 'login-auth': {
-      executeShellCommand('login-auth', 'npx wrangler login');
+      const deployConfig = getDeployConfig(rootDir);
+      let provider = params.provider;
+      if (!provider && params.template) {
+        if (params.template.includes('vercel')) provider = 'Vercel';
+        else if (params.template.includes('netlify')) provider = 'Netlify';
+        else if (params.template.includes('docker')) provider = 'Docker';
+        else if (params.template.includes('cloudflare')) provider = 'Cloudflare';
+      }
+      if (!provider) {
+        provider = deployConfig.hostingAuth?.provider || deployConfig.targetHosting || 'Cloudflare';
+      }
+      let cmd = 'npx wrangler login';
+      if (provider === 'Vercel') cmd = 'npx vercel login';
+      else if (provider === 'Netlify') cmd = 'npx netlify login';
+      else if (provider === 'Docker') cmd = 'docker login';
+      executeShellCommand('login-auth', cmd, { provider });
       break;
     }
     case 'build-project': {
@@ -563,10 +1106,38 @@ export function handleAction(action, params = {}) {
       break;
     }
     case 'preview-project': {
-      executeShellCommand('preview-project', 'npm run preview');
+      executePreviewCommand();
+      break;
+    }
+    case 'stop-preview': {
+      stopPreviewServer();
+      console.log(`\x1b[33m[Webstudio CLI] ⏹️ Preview server stopped by user.\x1b[0m\n`);
+      broadcastLog('⏹️ Preview server stopped.', 'stdout');
+      broadcastComplete('stop-preview', true, 0);
       break;
     }
     case 'deploy-project': {
+      const deployConfig = getDeployConfig(rootDir);
+      const projectName = deployConfig.projectName || 'webstudio-app';
+      const provider = deployConfig.hostingAuth?.provider || 'Cloudflare';
+
+      if (provider === 'Vercel' || fs.existsSync(path.join(rootDir, 'vercel.json'))) {
+        executeShellCommand('deploy-project', 'npx vercel --prod --yes');
+        break;
+      }
+
+      if (provider === 'Netlify' || fs.existsSync(path.join(rootDir, 'netlify.toml'))) {
+        executeShellCommand('deploy-project', 'npx netlify deploy --prod');
+        break;
+      }
+
+      if (deployConfig.hasWrangler && fs.existsSync(path.join(rootDir, 'wrangler.toml'))) {
+        exec(`npx wrangler pages project create "${projectName}" --production-branch main`, { cwd: rootDir }, () => {
+          executeShellCommand('deploy-project', `npx wrangler pages deploy ./build/client --project-name "${projectName}" --branch main --commit-dirty=true`);
+        });
+        break;
+      }
+
       executeShellCommand('deploy-project', 'npm run deploy');
       break;
     }
@@ -624,7 +1195,9 @@ export function createGuiServer(port = 4200) {
       // GET /api/status -> JSON status object
       if (pathname === '/api/status' && req.method === 'GET') {
         try {
-          const status = await getProjectStatus();
+          const provider = parsedUrl.searchParams.get('provider') || parsedUrl.searchParams.get('hosting');
+          const template = parsedUrl.searchParams.get('template');
+          const status = await getProjectStatus(provider, template);
           res.writeHead(200, {
             'Content-Type': 'application/json; charset=utf-8',
             ...corsHeaders
@@ -679,7 +1252,6 @@ export function createGuiServer(port = 4200) {
         });
         return;
       }
-
       // Unknown API endpoint
       res.writeHead(404, {
         'Content-Type': 'application/json; charset=utf-8',

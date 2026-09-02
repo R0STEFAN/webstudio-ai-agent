@@ -82,6 +82,8 @@ export const dom = {
   // Deploy Form Elements
   selectTemplatePreset: null,
   btnGenerateTemplate: null,
+  btnCleanTemplate: null,
+  valActiveTemplateBadge: null,
   inputProjectName: null,
   btnUpdateProjectName: null,
   valDetectedConfig: null,
@@ -168,6 +170,8 @@ export function cacheDOMElements() {
   // Deploy Form Elements
   dom.selectTemplatePreset = document.getElementById('select-template-preset') || document.getElementById('select-preset');
   dom.btnGenerateTemplate = document.getElementById('btn-generate-template');
+  dom.btnCleanTemplate = document.getElementById('btn-clean-template');
+  dom.valActiveTemplateBadge = document.getElementById('val-active-template-badge');
   dom.inputProjectName = document.getElementById('input-project-name');
   dom.btnUpdateProjectName = document.getElementById('btn-update-project-name');
   dom.valDetectedConfig = document.getElementById('val-detected-config');
@@ -643,6 +647,7 @@ export function updateButtonStates() {
     dom.btnCheckUpdates,
     dom.btnUpdateNow,
     dom.btnGenerateTemplate,
+    dom.btnCleanTemplate,
     dom.btnUpdateProjectName,
     dom.btnCheckAuth,
     dom.btnLoginAuth,
@@ -694,6 +699,9 @@ export function updateButtonStates() {
     if (state.currentAction === 'generate-template' && dom.btnGenerateTemplate) {
       dom.btnGenerateTemplate.textContent = t('deploy.templateSection.generating', {}, state.lang);
     }
+    if (state.currentAction === 'clean-template' && dom.btnCleanTemplate) {
+      dom.btnCleanTemplate.textContent = t('deploy.templateSection.cleaning', {}, state.lang);
+    }
     if (state.currentAction === 'update-project-name' && dom.btnUpdateProjectName) {
       dom.btnUpdateProjectName.textContent = t('deploy.nameSection.applied', {}, state.lang);
     }
@@ -706,6 +714,9 @@ export function updateButtonStates() {
     if (state.currentAction === 'preview-project' && dom.btnDeployPreview) {
       dom.btnDeployPreview.textContent = t('deploy.lifecycleSection.previewing', {}, state.lang);
     }
+    if (state.currentAction === 'stop-preview' && dom.btnDeployPreview) {
+      dom.btnDeployPreview.textContent = t('deploy.lifecycleSection.stopping', {}, state.lang);
+    }
     if (state.currentAction === 'deploy-project' && dom.btnDeployPublish) {
       dom.btnDeployPublish.textContent = t('deploy.lifecycleSection.deploying', {}, state.lang);
     }
@@ -717,12 +728,34 @@ export function updateButtonStates() {
 
 /**
  * Fetches current system status from /api/status.
+ * 
+ * @param {string|null} [provider=null] - Hosting provider to query
+ * @param {string|null} [template=null] - Template preset to query
  */
-export async function fetchStatus() {
+export async function fetchStatus(provider = null, template = null) {
   if (typeof fetch === 'undefined') return null;
 
+  if (!provider && !template && dom.selectTemplatePreset && typeof document !== 'undefined') {
+    const sel = dom.selectTemplatePreset.value;
+    if (sel) {
+      template = sel;
+      if (sel.includes('vercel')) provider = 'Vercel';
+      else if (sel.includes('netlify')) provider = 'Netlify';
+      else if (sel.includes('docker')) provider = 'Docker';
+      else if (sel.includes('ssg')) provider = 'Static';
+      else if (sel.includes('cloudflare')) provider = 'Cloudflare';
+    }
+  }
+
   try {
-    const response = await fetch('/api/status');
+    let url = '/api/status';
+    const params = new URLSearchParams();
+    if (provider) params.set('provider', provider);
+    if (template) params.set('template', template);
+    const qs = params.toString();
+    if (qs) url += `?${qs}`;
+
+    const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
@@ -815,6 +848,26 @@ export function renderView() {
       const templateName = presets[deployData.detectedTemplate] || deployData.detectedTemplate || '—';
       dom.valDeployTemplate.textContent = templateName;
     }
+    // Active Template Badge in Card 1
+    if (dom.valActiveTemplateBadge) {
+      if (deployData.detectedTemplate && deployData.detectedTemplate !== 'unknown' && deployData.detectedTemplate !== 'none') {
+        const presets = i18n[state.lang]?.deploy?.templateSection?.presets || {};
+        const templateName = presets[deployData.detectedTemplate] || deployData.detectedTemplate;
+        dom.valActiveTemplateBadge.textContent = templateName;
+        dom.valActiveTemplateBadge.className = 'badge badge-success';
+      } else {
+        dom.valActiveTemplateBadge.textContent = t('deploy.templateSection.notGenerated', {}, state.lang);
+        dom.valActiveTemplateBadge.className = 'badge badge-neutral';
+      }
+    }
+    // Sync Preset Dropdown with detected template if present
+    if (dom.selectTemplatePreset && deployData.detectedTemplate && deployData.detectedTemplate !== 'unknown' && deployData.detectedTemplate !== 'none') {
+      if (typeof document !== 'undefined' && document.activeElement !== dom.selectTemplatePreset) {
+        dom.selectTemplatePreset.value = deployData.detectedTemplate;
+      }
+    }
+
+
 
     // Config file
     if (dom.valDeployConfigFile) {
@@ -851,6 +904,35 @@ export function renderView() {
         else hosting = deployData.detectedTemplate;
       }
       dom.valDeployHosting.textContent = hosting;
+    }
+    // Hosting Auth Status Badge
+    if (dom.valHostingStatus) {
+      const hostingAuth = deployData.hostingAuth || state.status.hostingAuth;
+      const provider = hostingAuth?.provider || 'Cloudflare';
+      if (hostingAuth?.authenticated) {
+        const account = hostingAuth.account || provider;
+        dom.valHostingStatus.textContent = t('deploy.authSection.authorized', { account }, state.lang);
+        dom.valHostingStatus.className = 'badge badge-success';
+      } else if (hostingAuth?.checked && !hostingAuth?.authenticated) {
+        dom.valHostingStatus.textContent = `${t('deploy.authSection.notAuthorized', {}, state.lang)} (${provider})`;
+        dom.valHostingStatus.className = 'badge badge-warning';
+      } else {
+        dom.valHostingStatus.textContent = `${t('deploy.authSection.notChecked', {}, state.lang)} (${provider})`;
+        dom.valHostingStatus.className = 'badge badge-neutral';
+      }
+    }
+    // Preview Server State in Deploy Lifecycle
+    if (dom.btnDeployPreview && !state.isRunning) {
+      const isPreviewRunning = Boolean(state.status?.previewServer?.running);
+      if (isPreviewRunning) {
+        dom.btnDeployPreview.textContent = t('deploy.lifecycleSection.stopPreviewBtn', {}, state.lang);
+        dom.btnDeployPreview.classList.remove('btn-secondary');
+        dom.btnDeployPreview.classList.add('btn-warning');
+      } else {
+        dom.btnDeployPreview.textContent = t('deploy.lifecycleSection.previewBtn', {}, state.lang);
+        dom.btnDeployPreview.classList.remove('btn-warning');
+        dom.btnDeployPreview.classList.add('btn-secondary');
+      }
     }
   }
   // Auto-fill Input Fields from Saved Server State or LocalStorage
@@ -1100,6 +1182,13 @@ export function setupEventListeners() {
     });
   }
 
+  // Clean Template Action Button
+  if (dom.btnCleanTemplate) {
+    dom.btnCleanTemplate.addEventListener('click', () => {
+      dispatchAction('clean-template');
+    });
+  }
+
   // Update Project Name Button
   if (dom.btnUpdateProjectName) {
     dom.btnUpdateProjectName.addEventListener('click', () => {
@@ -1116,17 +1205,46 @@ export function setupEventListeners() {
   // Check Auth Button
   if (dom.btnCheckAuth) {
     dom.btnCheckAuth.addEventListener('click', () => {
-      dispatchAction('check-auth');
+      const selectedPreset = dom.selectTemplatePreset?.value || 'react-router-cloudflare';
+      let provider = 'Cloudflare';
+      if (selectedPreset.includes('vercel')) provider = 'Vercel';
+      else if (selectedPreset.includes('netlify')) provider = 'Netlify';
+      else if (selectedPreset.includes('docker')) provider = 'Docker';
+      else if (selectedPreset.includes('ssg')) provider = 'Static';
+      dispatchAction('check-auth', { provider, template: selectedPreset });
     });
   }
 
   // Login Auth Button
   if (dom.btnLoginAuth) {
     dom.btnLoginAuth.addEventListener('click', () => {
-      dispatchAction('login-auth');
+      const selectedPreset = dom.selectTemplatePreset?.value || 'react-router-cloudflare';
+      let provider = 'Cloudflare';
+      if (selectedPreset.includes('vercel')) provider = 'Vercel';
+      else if (selectedPreset.includes('netlify')) provider = 'Netlify';
+      else if (selectedPreset.includes('docker')) provider = 'Docker';
+      else if (selectedPreset.includes('ssg')) provider = 'Static';
+      dispatchAction('login-auth', { provider, template: selectedPreset });
     });
   }
 
+  // Preset selection change listener
+  if (dom.selectTemplatePreset) {
+    dom.selectTemplatePreset.addEventListener('change', () => {
+      const selectedPreset = dom.selectTemplatePreset.value;
+      try { localStorage.setItem('ws_selected_preset', selectedPreset); } catch {}
+      let provider = 'Cloudflare';
+      if (selectedPreset.includes('vercel')) provider = 'Vercel';
+      else if (selectedPreset.includes('netlify')) provider = 'Netlify';
+      else if (selectedPreset.includes('docker')) provider = 'Docker';
+      else if (selectedPreset.includes('ssg')) provider = 'Static';
+      
+      if (dom.valDeployHosting) {
+        dom.valDeployHosting.textContent = provider;
+      }
+      fetchStatus(provider, selectedPreset);
+    });
+  }
   // Deploy Lifecycle: Install Dependencies
   if (dom.btnDeployInstall) {
     dom.btnDeployInstall.addEventListener('click', () => {
@@ -1141,13 +1259,16 @@ export function setupEventListeners() {
     });
   }
 
-  // Deploy Lifecycle: Preview Project
+  // Deploy Lifecycle: Preview Project (Toggle Start / Stop)
   if (dom.btnDeployPreview) {
     dom.btnDeployPreview.addEventListener('click', () => {
-      dispatchAction('preview-project');
+      if (state.status?.previewServer?.running) {
+        dispatchAction('stop-preview');
+      } else {
+        dispatchAction('preview-project');
+      }
     });
   }
-
   // Deploy Lifecycle: Publish / Deploy Project
   if (dom.btnDeployPublish) {
     dom.btnDeployPublish.addEventListener('click', () => {
@@ -1223,11 +1344,21 @@ export async function initApp() {
   setLanguage(state.lang);
   switchTab(state.currentTab);
   setupEventListeners();
+
+  // Restore preset dropdown from local storage if saved
+  if (dom.selectTemplatePreset) {
+    try {
+      const savedPreset = localStorage.getItem('ws_selected_preset');
+      if (savedPreset) dom.selectTemplatePreset.value = savedPreset;
+    } catch {}
+  }
+
   initSSE();
-  clearTerminal();
+  if (!state.logs || state.logs.length === 0) {
+    clearTerminal();
+  }
   await fetchStatus();
 }
-
 // Auto-boot if running in browser
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   if (document.readyState === 'loading') {
