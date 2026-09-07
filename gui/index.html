@@ -35,16 +35,9 @@
           <span class="status-dot"></span>
           <span class="status-label" id="val-header-mcp-status" data-i18n="workspace.telemetry.localMcp">Локальний MCP</span>
         </div>
-        <div class="project-header-control" id="project-header-control">
-          <div class="project-selector-wrapper">
-            <span class="project-selector-icon">📁</span>
-            <select id="select-active-project" class="select-project-dropdown" aria-label="Active Project">
-              <option value="tattoo-v3-test">tattoo-v3-test</option>
-            </select>
-          </div>
-          <button type="button" id="btn-header-new-project" class="btn btn-secondary btn-sm btn-new-proj" title="Створити новий проєкт">
-            <span>➕</span> <span data-i18n="projects.newBtn">Новий</span>
-          </button>
+        <div class="project-header-badge" id="project-header-badge" title="Активний проєкт (клікніть для перегляду всіх проєктів)">
+          <span class="project-badge-icon">📁</span>
+          <span class="project-badge-name" id="val-header-active-project">tattoo-v3-test</span>
         </div>
 
         <div class="lang-switcher" role="group" aria-label="Language selection">
@@ -103,9 +96,80 @@
     <section id="workspace-view" class="view-section workspace-view" aria-label="Active Workspace Dashboard">
       <!-- Tab Navigation Bar -->
       <div class="tab-navigation" role="tablist" aria-label="Dashboard Navigation">
-        <button type="button" id="btn-tab-workspace" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-view-workspace" data-i18n="tabs.workspace">⚡ Керування проєктом</button>
+        <button type="button" id="btn-tab-projects" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-view-projects" data-i18n="tabs.projects">📁 Проєкти</button>
+        <button type="button" id="btn-tab-workspace" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-view-workspace" data-i18n="tabs.workspace">⚡ Робоча область</button>
         <button type="button" id="btn-tab-deploy" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-view-deploy" data-i18n="tabs.deploy">🚀 Деплой та Шаблони</button>
         <button type="button" id="btn-tab-backups" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-view-backups" data-i18n="tabs.backups">📦 Локальні бекапи</button>
+      </div>
+
+      <!-- Tab View 0: Projects Hub Dashboard -->
+      <div id="tab-view-projects" class="tab-view-content hidden" role="tabpanel" aria-labelledby="btn-tab-projects">
+        <div class="workspace-grid">
+          <!-- Left Column: Add Project & Quick Actions -->
+          <div class="column-actions col-actions">
+            <!-- Create Project Card -->
+            <div class="card card-create-project">
+              <div class="card-header">
+                <div class="card-header-icon">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    <line x1="12" y1="11" x2="12" y2="17"></line>
+                    <line x1="9" y1="14" x2="15" y2="14"></line>
+                  </svg>
+                </div>
+                <h3 class="card-title" data-i18n="projects.create.title">➕ Новий проєкт</h3>
+              </div>
+              <div class="card-body">
+                <p class="card-description" data-i18n="projects.create.desc">
+                  Створює новий ізольований сайт із власною синхронізацією, базою ассетів та бекапами.
+                </p>
+
+                <div class="form-group">
+                  <label for="input-quick-project-name" class="form-label" data-i18n="projects.modal.nameLabel">Назва проєкту:</label>
+                  <input type="text" id="input-quick-project-name" class="form-input" placeholder="my-awesome-site" autocomplete="off">
+                  <span class="form-hint" data-i18n="projects.modal.nameHint">Тільки латинські літери, цифри та дефіси (наприклад: coffee-shop)</span>
+                </div>
+
+                <div class="form-group">
+                  <label for="input-quick-project-desc" class="form-label" data-i18n="projects.modal.descLabel">Опис (опціонально):</label>
+                  <input type="text" id="input-quick-project-desc" class="form-input" placeholder="Короткий опис сайту...">
+                </div>
+
+                <button type="button" id="btn-create-project-submit" class="btn btn-primary btn-block">
+                  <span>➕</span> <span data-i18n="projects.modal.createBtn">Створити проєкт</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Projects List -->
+          <div class="column-output col-telemetry">
+            <div class="card card-projects-list">
+              <div class="card-header-between">
+                <div class="card-header-left">
+                  <div class="card-header-icon">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                  </div>
+                  <h3 class="card-title" data-i18n="projects.list.title">📁 Всі проєкти</h3>
+                </div>
+                <div class="card-header-actions">
+                  <span id="badge-projects-total" class="badge badge-info">1 проєкт</span>
+                  <button type="button" id="btn-refresh-projects" class="btn btn-secondary btn-xs" title="Оновити список">
+                    <span data-i18n="common.refresh">🔄 Оновити</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="card-body">
+                <div id="projects-list-container" class="projects-list-container">
+                  <!-- Project cards rendered dynamically -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Tab View 1: Project Workspace Dashboard -->

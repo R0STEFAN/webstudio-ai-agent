@@ -9,13 +9,28 @@ export const i18n = {
     appSubtitle: 'Панель керування та AI-агент Webstudio',
     langSwitch: 'Мова',
     tabs: {
-      workspace: '⚡ Керування проєктом',
+      projects: '📁 Проєкти',
+      workspace: '⚡ Робоча область',
       deploy: '🚀 Деплой та Шаблони',
       backups: '📦 Локальні бекапи'
     },
     projects: {
       newBtn: 'Новий',
       newBtnTitle: 'Створити новий проєкт',
+      create: {
+        title: '➕ Новий проєкт',
+        desc: 'Створює новий ізольований сайт із власною синхронізацією, базою ассетів та бекапами.'
+      },
+      list: {
+        title: '📁 Всі проєкти',
+        activeBadge: '🟢 Активний',
+        openBtn: '⚡ Відкрити в робочій області',
+        deleteBtn: '🗑️ Видалити',
+        pages: 'сторінок',
+        instances: 'блоків',
+        assets: 'ассетів',
+        noProjects: 'Не знайдено жодного проєкту. Створіть перший проєкт.'
+      },
       modal: {
         title: '➕ Створити новий проєкт',
         nameLabel: 'Назва проєкту:',
@@ -213,7 +228,8 @@ export const i18n = {
     },
     common: {
       cancel: 'Скасувати',
-      save: 'Зберегти'
+      save: 'Зберегти',
+      refresh: 'Оновити'
     },
     messages: {
       validationError: 'Помилка валідації',
@@ -235,13 +251,28 @@ export const i18n = {
     appSubtitle: 'Control Panel & Webstudio AI Agent',
     langSwitch: 'Language',
     tabs: {
-      workspace: '⚡ Project Workspace',
+      projects: '📁 Projects',
+      workspace: '⚡ Workspace',
       deploy: '🚀 Build & Deploy',
       backups: '📦 Local Backups'
     },
     projects: {
       newBtn: 'New',
       newBtnTitle: 'Create New Project',
+      create: {
+        title: '➕ New Project',
+        desc: 'Creates an isolated site with dedicated synchronization, asset library, and backups.'
+      },
+      list: {
+        title: '📁 All Projects',
+        activeBadge: '🟢 Active',
+        openBtn: '⚡ Open in Workspace',
+        deleteBtn: '🗑️ Delete',
+        pages: 'pages',
+        instances: 'instances',
+        assets: 'assets',
+        noProjects: 'No projects found. Create your first project.'
+      },
       modal: {
         title: '➕ Create New Project',
         nameLabel: 'Project Name:',
@@ -439,7 +470,8 @@ export const i18n = {
     },
     common: {
       cancel: 'Cancel',
-      save: 'Save'
+      save: 'Save',
+      refresh: 'Refresh'
     },
     messages: {
       validationError: 'Validation Error',

@@ -43,25 +43,32 @@ export const dom = {
   headerMcpPill: null,
 
   // Tab Navigation & Views
+  btnTabProjects: null,
   btnTabWorkspace: null,
   btnTabDeploy: null,
   btnTabBackups: null,
+  tabViewProjects: null,
   tabViewWorkspace: null,
   tabViewDeploy: null,
   tabViewBackups: null,
   firstRunView: null,
   workspaceView: null,
 
-  // Multi-Project Selector & Modals
-  selectActiveProject: null,
-  btnHeaderNewProject: null,
+  // Multi-Project Header & Tab Elements
+  valHeaderActiveProject: null,
+  projectHeaderBadge: null,
+  inputQuickProjectName: null,
+  inputQuickProjectDesc: null,
+  btnCreateProjectSubmit: null,
+  projectsListContainer: null,
+  badgeProjectsTotal: null,
+  btnRefreshProjects: null,
   modalNewProject: null,
   inputNewProjectName: null,
   inputNewProjectDesc: null,
   btnConfirmCreateProject: null,
   btnCancelNewProject: null,
   btnCloseNewProjectModal: null,
-
   // Backups View & Modals
   inputBackupDescription: null,
   btnCreateBackup: null,
@@ -170,16 +177,25 @@ export function cacheDOMElements() {
   dom.workspaceView = document.getElementById('workspace-view');
 
   // Tab Controls
+  dom.btnTabProjects = document.getElementById('btn-tab-projects');
   dom.btnTabWorkspace = document.getElementById('btn-tab-workspace') || document.getElementById('tab-btn-workspace');
   dom.btnTabDeploy = document.getElementById('btn-tab-deploy') || document.getElementById('tab-btn-deploy');
   dom.btnTabBackups = document.getElementById('btn-tab-backups');
+  dom.tabViewProjects = document.getElementById('tab-view-projects');
   dom.tabViewWorkspace = document.getElementById('tab-view-workspace');
   dom.tabViewDeploy = document.getElementById('tab-view-deploy');
   dom.tabViewBackups = document.getElementById('tab-view-backups');
 
-  // Multi-Project Selector & Modals
-  dom.selectActiveProject = document.getElementById('select-active-project');
-  dom.btnHeaderNewProject = document.getElementById('btn-header-new-project');
+  // Multi-Project Header & Tab Elements
+  dom.valHeaderActiveProject = document.getElementById('val-header-active-project');
+  dom.projectHeaderBadge = document.getElementById('project-header-badge');
+  dom.inputQuickProjectName = document.getElementById('input-quick-project-name');
+  dom.inputQuickProjectDesc = document.getElementById('input-quick-project-desc');
+  dom.btnCreateProjectSubmit = document.getElementById('btn-create-project-submit');
+  dom.projectsListContainer = document.getElementById('projects-list-container');
+  dom.badgeProjectsTotal = document.getElementById('badge-projects-total');
+  dom.btnRefreshProjects = document.getElementById('btn-refresh-projects');
+
   dom.modalNewProject = document.getElementById('modal-new-project');
   dom.inputNewProjectName = document.getElementById('input-new-project-name');
   dom.inputNewProjectDesc = document.getElementById('input-new-project-desc');
@@ -316,10 +332,10 @@ export function setLanguage(lang) {
 /**
  * Switches active dashboard tab between 'workspace' and 'deploy'.
  * 
- * @param {'workspace' | 'deploy' | 'backups'} tabId - Tab identifier
+ * @param {'projects' | 'workspace' | 'deploy' | 'backups'} tabId - Tab identifier
  */
 export function switchTab(tabId) {
-  if (tabId !== 'workspace' && tabId !== 'deploy' && tabId !== 'backups') tabId = 'workspace';
+  if (tabId !== 'projects' && tabId !== 'workspace' && tabId !== 'deploy' && tabId !== 'backups') tabId = 'workspace';
   state.currentTab = tabId;
 
   try {
@@ -329,15 +345,19 @@ export function switchTab(tabId) {
   } catch {}
 
   if (typeof document !== 'undefined') {
+    if (dom.btnTabProjects) dom.btnTabProjects.classList.toggle('active', tabId === 'projects');
     if (dom.btnTabWorkspace) dom.btnTabWorkspace.classList.toggle('active', tabId === 'workspace');
     if (dom.btnTabDeploy) dom.btnTabDeploy.classList.toggle('active', tabId === 'deploy');
     if (dom.btnTabBackups) dom.btnTabBackups.classList.toggle('active', tabId === 'backups');
 
+    if (dom.tabViewProjects) dom.tabViewProjects.classList.toggle('hidden', tabId !== 'projects');
     if (dom.tabViewWorkspace) dom.tabViewWorkspace.classList.toggle('hidden', tabId !== 'workspace');
     if (dom.tabViewDeploy) dom.tabViewDeploy.classList.toggle('hidden', tabId !== 'deploy');
     if (dom.tabViewBackups) dom.tabViewBackups.classList.toggle('hidden', tabId !== 'backups');
 
-    if (tabId === 'backups') {
+    if (tabId === 'projects') {
+      fetchProjects();
+    } else if (tabId === 'backups') {
       fetchBackups();
     } else if (tabId === 'deploy') {
       fetchDeployHistory();
@@ -1093,11 +1113,16 @@ export async function fetchProjects() {
       state.projects = data.projects || [];
       state.activeProjectId = data.activeProjectId;
       renderProjectSelector();
+      renderProjectsList();
     }
   } catch {}
 }
 
 export function renderProjectSelector() {
+  if (dom.valHeaderActiveProject) {
+    dom.valHeaderActiveProject.textContent = state.activeProjectId || 'tattoo-v3-test';
+  }
+
   if (!dom.selectActiveProject) return;
   dom.selectActiveProject.innerHTML = '';
   for (const proj of (state.projects || [])) {
@@ -1108,6 +1133,79 @@ export function renderProjectSelector() {
       opt.selected = true;
     }
     dom.selectActiveProject.appendChild(opt);
+  }
+}
+
+export function renderProjectsList() {
+  if (dom.valHeaderActiveProject) {
+    dom.valHeaderActiveProject.textContent = state.activeProjectId || 'tattoo-v3-test';
+  }
+
+  if (!dom.projectsListContainer) return;
+  const projects = state.projects || [];
+
+  if (dom.badgeProjectsTotal) {
+    dom.badgeProjectsTotal.textContent = `${projects.length} проєктів`;
+  }
+
+  if (projects.length === 0) {
+    dom.projectsListContainer.innerHTML = `
+      <div class="backups-empty-state">
+        Не знайдено жодного проєкту. Створіть перший проєкт.
+      </div>
+    `;
+    return;
+  }
+
+  dom.projectsListContainer.innerHTML = '';
+  for (const p of projects) {
+    const card = document.createElement('div');
+    const isActive = p.id === state.activeProjectId || p.isActive;
+    card.className = `project-hub-card ${isActive ? 'active' : ''}`;
+    card.dataset.projectId = p.id;
+
+    const modifiedStr = p.lastModified ? new Date(p.lastModified).toLocaleString('uk-UA') : '—';
+    const activeBadge = isActive ? `<span class="project-active-badge">🟢 Активний</span>` : '';
+    const isOnly = projects.length <= 1;
+
+    card.innerHTML = `
+      <div class="project-hub-header">
+        <div class="project-hub-title-row">
+          <span class="project-hub-icon">📁</span>
+          <span class="project-hub-name">${p.name || p.id}</span>
+          ${activeBadge}
+        </div>
+        <span class="project-modified-date" title="Дата останньої модифікації">
+          🕒 ${modifiedStr}
+        </span>
+      </div>
+      <div class="project-hub-body">
+        ${p.description ? `<p class="project-hub-desc">${p.description}</p>` : ''}
+        <div class="project-hub-stats">
+          <span>📄 <strong>${p.pagesCount || 0}</strong> сторінок</span>
+          <span>🧩 <strong>${p.instancesCount || 0}</strong> блоків</span>
+          <span>🖼️ <strong>${p.assetsCount || 0}</strong> ассетів</span>
+        </div>
+      </div>
+      <div class="project-hub-actions">
+        ${isActive ? `
+          <button type="button" class="btn btn-secondary btn-sm" disabled style="opacity: 0.8; cursor: default;">
+            <span>✓</span> <span>Активний</span>
+          </button>
+        ` : `
+          <button type="button" class="btn btn-primary btn-sm btn-select-project" data-action="select-project" data-project-id="${p.id}">
+            <span>⚡</span> <span>Відкрити в робочій області</span>
+          </button>
+        `}
+        ${!isOnly ? `
+          <button type="button" class="btn btn-outline btn-sm" data-action="delete-project" data-project-id="${p.id}" title="Видалити проєкт">
+            <span>🗑️</span>
+          </button>
+        ` : ''}
+      </div>
+    `;
+
+    dom.projectsListContainer.appendChild(card);
   }
 }
 
@@ -1122,7 +1220,8 @@ export async function handleSelectProject(projectId) {
     if (res.ok) {
       state.activeProjectId = projectId;
       showToast(`Проєкт перемкнуто на: ${projectId}`, 'success');
-      await fetchProjectStatus();
+      await fetchProjects();
+      await fetchStatus();
       await fetchBackups();
       await fetchDeployHistory();
     }
@@ -1145,8 +1244,10 @@ export async function handleCreateProject(name, description) {
       if (dom.modalNewProject) dom.modalNewProject.classList.add('hidden');
       if (dom.inputNewProjectName) dom.inputNewProjectName.value = '';
       if (dom.inputNewProjectDesc) dom.inputNewProjectDesc.value = '';
+      if (dom.inputQuickProjectName) dom.inputQuickProjectName.value = '';
+      if (dom.inputQuickProjectDesc) dom.inputQuickProjectDesc.value = '';
       await fetchProjects();
-      await fetchProjectStatus();
+      await fetchStatus();
       await fetchBackups();
     } else {
       showToast(data.error || 'Не вдалося створити проєкт', 'error');
@@ -1156,6 +1257,27 @@ export async function handleCreateProject(name, description) {
   }
 }
 
+export async function handleDeleteProject(projectId) {
+  if (!projectId) return;
+  try {
+    const res = await fetch('/api/projects/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(`Проєкт "${projectId}" видалено`, 'info');
+      await fetchProjects();
+      await fetchStatus();
+      await fetchBackups();
+    } else {
+      showToast(data.error || 'Помилка видалення проєкту', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
 // ============================================================================
 // Backups API & Handlers
 // ============================================================================
@@ -1273,7 +1395,7 @@ export async function handleRestoreBackup(backupId) {
     if (res.ok && data.success) {
       showToast(`Проєкт успішно відновлено до стану: ${data.displayName}`, 'success');
       if (dom.modalConfirmRestore) dom.modalConfirmRestore.classList.add('hidden');
-      await fetchProjectStatus();
+      await fetchStatus();
       await fetchBackups();
     } else {
       showToast(data.error || 'Помилка відновлення', 'error');
@@ -1441,6 +1563,18 @@ export function setupEventListeners() {
   });
 
   // Tab Navigation Buttons
+  if (dom.btnTabProjects) {
+    dom.btnTabProjects.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchTab('projects');
+    });
+  }
+  if (dom.projectHeaderBadge) {
+    dom.projectHeaderBadge.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchTab('projects');
+    });
+  }
   if (dom.btnTabWorkspace) {
     dom.btnTabWorkspace.addEventListener('click', (e) => {
       e.preventDefault();
@@ -1460,6 +1594,41 @@ export function setupEventListeners() {
     });
   }
 
+  // Projects Hub Tab Listeners
+  if (dom.btnCreateProjectSubmit) {
+    dom.btnCreateProjectSubmit.addEventListener('click', () => {
+      const name = dom.inputQuickProjectName ? dom.inputQuickProjectName.value.trim() : '';
+      const desc = dom.inputQuickProjectDesc ? dom.inputQuickProjectDesc.value.trim() : '';
+      if (!name) {
+        showToast('Вкажіть назву проєкту', 'warning');
+        if (dom.inputQuickProjectName) dom.inputQuickProjectName.focus();
+        return;
+      }
+      handleCreateProject(name, desc);
+    });
+  }
+  if (dom.btnRefreshProjects) {
+    dom.btnRefreshProjects.addEventListener('click', () => {
+      fetchProjects();
+    });
+  }
+  if (dom.projectsListContainer) {
+    dom.projectsListContainer.addEventListener('click', (e) => {
+      const target = e.target.closest('[data-action]');
+      if (!target) return;
+      const action = target.getAttribute('data-action');
+      const projectId = target.getAttribute('data-project-id');
+      if (!projectId) return;
+
+      if (action === 'select-project') {
+        handleSelectProject(projectId);
+      } else if (action === 'delete-project') {
+        if (confirm(`Видалити проєкт "${projectId}" безповоротно?`)) {
+          handleDeleteProject(projectId);
+        }
+      }
+    });
+  }
   // Multi-Project Selector & Modal
   if (dom.selectActiveProject) {
     dom.selectActiveProject.addEventListener('change', (e) => {
