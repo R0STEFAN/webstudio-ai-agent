@@ -64,8 +64,66 @@ export function getWranglerToken() {
       } catch {}
     }
   }
-
   return null;
+}
+
+export async function fetchDeployHistory(projectName, limit = 10, retried = false) {
+  let token = getWranglerToken();
+  if (!token) return { success: false, deployments: [], error: 'Not authenticated with Wrangler' };
+
+  try {
+    let accRes = await fetch('https://api.cloudflare.com/client/v4/accounts', {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(4500)
+    });
+
+    if (accRes.status === 401 || accRes.status === 403) {
+      if (!retried) {
+        const { execSync } = await import('node:child_process');
+        try {
+          execSync('npx wrangler whoami', { stdio: 'ignore' });
+          return fetchDeployHistory(projectName, limit, true);
+        } catch {}
+      }
+      return { success: false, deployments: [], error: 'Cloudflare access token expired or invalid' };
+    }
+
+    const accData = await accRes.json();
+    const accountId = accData.result?.[0]?.id;
+    if (!accountId) return { success: false, deployments: [], error: 'No Cloudflare account found' };
+
+    const depRes = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${projectName}/deployments?per_page=${limit}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!depRes.ok) {
+      return { success: false, deployments: [], error: `Failed to fetch deployments (${depRes.status})` };
+    }
+
+    const depData = await depRes.json();
+    const deployments = (depData.result || []).map(d => ({
+      id: d.id,
+      shortId: d.short_id,
+      environment: d.environment || 'preview',
+      branch: d.deployment_trigger?.metadata?.branch || '',
+      commitMessage: d.deployment_trigger?.metadata?.commit_message || '',
+      commitHash: d.deployment_trigger?.metadata?.commit_hash ? d.deployment_trigger.metadata.commit_hash.slice(0, 7) : '',
+      url: d.url || '',
+      createdOn: d.created_on,
+      status: d.latest_stage?.status || 'success',
+      isProduction: d.environment === 'production'
+    }));
+
+    return {
+      success: true,
+      projectName,
+      total: deployments.length,
+      deployments
+    };
+  } catch (err) {
+    return { success: false, deployments: [], error: err.message };
+  }
 }
 
 export async function detectProductionBranch(projectName) {

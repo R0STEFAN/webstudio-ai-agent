@@ -45,11 +45,48 @@ export const dom = {
   // Tab Navigation & Views
   btnTabWorkspace: null,
   btnTabDeploy: null,
+  btnTabBackups: null,
   tabViewWorkspace: null,
   tabViewDeploy: null,
+  tabViewBackups: null,
   firstRunView: null,
   workspaceView: null,
-  
+
+  // Multi-Project Selector & Modals
+  selectActiveProject: null,
+  btnHeaderNewProject: null,
+  modalNewProject: null,
+  inputNewProjectName: null,
+  inputNewProjectDesc: null,
+  btnConfirmCreateProject: null,
+  btnCancelNewProject: null,
+  btnCloseNewProjectModal: null,
+
+  // Backups View & Modals
+  inputBackupDescription: null,
+  btnCreateBackup: null,
+  checkAutoBackupTimer: null,
+  selectBackupInterval: null,
+  checkAutoBackupImport: null,
+  badgeBackupsTotal: null,
+  btnRefreshBackups: null,
+  backupsListContainer: null,
+  modalEditBackupDesc: null,
+  editBackupId: null,
+  inputEditBackupDesc: null,
+  btnConfirmSaveDesc: null,
+  btnCancelEditDesc: null,
+  btnCloseEditDescModal: null,
+  modalConfirmRestore: null,
+  restoreTargetBackupId: null,
+  valRestoreTargetName: null,
+  btnConfirmExecuteRestore: null,
+  btnCancelRestore: null,
+  btnCloseRestoreModal: null,
+
+  // Deploy History
+  deployHistoryList: null,
+  btnRefreshDeployHistory: null,
   // Terminal
   terminalOutput: null,
   setupTerminalOutput: null,
@@ -135,9 +172,46 @@ export function cacheDOMElements() {
   // Tab Controls
   dom.btnTabWorkspace = document.getElementById('btn-tab-workspace') || document.getElementById('tab-btn-workspace');
   dom.btnTabDeploy = document.getElementById('btn-tab-deploy') || document.getElementById('tab-btn-deploy');
+  dom.btnTabBackups = document.getElementById('btn-tab-backups');
   dom.tabViewWorkspace = document.getElementById('tab-view-workspace');
   dom.tabViewDeploy = document.getElementById('tab-view-deploy');
-  
+  dom.tabViewBackups = document.getElementById('tab-view-backups');
+
+  // Multi-Project Selector & Modals
+  dom.selectActiveProject = document.getElementById('select-active-project');
+  dom.btnHeaderNewProject = document.getElementById('btn-header-new-project');
+  dom.modalNewProject = document.getElementById('modal-new-project');
+  dom.inputNewProjectName = document.getElementById('input-new-project-name');
+  dom.inputNewProjectDesc = document.getElementById('input-new-project-desc');
+  dom.btnConfirmCreateProject = document.getElementById('btn-confirm-create-project');
+  dom.btnCancelNewProject = document.getElementById('btn-cancel-new-project');
+  dom.btnCloseNewProjectModal = document.getElementById('btn-close-new-project-modal');
+
+  // Backups View & Modals
+  dom.inputBackupDescription = document.getElementById('input-backup-description');
+  dom.btnCreateBackup = document.getElementById('btn-create-backup');
+  dom.checkAutoBackupTimer = document.getElementById('check-auto-backup-timer');
+  dom.selectBackupInterval = document.getElementById('select-backup-interval');
+  dom.checkAutoBackupImport = document.getElementById('check-auto-backup-import');
+  dom.badgeBackupsTotal = document.getElementById('badge-backups-total');
+  dom.btnRefreshBackups = document.getElementById('btn-refresh-backups');
+  dom.backupsListContainer = document.getElementById('backups-list-container');
+  dom.modalEditBackupDesc = document.getElementById('modal-edit-backup-desc');
+  dom.editBackupId = document.getElementById('edit-backup-id');
+  dom.inputEditBackupDesc = document.getElementById('input-edit-backup-desc');
+  dom.btnConfirmSaveDesc = document.getElementById('btn-confirm-save-desc');
+  dom.btnCancelEditDesc = document.getElementById('btn-cancel-edit-desc');
+  dom.btnCloseEditDescModal = document.getElementById('btn-close-edit-desc-modal');
+  dom.modalConfirmRestore = document.getElementById('modal-confirm-restore');
+  dom.restoreTargetBackupId = document.getElementById('restore-target-backup-id');
+  dom.valRestoreTargetName = document.getElementById('val-restore-target-name');
+  dom.btnConfirmExecuteRestore = document.getElementById('btn-confirm-execute-restore');
+  dom.btnCancelRestore = document.getElementById('btn-cancel-restore');
+  dom.btnCloseRestoreModal = document.getElementById('btn-close-restore-modal');
+
+  // Deploy History
+  dom.deployHistoryList = document.getElementById('deploy-history-list');
+  dom.btnRefreshDeployHistory = document.getElementById('btn-refresh-deploy-history');
   dom.terminalOutput = document.getElementById('terminal-output') || document.getElementById('setup-terminal-output');
   dom.setupTerminalOutput = document.getElementById('setup-terminal-output');
   dom.terminalContainer = document.getElementById('terminal-container') || document.getElementById('setup-terminal-container');
@@ -242,10 +316,10 @@ export function setLanguage(lang) {
 /**
  * Switches active dashboard tab between 'workspace' and 'deploy'.
  * 
- * @param {'workspace' | 'deploy'} tabId - Tab identifier
+ * @param {'workspace' | 'deploy' | 'backups'} tabId - Tab identifier
  */
 export function switchTab(tabId) {
-  if (tabId !== 'workspace' && tabId !== 'deploy') tabId = 'workspace';
+  if (tabId !== 'workspace' && tabId !== 'deploy' && tabId !== 'backups') tabId = 'workspace';
   state.currentTab = tabId;
 
   try {
@@ -255,16 +329,18 @@ export function switchTab(tabId) {
   } catch {}
 
   if (typeof document !== 'undefined') {
-    if (tabId === 'workspace') {
-      if (dom.btnTabWorkspace) dom.btnTabWorkspace.classList.add('active');
-      if (dom.btnTabDeploy) dom.btnTabDeploy.classList.remove('active');
-      if (dom.tabViewWorkspace) dom.tabViewWorkspace.classList.remove('hidden');
-      if (dom.tabViewDeploy) dom.tabViewDeploy.classList.add('hidden');
-    } else {
-      if (dom.btnTabWorkspace) dom.btnTabWorkspace.classList.remove('active');
-      if (dom.btnTabDeploy) dom.btnTabDeploy.classList.add('active');
-      if (dom.tabViewWorkspace) dom.tabViewWorkspace.classList.add('hidden');
-      if (dom.tabViewDeploy) dom.tabViewDeploy.classList.remove('hidden');
+    if (dom.btnTabWorkspace) dom.btnTabWorkspace.classList.toggle('active', tabId === 'workspace');
+    if (dom.btnTabDeploy) dom.btnTabDeploy.classList.toggle('active', tabId === 'deploy');
+    if (dom.btnTabBackups) dom.btnTabBackups.classList.toggle('active', tabId === 'backups');
+
+    if (dom.tabViewWorkspace) dom.tabViewWorkspace.classList.toggle('hidden', tabId !== 'workspace');
+    if (dom.tabViewDeploy) dom.tabViewDeploy.classList.toggle('hidden', tabId !== 'deploy');
+    if (dom.tabViewBackups) dom.tabViewBackups.classList.toggle('hidden', tabId !== 'backups');
+
+    if (tabId === 'backups') {
+      fetchBackups();
+    } else if (tabId === 'deploy') {
+      fetchDeployHistory();
     }
   }
 }
@@ -1006,6 +1082,310 @@ export function renderView() {
   }
 }
 
+// ============================================================================
+// Multi-Project API & Handlers
+// ============================================================================
+export async function fetchProjects() {
+  try {
+    const res = await fetch('/api/projects');
+    if (res.ok) {
+      const data = await res.json();
+      state.projects = data.projects || [];
+      state.activeProjectId = data.activeProjectId;
+      renderProjectSelector();
+    }
+  } catch {}
+}
+
+export function renderProjectSelector() {
+  if (!dom.selectActiveProject) return;
+  dom.selectActiveProject.innerHTML = '';
+  for (const proj of (state.projects || [])) {
+    const opt = document.createElement('option');
+    opt.value = proj.id;
+    opt.textContent = proj.name || proj.id;
+    if (proj.id === state.activeProjectId || proj.isActive) {
+      opt.selected = true;
+    }
+    dom.selectActiveProject.appendChild(opt);
+  }
+}
+
+export async function handleSelectProject(projectId) {
+  if (!projectId) return;
+  try {
+    const res = await fetch('/api/projects/select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId })
+    });
+    if (res.ok) {
+      state.activeProjectId = projectId;
+      showToast(`Проєкт перемкнуто на: ${projectId}`, 'success');
+      await fetchProjectStatus();
+      await fetchBackups();
+      await fetchDeployHistory();
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+export async function handleCreateProject(name, description) {
+  if (!name || !name.trim()) return;
+  try {
+    const res = await fetch('/api/projects/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim(), description: description ? description.trim() : '' })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      showToast(`Проєкт "${data.project.name}" успішно створено`, 'success');
+      if (dom.modalNewProject) dom.modalNewProject.classList.add('hidden');
+      if (dom.inputNewProjectName) dom.inputNewProjectName.value = '';
+      if (dom.inputNewProjectDesc) dom.inputNewProjectDesc.value = '';
+      await fetchProjects();
+      await fetchProjectStatus();
+      await fetchBackups();
+    } else {
+      showToast(data.error || 'Не вдалося створити проєкт', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ============================================================================
+// Backups API & Handlers
+// ============================================================================
+export async function fetchBackups() {
+  if (!dom.backupsListContainer) return;
+  try {
+    const res = await fetch('/api/backups');
+    if (res.ok) {
+      const data = await res.json();
+      state.backups = data.backups || [];
+      state.backupsConfig = data.config || null;
+      renderBackupsList();
+    }
+  } catch {}
+}
+
+export function renderBackupsList() {
+  if (!dom.backupsListContainer) return;
+  const backups = state.backups || [];
+
+  if (dom.badgeBackupsTotal) {
+    dom.badgeBackupsTotal.textContent = `${backups.length} знімків`;
+  }
+
+  if (state.backupsConfig) {
+    if (dom.checkAutoBackupTimer) dom.checkAutoBackupTimer.checked = Boolean(state.backupsConfig.autoBackupEnabled);
+    if (dom.selectBackupInterval) dom.selectBackupInterval.value = String(state.backupsConfig.intervalMinutes || 10);
+    if (dom.checkAutoBackupImport) dom.checkAutoBackupImport.checked = Boolean(state.backupsConfig.backupOnImport);
+  }
+
+  if (backups.length === 0) {
+    dom.backupsListContainer.innerHTML = `
+      <div class="backups-empty-state">
+        ${t('backups.list.empty', {}, state.lang) || 'Локальних бекапів ще немає. Натисніть «Забекапити поточний стан», щоб створити перший знімок.'}
+      </div>
+    `;
+    return;
+  }
+
+  dom.backupsListContainer.innerHTML = '';
+  for (const b of backups) {
+    const card = document.createElement('div');
+    card.className = 'backup-card';
+    card.dataset.backupId = b.id;
+
+    const pillLabels = {
+      manual: 'Ручний',
+      timer: 'Таймер 10хв',
+      import: 'Після Import',
+      'pre-restore': 'Перед відновленням'
+    };
+    const pillLabel = pillLabels[b.type] || b.type;
+
+    card.innerHTML = `
+      <div class="backup-card-header">
+        <div class="backup-card-title-group">
+          <span class="backup-name">📦 ${b.displayName}</span>
+          <span class="backup-type-pill ${b.type}">${pillLabel}</span>
+        </div>
+      </div>
+      <div class="backup-description-box">
+        <span class="backup-desc-text">💬 "${b.description || 'Без опису'}"</span>
+        <button type="button" class="btn-edit-desc" data-action="edit-desc" data-backup-id="${b.id}" data-current-desc="${encodeURIComponent(b.description || '')}">
+          ✏️ Змінити опис
+        </button>
+      </div>
+      <div class="backup-stats-row">
+        <div class="backup-stat-chip">📄 <strong>${b.stats?.pagesCount ?? 0}</strong> Сторінок</div>
+        <div class="backup-stat-chip">🧩 <strong>${b.stats?.instancesCount ?? 0}</strong> Блоків</div>
+        <div class="backup-stat-chip">🖼️ <strong>${b.stats?.assetsCount ?? 0}</strong> Ассетів</div>
+        <div class="backup-stat-chip">💾 <strong>${b.stats?.formattedSize || '0 B'}</strong></div>
+      </div>
+      <div class="backup-actions-row">
+        <button type="button" class="btn btn-secondary btn-sm" data-action="restore" data-backup-id="${b.id}" data-display-name="${encodeURIComponent(b.displayName)}">
+          <span>⏪</span> <span>Відновити</span>
+        </button>
+        <button type="button" class="btn btn-outline btn-sm" data-action="delete" data-backup-id="${b.id}" title="Видалити бекап">
+          <span>🗑️</span>
+        </button>
+      </div>
+    `;
+    dom.backupsListContainer.appendChild(card);
+  }
+}
+
+export async function handleCreateBackup(customDesc) {
+  try {
+    const res = await fetch('/api/backups/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: customDesc || '', type: 'manual' })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      showToast(`Знімок "${data.backup.displayName}" створено`, 'success');
+      if (dom.inputBackupDescription) dom.inputBackupDescription.value = '';
+      await fetchBackups();
+    } else {
+      showToast(data.error || 'Помилка створення бекапу', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+export async function handleRestoreBackup(backupId) {
+  if (!backupId) return;
+  try {
+    const res = await fetch('/api/backups/restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ backupId })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(`Проєкт успішно відновлено до стану: ${data.displayName}`, 'success');
+      if (dom.modalConfirmRestore) dom.modalConfirmRestore.classList.add('hidden');
+      await fetchProjectStatus();
+      await fetchBackups();
+    } else {
+      showToast(data.error || 'Помилка відновлення', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+export async function handleUpdateBackupDesc(backupId, newDesc) {
+  if (!backupId) return;
+  try {
+    const res = await fetch('/api/backups/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ backupId, description: newDesc || '' })
+    });
+    if (res.ok) {
+      showToast('Опис бекапу оновлено', 'success');
+      if (dom.modalEditBackupDesc) dom.modalEditBackupDesc.classList.add('hidden');
+      await fetchBackups();
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+export async function handleDeleteBackup(backupId) {
+  if (!backupId) return;
+  try {
+    const res = await fetch('/api/backups/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ backupId })
+    });
+    if (res.ok) {
+      showToast('Бекап видалено', 'info');
+      await fetchBackups();
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+export async function handleSaveAutoBackupConfig() {
+  const cfg = {
+    autoBackupEnabled: dom.checkAutoBackupTimer ? dom.checkAutoBackupTimer.checked : true,
+    intervalMinutes: dom.selectBackupInterval ? parseInt(dom.selectBackupInterval.value, 10) : 10,
+    backupOnImport: dom.checkAutoBackupImport ? dom.checkAutoBackupImport.checked : true
+  };
+  try {
+    await fetch('/api/backups/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cfg)
+    });
+  } catch {}
+}
+
+// ============================================================================
+// Deploy History API & Handler
+// ============================================================================
+export async function fetchDeployHistory() {
+  if (!dom.deployHistoryList) return;
+  try {
+    const res = await fetch('/api/deploy/history');
+    if (res.ok) {
+      const data = await res.json();
+      state.deployHistory = data.deployments || [];
+      renderDeployHistory();
+    }
+  } catch {}
+}
+
+export function renderDeployHistory() {
+  if (!dom.deployHistoryList) return;
+  const list = state.deployHistory || [];
+
+  if (list.length === 0) {
+    dom.deployHistoryList.innerHTML = `
+      <div class="history-empty">
+        ${t('deploy.history.empty', {}, state.lang) || 'Деплоїв для цього проєкту ще немає.'}
+      </div>
+    `;
+    return;
+  }
+
+  dom.deployHistoryList.innerHTML = '';
+  for (const item of list) {
+    const el = document.createElement('div');
+    el.className = 'deploy-history-item';
+
+    const timeAgo = item.createdOn ? new Date(item.createdOn).toLocaleString('uk-UA') : '';
+    const badgeClass = item.isProduction ? 'production' : 'preview';
+    const badgeText = item.isProduction ? '🟢 Production' : '🟡 Preview';
+
+    el.innerHTML = `
+      <div class="deploy-item-left">
+        <span class="deploy-badge ${badgeClass}">${badgeText}</span>
+        <div class="deploy-item-meta">
+          <span class="deploy-item-branch">${item.branch || 'unknown'}</span>
+          <span class="deploy-item-time">${timeAgo} ${item.commitHash ? `(${item.commitHash})` : ''}</span>
+        </div>
+      </div>
+      <div class="deploy-item-actions">
+        ${item.url ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer" class="deploy-link-btn">Переглянути ↗</a>` : ''}
+      </div>
+    `;
+    dom.deployHistoryList.appendChild(el);
+  }
+}
+
 /**
  * Dispatches an action command to POST /api/action.
  * 
@@ -1071,6 +1451,139 @@ export function setupEventListeners() {
     dom.btnTabDeploy.addEventListener('click', (e) => {
       e.preventDefault();
       switchTab('deploy');
+    });
+  }
+  if (dom.btnTabBackups) {
+    dom.btnTabBackups.addEventListener('click', (e) => {
+      e.preventDefault();
+      switchTab('backups');
+    });
+  }
+
+  // Multi-Project Selector & Modal
+  if (dom.selectActiveProject) {
+    dom.selectActiveProject.addEventListener('change', (e) => {
+      handleSelectProject(e.target.value);
+    });
+  }
+  if (dom.btnHeaderNewProject) {
+    dom.btnHeaderNewProject.addEventListener('click', () => {
+      if (dom.modalNewProject) dom.modalNewProject.classList.remove('hidden');
+      if (dom.inputNewProjectName) dom.inputNewProjectName.focus();
+    });
+  }
+  if (dom.btnCloseNewProjectModal) {
+    dom.btnCloseNewProjectModal.addEventListener('click', () => {
+      if (dom.modalNewProject) dom.modalNewProject.classList.add('hidden');
+    });
+  }
+  if (dom.btnCancelNewProject) {
+    dom.btnCancelNewProject.addEventListener('click', () => {
+      if (dom.modalNewProject) dom.modalNewProject.classList.add('hidden');
+    });
+  }
+  if (dom.btnConfirmCreateProject) {
+    dom.btnConfirmCreateProject.addEventListener('click', () => {
+      const name = dom.inputNewProjectName ? dom.inputNewProjectName.value.trim() : '';
+      const desc = dom.inputNewProjectDesc ? dom.inputNewProjectDesc.value.trim() : '';
+      if (!name) {
+        showToast('Вкажіть назву проєкту', 'warning');
+        return;
+      }
+      handleCreateProject(name, desc);
+    });
+  }
+
+  // Backups View Listeners
+  if (dom.btnCreateBackup) {
+    dom.btnCreateBackup.addEventListener('click', () => {
+      const desc = dom.inputBackupDescription ? dom.inputBackupDescription.value.trim() : '';
+      handleCreateBackup(desc);
+    });
+  }
+  if (dom.btnRefreshBackups) {
+    dom.btnRefreshBackups.addEventListener('click', () => {
+      fetchBackups();
+    });
+  }
+  if (dom.checkAutoBackupTimer) {
+    dom.checkAutoBackupTimer.addEventListener('change', handleSaveAutoBackupConfig);
+  }
+  if (dom.selectBackupInterval) {
+    dom.selectBackupInterval.addEventListener('change', handleSaveAutoBackupConfig);
+  }
+  if (dom.checkAutoBackupImport) {
+    dom.checkAutoBackupImport.addEventListener('change', handleSaveAutoBackupConfig);
+  }
+
+  // Backups Card Actions Delegation (Restore, Edit Desc, Delete)
+  if (dom.backupsListContainer) {
+    dom.backupsListContainer.addEventListener('click', (e) => {
+      const target = e.target.closest('[data-action]');
+      if (!target) return;
+      const action = target.getAttribute('data-action');
+      const backupId = target.getAttribute('data-backup-id');
+      if (!backupId) return;
+
+      if (action === 'restore') {
+        const displayName = decodeURIComponent(target.getAttribute('data-display-name') || backupId);
+        if (dom.restoreTargetBackupId) dom.restoreTargetBackupId.value = backupId;
+        if (dom.valRestoreTargetName) dom.valRestoreTargetName.textContent = `📦 ${displayName}`;
+        if (dom.modalConfirmRestore) dom.modalConfirmRestore.classList.remove('hidden');
+      } else if (action === 'edit-desc') {
+        const currentDesc = decodeURIComponent(target.getAttribute('data-current-desc') || '');
+        if (dom.editBackupId) dom.editBackupId.value = backupId;
+        if (dom.inputEditBackupDesc) dom.inputEditBackupDesc.value = currentDesc;
+        if (dom.modalEditBackupDesc) dom.modalEditBackupDesc.classList.remove('hidden');
+      } else if (action === 'delete') {
+        if (confirm('Видалити цей бекап безповоротно?')) {
+          handleDeleteBackup(backupId);
+        }
+      }
+    });
+  }
+
+  // Edit Backup Desc Modal Listeners
+  if (dom.btnCloseEditDescModal) {
+    dom.btnCloseEditDescModal.addEventListener('click', () => {
+      if (dom.modalEditBackupDesc) dom.modalEditBackupDesc.classList.add('hidden');
+    });
+  }
+  if (dom.btnCancelEditDesc) {
+    dom.btnCancelEditDesc.addEventListener('click', () => {
+      if (dom.modalEditBackupDesc) dom.modalEditBackupDesc.classList.add('hidden');
+    });
+  }
+  if (dom.btnConfirmSaveDesc) {
+    dom.btnConfirmSaveDesc.addEventListener('click', () => {
+      const backupId = dom.editBackupId ? dom.editBackupId.value : '';
+      const newDesc = dom.inputEditBackupDesc ? dom.inputEditBackupDesc.value.trim() : '';
+      handleUpdateBackupDesc(backupId, newDesc);
+    });
+  }
+
+  // Restore Confirm Modal Listeners
+  if (dom.btnCloseRestoreModal) {
+    dom.btnCloseRestoreModal.addEventListener('click', () => {
+      if (dom.modalConfirmRestore) dom.modalConfirmRestore.classList.add('hidden');
+    });
+  }
+  if (dom.btnCancelRestore) {
+    dom.btnCancelRestore.addEventListener('click', () => {
+      if (dom.modalConfirmRestore) dom.modalConfirmRestore.classList.add('hidden');
+    });
+  }
+  if (dom.btnConfirmExecuteRestore) {
+    dom.btnConfirmExecuteRestore.addEventListener('click', () => {
+      const backupId = dom.restoreTargetBackupId ? dom.restoreTargetBackupId.value : '';
+      handleRestoreBackup(backupId);
+    });
+  }
+
+  // Deploy History Refresh
+  if (dom.btnRefreshDeployHistory) {
+    dom.btnRefreshDeployHistory.addEventListener('click', () => {
+      fetchDeployHistory();
     });
   }
   
@@ -1358,6 +1871,12 @@ export async function initApp() {
     clearTerminal();
   }
   await fetchStatus();
+  await fetchProjects();
+  if (state.currentTab === 'backups') {
+    await fetchBackups();
+  } else if (state.currentTab === 'deploy') {
+    await fetchDeployHistory();
+  }
 }
 // Auto-boot if running in browser
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {

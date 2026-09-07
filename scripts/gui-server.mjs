@@ -4,10 +4,19 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { spawn, exec } from 'node:child_process';
+import { ProjectManager } from './project-manager.mjs';
+import { BackupManager } from './backup-manager.mjs';
+import { fetchDeployHistory } from './deploy-cloudflare.mjs';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const guiDir = path.join(rootDir, 'gui');
+
+export const projectManager = new ProjectManager(rootDir);
+export function getActiveBackupManager() {
+  return new BackupManager(projectManager.getActiveProjectDir());
+}
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -728,7 +737,10 @@ export async function getProjectStatus(targetHosting = null, targetTemplate = nu
     previewServer: {
       running: Boolean(activePreviewProcess),
       url: activePreviewUrl
-    }
+    },
+    activeProject: projectManager.getActiveProject(),
+    projectsCount: projectManager.listProjects().projects.length,
+    backupsCount: getActiveBackupManager().listBackups().totalCount
   };
 }
 
@@ -800,6 +812,15 @@ export function executeShellCommand(action, command, options = {}) {
     if (success) {
       console.log(`\x1b[32m[Webstudio CLI] Action "${action}" completed successfully.\x1b[0m\n`);
       broadcastLog(`Action "${action}" completed successfully.`, 'stdout');
+      if (action === 'import' || action === 'sync' || action === 'sync-draft') {
+        try {
+          projectManager.syncRootToActive();
+          const autoSnap = getActiveBackupManager().triggerImportBackup();
+          if (autoSnap) {
+            broadcastLog(`📦 Auto-backup snapshot created: ${autoSnap.displayName}`, 'stdout');
+          }
+        } catch {}
+      }
     } else {
       console.log(`\x1b[31m[Webstudio CLI] Action "${action}" exited with code ${code}.\x1b[0m\n`);
       broadcastLog(`Action "${action}" exited with code ${code}.`, 'stderr');
@@ -1204,6 +1225,190 @@ export function createGuiServer(port = 4200) {
         }
         return;
       }
+      // Helper to read JSON body
+      const readJsonBody = () => new Promise((resolve) => {
+        let body = '';
+        req.on('data', chunk => { body += chunk; });
+        req.on('end', () => {
+          try { resolve(JSON.parse(body || '{}')); }
+          catch { resolve({}); }
+        });
+      });
+
+      // GET /api/projects -> List all projects
+      if (pathname === '/api/projects' && req.method === 'GET') {
+        try {
+          const data = projectManager.listProjects();
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify(data));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/projects/create -> Create a new project
+      if (pathname === '/api/projects/create' && req.method === 'POST') {
+        const payload = await readJsonBody();
+        try {
+          const newProj = projectManager.createProject(payload.name, payload.description);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ ok: true, project: newProj }));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/projects/select -> Switch active project
+      if (pathname === '/api/projects/select' && req.method === 'POST') {
+        const payload = await readJsonBody();
+        try {
+          const proj = projectManager.selectProject(payload.projectId);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ ok: true, project: proj }));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/projects/delete -> Delete a project
+      if (pathname === '/api/projects/delete' && req.method === 'POST') {
+        const payload = await readJsonBody();
+        try {
+          const result = projectManager.deleteProject(payload.projectId);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify(result));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/projects/rename -> Rename a project
+      if (pathname === '/api/projects/rename' && req.method === 'POST') {
+        const payload = await readJsonBody();
+        try {
+          const proj = projectManager.renameProject(payload.projectId, payload.newName);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ ok: true, project: proj }));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
+
+      // GET /api/backups -> List backups for active project
+      if (pathname === '/api/backups' && req.method === 'GET') {
+        try {
+          const bm = getActiveBackupManager();
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify(bm.listBackups()));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/backups/create -> Create backup for active project
+      if (pathname === '/api/backups/create' && req.method === 'POST') {
+        const payload = await readJsonBody();
+        try {
+          const bm = getActiveBackupManager();
+          const snapshot = bm.createBackup(payload.description, payload.type || 'manual');
+          broadcastLog(`💾 Local backup snapshot created: ${snapshot.displayName}`, 'stdout');
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ ok: true, backup: snapshot }));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/backups/restore -> Restore backup into active project
+      if (pathname === '/api/backups/restore' && req.method === 'POST') {
+        const payload = await readJsonBody();
+        try {
+          const bm = getActiveBackupManager();
+          const result = bm.restoreBackup(payload.backupId);
+          projectManager.syncActiveToRoot(projectManager.getActiveProjectDir());
+          broadcastLog(`⏪ Restored project snapshot: ${result.displayName}`, 'stdout');
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify(result));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/backups/update -> Update backup description
+      if (pathname === '/api/backups/update' && req.method === 'POST') {
+        const payload = await readJsonBody();
+        try {
+          const bm = getActiveBackupManager();
+          const updated = bm.updateDescription(payload.backupId, payload.description);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ ok: true, backup: updated }));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/backups/delete -> Delete a backup
+      if (pathname === '/api/backups/delete' && req.method === 'POST') {
+        const payload = await readJsonBody();
+        try {
+          const bm = getActiveBackupManager();
+          const result = bm.deleteBackup(payload.backupId);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify(result));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/backups/config -> Update auto-backup settings
+      if (pathname === '/api/backups/config' && req.method === 'POST') {
+        const payload = await readJsonBody();
+        try {
+          const bm = getActiveBackupManager();
+          const updatedCfg = bm.updateConfig(payload);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ ok: true, config: updatedCfg }));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
+
+      // GET /api/deploy/history -> Fetch deployment history from Cloudflare
+      if (pathname === '/api/deploy/history' && req.method === 'GET') {
+        try {
+          const targetProj = parsedUrl.searchParams.get('project') || projectManager.getActiveProject()?.name || getDeployConfig(rootDir).projectName;
+          const limit = parseInt(parsedUrl.searchParams.get('limit') || '10', 10);
+          const history = await fetchDeployHistory(targetProj, limit);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify(history));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
 
       // POST /api/action -> Execute process & stream logs
       if (pathname === '/api/action' && req.method === 'POST') {
@@ -1277,7 +1482,21 @@ export function createGuiServer(port = 4200) {
     res.end('File Not Found');
   });
 
-  return { server, port };
+  const autoBackupInterval = setInterval(() => {
+    try {
+      const bm = getActiveBackupManager();
+      const snap = bm.checkAutoBackup();
+      if (snap) {
+        broadcastLog(`⏰ Auto-backup snapshot created: ${snap.displayName}`, 'stdout');
+      }
+    } catch {}
+  }, 60 * 1000);
+
+  server.on('close', () => {
+    clearInterval(autoBackupInterval);
+  });
+
+  return { server, port, autoBackupInterval };
 }
 
 if (process.argv[1] && (process.argv[1].endsWith('gui-server.mjs') || path.resolve(process.argv[1]) === __filename)) {

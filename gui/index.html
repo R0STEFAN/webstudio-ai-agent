@@ -35,6 +35,17 @@
           <span class="status-dot"></span>
           <span class="status-label" id="val-header-mcp-status" data-i18n="workspace.telemetry.localMcp">Локальний MCP</span>
         </div>
+        <div class="project-header-control" id="project-header-control">
+          <div class="project-selector-wrapper">
+            <span class="project-selector-icon">📁</span>
+            <select id="select-active-project" class="select-project-dropdown" aria-label="Active Project">
+              <option value="tattoo-v3-test">tattoo-v3-test</option>
+            </select>
+          </div>
+          <button type="button" id="btn-header-new-project" class="btn btn-secondary btn-sm btn-new-proj" title="Створити новий проєкт">
+            <span>➕</span> <span data-i18n="projects.newBtn">Новий</span>
+          </button>
+        </div>
 
         <div class="lang-switcher" role="group" aria-label="Language selection">
           <button type="button" class="btn-lang" id="btn-lang-ua" data-lang="ua">UA 🇺🇦</button>
@@ -94,6 +105,7 @@
       <div class="tab-navigation" role="tablist" aria-label="Dashboard Navigation">
         <button type="button" id="btn-tab-workspace" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-view-workspace" data-i18n="tabs.workspace">⚡ Керування проєктом</button>
         <button type="button" id="btn-tab-deploy" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-view-deploy" data-i18n="tabs.deploy">🚀 Деплой та Шаблони</button>
+        <button type="button" id="btn-tab-backups" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-view-backups" data-i18n="tabs.backups">📦 Локальні бекапи</button>
       </div>
 
       <!-- Tab View 1: Project Workspace Dashboard -->
@@ -581,6 +593,148 @@
                 </div>
               </div>
             </div>
+
+            <!-- Deploy History Card -->
+            <div class="card card-deploy-history">
+              <div class="card-header-between">
+                <div class="card-header-left">
+                  <div class="card-header-icon">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                  </div>
+                  <h3 class="card-title" data-i18n="deploy.history.title">📜 Історія деплоїв (Cloudflare Pages)</h3>
+                </div>
+                <button type="button" id="btn-refresh-deploy-history" class="btn btn-secondary btn-xs" title="Оновити історію">
+                  <span data-i18n="deploy.history.refresh">🔄 Оновити</span>
+                </button>
+              </div>
+
+              <div class="card-body">
+                <div id="deploy-history-list" class="deploy-history-list">
+                  <div class="history-empty" data-i18n="deploy.history.loading">Завантаження історії деплоїв...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab View 3: Local Backups & Auto-Backup Engine -->
+      <div id="tab-view-backups" class="tab-view-content hidden" role="tabpanel" aria-labelledby="btn-tab-backups">
+        <div class="workspace-grid">
+          <!-- Left Column: Backup Controls & Settings -->
+          <div class="column-actions col-actions">
+            <!-- Create Backup Card -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-header-icon">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+                </div>
+                <h3 class="card-title" data-i18n="backups.create.title">💾 Створити локальний бекап</h3>
+              </div>
+
+              <div class="card-body">
+                <p class="card-description" data-i18n="backups.create.desc">
+                  Створює ізольовану точку відновлення поточної синхронізації активного проєкту.
+                </p>
+
+                <div class="form-group">
+                  <label for="input-backup-description" class="form-label" data-i18n="backups.create.descLabel">Короткий опис (опціонально):</label>
+                  <input type="text" id="input-backup-description" class="form-input" placeholder="Наприклад: перед оновленням галереї..." data-i18n-placeholder="backups.create.descPlaceholder">
+                </div>
+
+                <button type="button" id="btn-create-backup" class="btn btn-primary btn-block">
+                  <span>💾</span> <span data-i18n="backups.create.btn">Забекапити поточний стан</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Auto-Backup Settings Card -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-header-icon">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </div>
+                <h3 class="card-title" data-i18n="backups.auto.title">⚙️ Автоматичний бекап</h3>
+              </div>
+
+              <div class="card-body">
+                <div class="toggle-setting-row">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="check-auto-backup-timer" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <div class="toggle-label-wrap">
+                    <span class="toggle-title" data-i18n="backups.auto.timerTitle">Автобекап по таймеру</span>
+                    <span class="toggle-desc" data-i18n="backups.auto.timerDesc">Створює знімок лише якщо були реальні зміни</span>
+                  </div>
+                </div>
+
+                <div class="timer-interval-container">
+                  <label for="select-backup-interval" class="form-label-inline" data-i18n="backups.auto.intervalLabel">Інтервал перевірки:</label>
+                  <select id="select-backup-interval" class="form-select form-select-sm">
+                    <option value="10">Кожні 10 хв</option>
+                    <option value="30">Кожні 30 хв</option>
+                    <option value="60">Кожну 1 год</option>
+                  </select>
+                </div>
+
+                <hr class="card-divider">
+
+                <div class="toggle-setting-row">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="check-auto-backup-import" checked>
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <div class="toggle-label-wrap">
+                    <span class="toggle-title" data-i18n="backups.auto.importTitle">Автобекап після Import / Sync</span>
+                    <span class="toggle-desc" data-i18n="backups.auto.importDesc">Автоматичний знімок після кожної хмарної дії</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Backups Timeline & List -->
+          <div class="column-output col-telemetry">
+            <div class="card card-backups-timeline">
+              <div class="card-header-between">
+                <div class="card-header-left">
+                  <div class="card-header-icon">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                      <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                      <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                      <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                    </svg>
+                  </div>
+                  <h3 class="card-title" data-i18n="backups.list.title">🕒 Історія збережених бекапів</h3>
+                </div>
+                <div class="card-header-actions">
+                  <span id="badge-backups-total" class="badge badge-info">0 знімків</span>
+                  <button type="button" id="btn-refresh-backups" class="btn btn-secondary btn-xs" title="Оновити список">
+                    <span data-i18n="backups.list.refresh">🔄 Оновити</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="card-body">
+                <div id="backups-list-container" class="backups-list-container">
+                  <div class="backups-empty-state" data-i18n="backups.list.empty">
+                    Локальних бекапів ще немає. Натисніть «Забекапити поточний стан», щоб створити перший знімок.
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -615,7 +769,76 @@
     </div>
   </footer>
 
-  <!-- Floating Toast Notifications Container -->
+  <!-- Modal 1: New Project -->
+  <div id="modal-new-project" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-new-project-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-new-project-title" class="modal-title" data-i18n="projects.modal.title">➕ Створити новий проєкт</h3>
+        <button type="button" class="btn-modal-close" id="btn-close-new-project-modal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="input-new-project-name" class="form-label" data-i18n="projects.modal.nameLabel">Назва проєкту:</label>
+          <input type="text" id="input-new-project-name" class="form-input" placeholder="my-awesome-site" autocomplete="off">
+          <span class="form-hint" data-i18n="projects.modal.nameHint">Тільки латинські літери, цифри та дефіси (наприклад: coffee-shop, landing-v2)</span>
+        </div>
+        <div class="form-group">
+          <label for="input-new-project-desc" class="form-label" data-i18n="projects.modal.descLabel">Опис (опціонально):</label>
+          <input type="text" id="input-new-project-desc" class="form-input" placeholder="Короткий опис сайту...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-new-project" data-i18n="common.cancel">Скасувати</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-create-project" data-i18n="projects.modal.createBtn">Створити проєкт</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Edit Backup Description -->
+  <div id="modal-edit-backup-desc" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-edit-desc-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-edit-desc-title" class="modal-title" data-i18n="backups.modal.editTitle">✏️ Редагувати опис бекапу</h3>
+        <button type="button" class="btn-modal-close" id="btn-close-edit-desc-modal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-backup-id">
+        <div class="form-group">
+          <label for="input-edit-backup-desc" class="form-label" data-i18n="backups.modal.newDescLabel">Новий опис:</label>
+          <input type="text" id="input-edit-backup-desc" class="form-input" placeholder="Введіть опис...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-edit-desc" data-i18n="common.cancel">Скасувати</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-save-desc" data-i18n="common.save">Зберегти</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Confirm Restore Backup -->
+  <div id="modal-confirm-restore" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-restore-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-restore-title" class="modal-title" data-i18n="backups.modal.restoreTitle">⏪ Підтвердження відновлення</h3>
+        <button type="button" class="btn-modal-close" id="btn-close-restore-modal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="restore-target-backup-id">
+        <p class="modal-warning-text" data-i18n="backups.modal.restoreWarning">
+          Ви впевнені, що хочете відновити проєкт до цього стану? Поточні робочі файли будуть замінені вмістом обраного бекапу.
+        </p>
+        <div class="restore-target-badge" id="val-restore-target-name"></div>
+        <p class="text-muted text-sm" data-i18n="backups.modal.restoreSafetyNote">
+          ℹ️ Система автоматично створить аварійний бекап поточного стану перед відновленням.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-restore" data-i18n="common.cancel">Скасувати</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-execute-restore" data-i18n="backups.modal.confirmRestoreBtn">Так, відновити</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
   <!-- Client Application Script Entry Point -->

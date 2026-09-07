@@ -4,6 +4,9 @@ Thumbs.db
 *.log
 .temp
 .webstudio/
+.webstudio-backups/
+projects/
+test/pm-test-*/
 *indexing*.json
 *service-account*.json
 *credentials*.json

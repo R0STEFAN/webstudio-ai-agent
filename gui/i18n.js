@@ -10,7 +10,19 @@ export const i18n = {
     langSwitch: 'Мова',
     tabs: {
       workspace: '⚡ Керування проєктом',
-      deploy: '🚀 Деплой та Шаблони'
+      deploy: '🚀 Деплой та Шаблони',
+      backups: '📦 Локальні бекапи'
+    },
+    projects: {
+      newBtn: 'Новий',
+      newBtnTitle: 'Створити новий проєкт',
+      modal: {
+        title: '➕ Створити новий проєкт',
+        nameLabel: 'Назва проєкту:',
+        nameHint: 'Тільки латинські літери, цифри та дефіси (наприклад: coffee-shop, landing-v2)',
+        descLabel: 'Опис (опціонально):',
+        createBtn: 'Створити проєкт'
+      }
     },
     firstRun: {
       title: 'Первинне налаштування Webstudio',
@@ -152,7 +164,56 @@ export const i18n = {
         configFiles: 'Файли конфігурації',
         scriptsCount: 'Доступно npm-скриптів',
         lastBuild: 'Остання збірка'
+      },
+      history: {
+        title: '📜 Історія деплоїв (Cloudflare Pages)',
+        subtitle: 'Останні публікації та знімки поточного проєкту',
+        refresh: '🔄 Оновити',
+        loading: 'Завантаження історії деплоїв...',
+        empty: 'Історії деплоїв для цього проєкту ще немає'
       }
+    },
+    backups: {
+      create: {
+        title: '💾 Створити локальний бекап',
+        desc: 'Створює ізольовану точку відновлення поточної синхронізації активного проєкту.',
+        descLabel: 'Короткий опис (опціонально):',
+        descPlaceholder: 'Наприклад: перед оновленням галереї...',
+        btn: 'Забекапити поточний стан',
+        creating: 'Створення знімка...'
+      },
+      auto: {
+        title: '⚙️ Автоматичний бекап',
+        timerTitle: 'Автобекап по таймеру',
+        timerDesc: 'Створює знімок лише якщо були реальні зміни',
+        intervalLabel: 'Інтервал перевірки:',
+        importTitle: 'Автобекап після Import / Sync',
+        importDesc: 'Автоматичний знімок після кожної хмарної дії'
+      },
+      list: {
+        title: '🕒 Історія збережених бекапів',
+        subtitle: 'Сортування від найсвіжіших до старіших',
+        refresh: '🔄 Оновити',
+        empty: 'Локальних бекапів ще немає. Натисніть «Забекапити поточний стан», щоб створити перший знімок.',
+        restoreBtn: '⏪ Відновити',
+        deleteBtn: '🗑️',
+        editDescBtn: '✏️ Змінити опис',
+        pages: 'Сторінок',
+        instances: 'Блоків',
+        assets: 'Ассетів'
+      },
+      modal: {
+        editTitle: '✏️ Редагувати опис бекапу',
+        newDescLabel: 'Новий опис:',
+        restoreTitle: '⏪ Підтвердження відновлення',
+        restoreWarning: 'Ви впевнені, що хочете відновити проєкт до цього стану? Поточні робочі файли будуть замінені вмістом обраного бекапу.',
+        restoreSafetyNote: 'ℹ️ Система автоматично створить аварійний бекап поточного стану перед відновленням.',
+        confirmRestoreBtn: 'Так, відновити'
+      }
+    },
+    common: {
+      cancel: 'Скасувати',
+      save: 'Зберегти'
     },
     messages: {
       validationError: 'Помилка валідації',
@@ -175,7 +236,19 @@ export const i18n = {
     langSwitch: 'Language',
     tabs: {
       workspace: '⚡ Project Workspace',
-      deploy: '🚀 Build & Deploy'
+      deploy: '🚀 Build & Deploy',
+      backups: '📦 Local Backups'
+    },
+    projects: {
+      newBtn: 'New',
+      newBtnTitle: 'Create New Project',
+      modal: {
+        title: '➕ Create New Project',
+        nameLabel: 'Project Name:',
+        nameHint: 'Lowercase letters, numbers and hyphens only (e.g. coffee-shop, landing-v2)',
+        descLabel: 'Description (optional):',
+        createBtn: 'Create Project'
+      }
     },
     firstRun: {
       title: 'Webstudio Initial Setup',
@@ -317,7 +390,56 @@ export const i18n = {
         configFiles: 'Config Files',
         scriptsCount: 'Available NPM Scripts',
         lastBuild: 'Last Build'
+      },
+      history: {
+        title: '📜 Deploy History (Cloudflare Pages)',
+        subtitle: 'Recent deployments and snapshots for the active project',
+        refresh: '🔄 Refresh',
+        loading: 'Loading deployment history...',
+        empty: 'No deployment history found for this project yet'
       }
+    },
+    backups: {
+      create: {
+        title: '💾 Create Local Backup',
+        desc: 'Creates an isolated restore point of the active project synchronization.',
+        descLabel: 'Short description (optional):',
+        descPlaceholder: 'For example: before gallery redesign...',
+        btn: 'Backup Current State',
+        creating: 'Creating snapshot...'
+      },
+      auto: {
+        title: '⚙️ Automated Backup',
+        timerTitle: 'Scheduled Auto-backup',
+        timerDesc: 'Creates snapshot only if actual changes occurred',
+        intervalLabel: 'Check interval:',
+        importTitle: 'Auto-backup after Import / Sync',
+        importDesc: 'Automatic snapshot after every cloud action'
+      },
+      list: {
+        title: '🕒 Saved Backups History',
+        subtitle: 'Sorted newest to oldest',
+        refresh: '🔄 Refresh',
+        empty: 'No local backups found. Click "Backup Current State" to create the first snapshot.',
+        restoreBtn: '⏪ Restore',
+        deleteBtn: '🗑️',
+        editDescBtn: '✏️ Edit Note',
+        pages: 'Pages',
+        instances: 'Instances',
+        assets: 'Assets'
+      },
+      modal: {
+        editTitle: '✏️ Edit Backup Description',
+        newDescLabel: 'New Description:',
+        restoreTitle: '⏪ Confirm Project Restore',
+        restoreWarning: 'Are you sure you want to restore the project to this state? Current active files will be replaced by this backup snapshot.',
+        restoreSafetyNote: 'ℹ️ System will automatically create a pre-restore safety snapshot before proceeding.',
+        confirmRestoreBtn: 'Yes, Restore'
+      }
+    },
+    common: {
+      cancel: 'Cancel',
+      save: 'Save'
     },
     messages: {
       validationError: 'Validation Error',
