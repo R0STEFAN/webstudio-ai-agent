@@ -163,19 +163,20 @@ export async function detectProductionBranch(projectName) {
 }
 
 export async function deploy() {
-  const projectName = getProjectName(rootDir);
+  const targetDir = process.env.PROJECT_DIR ? path.resolve(process.env.PROJECT_DIR) : process.cwd();
+  const projectName = getProjectName(targetDir);
   console.log(`\x1b[36m[Cloudflare Deploy]\x1b[0m Detecting production branch for project: \x1b[1m"${projectName}"\x1b[0m...`);
 
   const { branch: targetBranch, source } = await detectProductionBranch(projectName);
   console.log(`\x1b[36m[Cloudflare Deploy]\x1b[0m Target production branch: \x1b[32m"${targetBranch}"\x1b[0m (${source})`);
 
-  const deployDir = fs.existsSync(path.join(rootDir, 'build', 'client')) ? './build/client' : './build';
+  const deployDir = fs.existsSync(path.join(targetDir, 'build', 'client')) ? './build/client' : './build';
   const cmd = `npx wrangler pages deploy ${deployDir} --project-name "${projectName}" --branch "${targetBranch}" --commit-dirty=true`;
 
   console.log(`\x1b[36m[Cloudflare Deploy]\x1b[0m $ ${cmd}\n`);
 
   const child = spawn(cmd, {
-    cwd: rootDir,
+    cwd: targetDir,
     shell: true,
     stdio: 'inherit',
     env: process.env

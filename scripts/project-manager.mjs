@@ -417,14 +417,6 @@ export class ProjectManager {
     if (fs.existsSync(activeWs)) {
       copyDirSync(activeWs, rootWs);
     }
-
-    const activeToml = path.join(activeProjectDir, 'wrangler.toml');
-    const rootToml = path.join(this.rootDir, 'wrangler.toml');
-    if (fs.existsSync(activeToml)) {
-      try {
-        fs.copyFileSync(activeToml, rootToml);
-      } catch {}
-    }
   }
 
   syncRootToActive() {
@@ -436,14 +428,6 @@ export class ProjectManager {
 
     if (fs.existsSync(rootWs)) {
       copyDirSync(rootWs, activeWs);
-    }
-
-    const rootToml = path.join(this.rootDir, 'wrangler.toml');
-    const activeToml = path.join(activeDir, 'wrangler.toml');
-    if (fs.existsSync(rootToml)) {
-      try {
-        fs.copyFileSync(rootToml, activeToml);
-      } catch {}
     }
   }
 }

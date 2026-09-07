@@ -447,6 +447,10 @@ async function runTestSuite() {
 
     // 4.2 update-project-name action
     await itAsync('POST /api/action with update-project-name should update name & stream success log and complete event', async () => {
+      const { ProjectManager } = await import('../scripts/project-manager.mjs');
+      const pm = new ProjectManager(rootDir);
+      const initialActiveProject = pm.getActiveProject()?.id || 'test-mcp-project';
+
       const res = await fetch(`${BASE_URL}/api/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -472,8 +476,14 @@ async function runTestSuite() {
       );
       assert.strictEqual(completeEvt.data.success, true);
       assert.strictEqual(completeEvt.data.code, 0);
-    });
 
+      // Restore project name
+      if (initialActiveProject && initialActiveProject !== 'webstudio-e2e-app') {
+        try {
+          pm.renameProject('webstudio-e2e-app', initialActiveProject);
+        } catch {}
+      }
+    });
     // 4.3 check-auth action
     await itAsync('POST /api/action with check-auth should stream npx wrangler whoami command log', async () => {
       const res = await fetch(`${BASE_URL}/api/action`, {

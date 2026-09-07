@@ -209,8 +209,16 @@ export function cleanAllTemplateGenerations(dir = null) {
     path.join(targetDir, 'Dockerfile'),
     path.join(targetDir, 'vite.config.ts'),
     path.join(targetDir, 'react-router.config.ts'),
-    path.join(targetDir, 'worker-configuration.d.ts')
+    path.join(targetDir, 'worker-configuration.d.ts'),
+    path.join(targetDir, 'load-context.ts'),
+    path.join(targetDir, 'tsconfig.json'),
+    path.join(targetDir, 'WS_CF_README.md')
   ];
+
+  if (targetDir !== rootDir) {
+    pathsToRemove.push(path.join(targetDir, '.npmrc'));
+    pathsToRemove.push(path.join(targetDir, 'node_modules'));
+  }
 
   for (const p of pathsToRemove) {
     if (fs.existsSync(p)) {
@@ -823,6 +831,16 @@ export function executeShellCommand(action, command, options = {}) {
           const autoSnap = getActiveBackupManager().triggerImportBackup();
           if (autoSnap) {
             broadcastLog(`📦 Auto-backup snapshot created: ${autoSnap.displayName}`, 'stdout');
+          }
+        } catch {}
+      }
+      if (action === 'generate-template') {
+        try {
+          const activeProj = typeof projectManager !== 'undefined' ? projectManager.getActiveProject() : null;
+          const targetName = activeProj?.name || path.basename(targetCwd);
+          if (targetName) {
+            updateProjectNameOnDisk(targetCwd, targetName);
+            broadcastLog(`✓ Synced project name "${targetName}" into template config files.`, 'stdout');
           }
         } catch {}
       }

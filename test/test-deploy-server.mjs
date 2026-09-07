@@ -205,16 +205,21 @@ console.log('\n🌐 4. Testing GUI Server API Endpoints...');
 
 async function fetchJson(url, options = {}) {
   const res = await fetch(url, options);
-  const data = await res.json();
-  return { status: res.status, headers: res.headers, data };
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {}
+  return { status: res.status, data };
 }
 
 async function runServerTests() {
-  const { server } = createGuiServer(TEST_PORT);
+  const { ProjectManager } = await import('../scripts/project-manager.mjs');
+  const pm = new ProjectManager(rootDir);
+  const initialActiveProject = pm.getActiveProject()?.id || 'test-mcp-project';
   const rootPkgPath = path.join(rootDir, 'package.json');
   const initialPkgContent = fs.existsSync(rootPkgPath) ? fs.readFileSync(rootPkgPath, 'utf8') : null;
 
-
+  const { server } = createGuiServer(TEST_PORT);
   await new Promise((resolve, reject) => {
     server.listen(TEST_PORT, (err) => {
       if (err) reject(err);
@@ -248,6 +253,13 @@ async function runServerTests() {
       assert.strictEqual(status, 200);
       assert.strictEqual(data.ok, true);
       assert.strictEqual(data.action, 'update-project-name');
+
+      // Restore initial project name immediately
+      if (initialActiveProject && initialActiveProject !== 'test-demo-app') {
+        try {
+          pm.renameProject('test-demo-app', initialActiveProject);
+        } catch {}
+      }
     });
 
     await itAsync('POST /api/action should accept generate-template action', async () => {

@@ -206,6 +206,10 @@ it('should handle auto-backup timer and skip duplicates when no changes', () => 
 console.log('\n🌐 3. Testing HTTP API Endpoints...');
 
 async function runApiTests() {
+  const { ProjectManager } = await import('../scripts/project-manager.mjs');
+  const pm = new ProjectManager(rootDir);
+  const initialActive = pm.getActiveProject()?.id;
+
   const { server } = createGuiServer(TEST_PORT);
 
   await new Promise(resolve => server.listen(TEST_PORT, resolve));
@@ -313,6 +317,11 @@ async function runApiTests() {
     }
 
   } finally {
+    if (initialActive) {
+      try {
+        pm.selectProject(initialActive);
+      } catch {}
+    }
     await new Promise(resolve => server.close(resolve));
   }
 }
