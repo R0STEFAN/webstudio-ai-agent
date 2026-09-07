@@ -1139,14 +1139,24 @@ export function renderProjectsList() {
   }
 
   dom.projectsListContainer.innerHTML = '';
+  const isEn = state.lang === 'en';
+  const openBtnText = t('projects.list.openBtn', {}, state.lang) || (isEn ? 'Open in Workspace' : 'Відкрити в робочій області');
+  const activeBtnText = t('projects.list.currentActive', {}, state.lang) || (isEn ? 'Active' : 'Активний');
+  const deleteTitle = t('projects.list.deleteBtn', {}, state.lang) || (isEn ? 'Delete' : 'Видалити');
+  const pagesLabel = t('projects.list.pages', {}, state.lang) || (isEn ? 'pages' : 'сторінок');
+  const instancesLabel = t('projects.list.instances', {}, state.lang) || (isEn ? 'blocks' : 'блоків');
+  const assetsLabel = t('projects.list.assets', {}, state.lang) || (isEn ? 'assets' : 'ассетів');
+  const activeBadgeText = t('projects.list.activeBadge', {}, state.lang) || (isEn ? '🟢 Active' : '🟢 Активний');
+
   for (const p of projects) {
     const card = document.createElement('div');
     const isActive = p.id === state.activeProjectId || p.isActive;
     card.className = `project-hub-card ${isActive ? 'active' : ''}`;
     card.dataset.projectId = p.id;
 
-    const modifiedStr = p.lastModified ? new Date(p.lastModified).toLocaleString('uk-UA') : '—';
-    const activeBadge = isActive ? `<span class="project-active-badge">🟢 Активний</span>` : '';
+    const modifiedLocale = isEn ? 'en-US' : 'uk-UA';
+    const modifiedStr = p.lastModified ? new Date(p.lastModified).toLocaleString(modifiedLocale) : '—';
+    const activeBadge = isActive ? `<span class="project-active-badge">${activeBadgeText}</span>` : '';
     const isOnly = projects.length <= 1;
 
     card.innerHTML = `
@@ -1163,23 +1173,23 @@ export function renderProjectsList() {
       <div class="project-hub-body">
         ${p.description ? `<p class="project-hub-desc">${p.description}</p>` : ''}
         <div class="project-hub-stats">
-          <span>📄 <strong>${p.pagesCount || 0}</strong> сторінок</span>
-          <span>🧩 <strong>${p.instancesCount || 0}</strong> блоків</span>
-          <span>🖼️ <strong>${p.assetsCount || 0}</strong> ассетів</span>
+          <span>📄 <strong>${p.pagesCount || 0}</strong> ${pagesLabel}</span>
+          <span>🧩 <strong>${p.instancesCount || 0}</strong> ${instancesLabel}</span>
+          <span>🖼️ <strong>${p.assetsCount || 0}</strong> ${assetsLabel}</span>
         </div>
       </div>
       <div class="project-hub-actions">
         ${isActive ? `
           <button type="button" class="btn btn-secondary btn-sm" disabled style="opacity: 0.8; cursor: default;">
-            <span>✓</span> <span>Активний</span>
+            <span>✓</span> <span>${activeBtnText}</span>
           </button>
         ` : `
           <button type="button" class="btn btn-primary btn-sm btn-select-project" data-action="select-project" data-project-id="${p.id}">
-            <span>⚡</span> <span>Відкрити в робочій області</span>
+            <span>⚡</span> <span>${openBtnText}</span>
           </button>
         `}
         ${!isOnly ? `
-          <button type="button" class="btn btn-outline btn-sm" data-action="delete-project" data-project-id="${p.id}" title="Видалити проєкт">
+          <button type="button" class="btn btn-outline btn-sm" data-action="delete-project" data-project-id="${p.id}" title="${deleteTitle}">
             <span>🗑️</span>
           </button>
         ` : ''}
@@ -1291,8 +1301,10 @@ export function renderBackupsList() {
   if (!dom.backupsListContainer) return;
   const backups = state.backups || [];
 
+  const isEn = state.lang === 'en';
   if (dom.badgeBackupsTotal) {
-    dom.badgeBackupsTotal.textContent = `${backups.length} знімків`;
+    const countLabel = isEn ? (backups.length === 1 ? 'snapshot' : 'snapshots') : t('backups.list.snapshots', {}, state.lang) || 'знімків';
+    dom.badgeBackupsTotal.textContent = `${backups.length} ${countLabel}`;
   }
 
   if (state.backupsConfig) {
@@ -1304,11 +1316,26 @@ export function renderBackupsList() {
   if (backups.length === 0) {
     dom.backupsListContainer.innerHTML = `
       <div class="backups-empty-state">
-        ${t('backups.list.empty', {}, state.lang) || 'Локальних бекапів ще немає. Натисніть «Забекапити поточний стан», щоб створити перший знімок.'}
+        ${t('backups.list.empty', {}, state.lang) || (isEn ? 'No local backups found. Click "Backup Current State" to create the first snapshot.' : 'Локальних бекапів ще немає. Натисніть «Забекапити поточний стан», щоб створити перший знімок.')}
       </div>
     `;
     return;
   }
+
+  const pillLabels = {
+    manual: isEn ? 'Manual' : 'Ручний',
+    timer: isEn ? '10m Timer' : 'Таймер 10хв',
+    import: isEn ? 'After Import' : 'Після Import',
+    'pre-restore': isEn ? 'Before Restore' : 'Перед відновленням'
+  };
+
+  const pagesLabel = t('backups.list.pages', {}, state.lang) || (isEn ? 'Pages' : 'Сторінок');
+  const instancesLabel = t('backups.list.instances', {}, state.lang) || (isEn ? 'Blocks' : 'Блоків');
+  const assetsLabel = t('backups.list.assets', {}, state.lang) || (isEn ? 'Assets' : 'Ассетів');
+  const restoreBtnLabel = t('backups.list.restoreBtn', {}, state.lang) || (isEn ? 'Restore' : 'Відновити');
+  const editDescLabel = t('backups.list.editDescBtn', {}, state.lang) || (isEn ? 'Edit description' : 'Змінити опис');
+  const deleteBtnTitle = t('backups.list.deleteBtnTitle', {}, state.lang) || (isEn ? 'Delete backup' : 'Видалити бекап');
+  const noDescLabel = isEn ? 'No description' : 'Без опису';
 
   dom.backupsListContainer.innerHTML = '';
   for (const b of backups) {
@@ -1316,12 +1343,6 @@ export function renderBackupsList() {
     card.className = 'backup-card';
     card.dataset.backupId = b.id;
 
-    const pillLabels = {
-      manual: 'Ручний',
-      timer: 'Таймер 10хв',
-      import: 'Після Import',
-      'pre-restore': 'Перед відновленням'
-    };
     const pillLabel = pillLabels[b.type] || b.type;
 
     card.innerHTML = `
@@ -1332,22 +1353,22 @@ export function renderBackupsList() {
         </div>
       </div>
       <div class="backup-description-box">
-        <span class="backup-desc-text">💬 "${b.description || 'Без опису'}"</span>
+        <span class="backup-desc-text">💬 "${b.description || noDescLabel}"</span>
         <button type="button" class="btn-edit-desc" data-action="edit-desc" data-backup-id="${b.id}" data-current-desc="${encodeURIComponent(b.description || '')}">
-          ✏️ Змінити опис
+          ✏️ ${editDescLabel}
         </button>
       </div>
       <div class="backup-stats-row">
-        <div class="backup-stat-chip">📄 <strong>${b.stats?.pagesCount ?? 0}</strong> Сторінок</div>
-        <div class="backup-stat-chip">🧩 <strong>${b.stats?.instancesCount ?? 0}</strong> Блоків</div>
-        <div class="backup-stat-chip">🖼️ <strong>${b.stats?.assetsCount ?? 0}</strong> Ассетів</div>
+        <div class="backup-stat-chip">📄 <strong>${b.stats?.pagesCount ?? 0}</strong> ${pagesLabel}</div>
+        <div class="backup-stat-chip">🧩 <strong>${b.stats?.instancesCount ?? 0}</strong> ${instancesLabel}</div>
+        <div class="backup-stat-chip">🖼️ <strong>${b.stats?.assetsCount ?? 0}</strong> ${assetsLabel}</div>
         <div class="backup-stat-chip">💾 <strong>${b.stats?.formattedSize || '0 B'}</strong></div>
       </div>
       <div class="backup-actions-row">
         <button type="button" class="btn btn-secondary btn-sm" data-action="restore" data-backup-id="${b.id}" data-display-name="${encodeURIComponent(b.displayName)}">
-          <span>⏪</span> <span>Відновити</span>
+          <span>⏪</span> <span>${restoreBtnLabel}</span>
         </button>
-        <button type="button" class="btn btn-outline btn-sm" data-action="delete" data-backup-id="${b.id}" title="Видалити бекап">
+        <button type="button" class="btn btn-outline btn-sm" data-action="delete" data-backup-id="${b.id}" title="${deleteBtnTitle}">
           <span>🗑️</span>
         </button>
       </div>
@@ -1466,24 +1487,26 @@ export async function fetchDeployHistory() {
 export function renderDeployHistory() {
   if (!dom.deployHistoryList) return;
   const list = state.deployHistory || [];
-
+  const isEn = state.lang === 'en';
   if (list.length === 0) {
     dom.deployHistoryList.innerHTML = `
       <div class="history-empty">
-        ${t('deploy.history.empty', {}, state.lang) || 'Деплоїв для цього проєкту ще немає.'}
+        ${t('deploy.history.empty', {}, state.lang) || (isEn ? 'No deployments found for this project yet.' : 'Деплоїв для цього проєкту ще немає.')}
       </div>
     `;
     return;
   }
+
+  const viewText = t('deploy.history.viewBtn', {}, state.lang) || (isEn ? 'View ↗' : 'Переглянути ↗');
 
   dom.deployHistoryList.innerHTML = '';
   for (const item of list) {
     const el = document.createElement('div');
     el.className = 'deploy-history-item';
 
-    const timeAgo = item.createdOn ? new Date(item.createdOn).toLocaleString('uk-UA') : '';
+    const timeAgo = item.createdOn ? new Date(item.createdOn).toLocaleString(isEn ? 'en-US' : 'uk-UA') : '';
     const badgeClass = item.isProduction ? 'production' : 'preview';
-    const badgeText = item.isProduction ? '🟢 Production' : '🟡 Preview';
+    const badgeText = item.isProduction ? (isEn ? '🟢 Production' : '🟢 Продакшн') : (isEn ? '🟡 Preview' : '🟡 Прев\'ю');
 
     el.innerHTML = `
       <div class="deploy-item-left">
@@ -1494,7 +1517,7 @@ export function renderDeployHistory() {
         </div>
       </div>
       <div class="deploy-item-actions">
-        ${item.url ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer" class="deploy-link-btn">Переглянути ↗</a>` : ''}
+        ${item.url ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer" class="deploy-link-btn">${viewText}</a>` : ''}
       </div>
     `;
     dom.deployHistoryList.appendChild(el);

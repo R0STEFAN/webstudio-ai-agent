@@ -18,17 +18,19 @@ export const i18n = {
       newBtn: 'Новий',
       newBtnTitle: 'Створити новий проєкт',
       create: {
-        title: '➕ Новий проєкт',
+        title: 'Новий проєкт',
         desc: 'Створює новий ізольований сайт із власною синхронізацією, базою ассетів та бекапами.'
       },
       list: {
-        title: '📁 Всі проєкти',
+        title: 'Всі проєкти',
         activeBadge: '🟢 Активний',
-        openBtn: '⚡ Відкрити в робочій області',
-        deleteBtn: '🗑️ Видалити',
+        currentActive: 'Активний',
+        openBtn: 'Відкрити в робочій області',
+        deleteBtn: 'Видалити',
         pages: 'сторінок',
         instances: 'блоків',
         assets: 'ассетів',
+        count: 'проєктів',
         noProjects: 'Не знайдено жодного проєкту. Створіть перший проєкт.'
       },
       modal: {
@@ -181,16 +183,17 @@ export const i18n = {
         lastBuild: 'Остання збірка'
       },
       history: {
-        title: '📜 Історія деплоїв (Cloudflare Pages)',
+        title: 'Історія деплоїв (Cloudflare Pages)',
         subtitle: 'Останні публікації та знімки поточного проєкту',
-        refresh: '🔄 Оновити',
+        refresh: 'Оновити',
+        viewBtn: 'Переглянути ↗',
         loading: 'Завантаження історії деплоїв...',
         empty: 'Історії деплоїв для цього проєкту ще немає'
       }
     },
     backups: {
       create: {
-        title: '💾 Створити локальний бекап',
+        title: 'Створити локальний бекап',
         desc: 'Створює ізольовану точку відновлення поточної синхронізації активного проєкту.',
         descLabel: 'Короткий опис (опціонально):',
         descPlaceholder: 'Наприклад: перед оновленням галереї...',
@@ -198,7 +201,7 @@ export const i18n = {
         creating: 'Створення знімка...'
       },
       auto: {
-        title: '⚙️ Автоматичний бекап',
+        title: 'Автоматичний бекап',
         timerTitle: 'Автобекап по таймеру',
         timerDesc: 'Створює знімок лише якщо були реальні зміни',
         intervalLabel: 'Інтервал перевірки:',
@@ -206,16 +209,18 @@ export const i18n = {
         importDesc: 'Автоматичний знімок після кожної хмарної дії'
       },
       list: {
-        title: '🕒 Історія збережених бекапів',
+        title: 'Історія збережених бекапів',
         subtitle: 'Сортування від найсвіжіших до старіших',
-        refresh: '🔄 Оновити',
+        refresh: 'Оновити',
         empty: 'Локальних бекапів ще немає. Натисніть «Забекапити поточний стан», щоб створити перший знімок.',
-        restoreBtn: '⏪ Відновити',
-        deleteBtn: '🗑️',
-        editDescBtn: '✏️ Змінити опис',
+        restoreBtn: 'Відновити',
+        deleteBtn: 'Видалити',
+        deleteBtnTitle: 'Видалити бекап',
+        editDescBtn: 'Змінити опис',
         pages: 'Сторінок',
         instances: 'Блоків',
-        assets: 'Ассетів'
+        assets: 'Ассетів',
+        snapshots: 'знімків'
       },
       modal: {
         editTitle: '✏️ Редагувати опис бекапу',
@@ -260,17 +265,19 @@ export const i18n = {
       newBtn: 'New',
       newBtnTitle: 'Create New Project',
       create: {
-        title: '➕ New Project',
+        title: 'New Project',
         desc: 'Creates an isolated site with dedicated synchronization, asset library, and backups.'
       },
       list: {
-        title: '📁 All Projects',
+        title: 'All Projects',
         activeBadge: '🟢 Active',
-        openBtn: '⚡ Open in Workspace',
-        deleteBtn: '🗑️ Delete',
+        currentActive: 'Active',
+        openBtn: 'Open in Workspace',
+        deleteBtn: 'Delete',
         pages: 'pages',
         instances: 'instances',
         assets: 'assets',
+        count: 'projects',
         noProjects: 'No projects found. Create your first project.'
       },
       modal: {
@@ -423,16 +430,17 @@ export const i18n = {
         lastBuild: 'Last Build'
       },
       history: {
-        title: '📜 Deploy History (Cloudflare Pages)',
+        title: 'Deploy History (Cloudflare Pages)',
         subtitle: 'Recent deployments and snapshots for the active project',
-        refresh: '🔄 Refresh',
+        refresh: 'Refresh',
+        viewBtn: 'View ↗',
         loading: 'Loading deployment history...',
         empty: 'No deployment history found for this project yet'
       }
     },
     backups: {
       create: {
-        title: '💾 Create Local Backup',
+        title: 'Create Local Backup',
         desc: 'Creates an isolated restore point of the active project synchronization.',
         descLabel: 'Short description (optional):',
         descPlaceholder: 'For example: before gallery redesign...',
@@ -440,7 +448,7 @@ export const i18n = {
         creating: 'Creating snapshot...'
       },
       auto: {
-        title: '⚙️ Automated Backup',
+        title: 'Automated Backup',
         timerTitle: 'Scheduled Auto-backup',
         timerDesc: 'Creates snapshot only if actual changes occurred',
         intervalLabel: 'Check interval:',
@@ -448,16 +456,18 @@ export const i18n = {
         importDesc: 'Automatic snapshot after every cloud action'
       },
       list: {
-        title: '🕒 Saved Backups History',
+        title: 'Saved Backups History',
         subtitle: 'Sorted newest to oldest',
-        refresh: '🔄 Refresh',
+        refresh: 'Refresh',
         empty: 'No local backups found. Click "Backup Current State" to create the first snapshot.',
-        restoreBtn: '⏪ Restore',
-        deleteBtn: '🗑️',
-        editDescBtn: '✏️ Edit Note',
+        restoreBtn: 'Restore',
+        deleteBtn: 'Delete',
+        deleteBtnTitle: 'Delete backup',
+        editDescBtn: 'Edit description',
         pages: 'Pages',
         instances: 'Instances',
-        assets: 'Assets'
+        assets: 'Assets',
+        snapshots: 'snapshots'
       },
       modal: {
         editTitle: '✏️ Edit Backup Description',
