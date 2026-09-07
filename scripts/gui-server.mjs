@@ -121,22 +121,58 @@ export function cleanFrameworkArtifacts(dir = null, preset) {
     } catch {}
   }
 
-  const isRemix = preset.includes('remix') || preset === 'cloudflare';
-  const isReactRouter = preset.includes('react-router') || preset === 'cloudflare-new' || preset === 'docker';
+  const presetStr = String(preset || '').toLowerCase();
+  const isRemix = presetStr.includes('remix') || presetStr === 'cloudflare';
+  const isReactRouter = presetStr.includes('react-router') || presetStr === 'cloudflare-new' || presetStr === 'docker';
+  const isCloudflare = presetStr.includes('cloudflare');
+  const isVercel = presetStr.includes('vercel');
+  const isNetlify = presetStr.includes('netlify');
+  const isDocker = presetStr.includes('docker');
 
   const removePaths = [];
   const depsToRemove = [];
 
+  // Always clean conflicting hosting configs when switching platforms
+  if (!isCloudflare) {
+    removePaths.push(
+      path.join(targetDir, 'wrangler.toml'),
+      path.join(targetDir, 'wrangler.jsonc'),
+      path.join(targetDir, 'functions'),
+      path.join(targetDir, 'workers'),
+      path.join(targetDir, 'worker-configuration.d.ts'),
+      path.join(targetDir, 'load-context.ts'),
+      path.join(targetDir, '.wrangler')
+    );
+  } else {
+    if (isReactRouter) {
+      removePaths.push(
+        path.join(targetDir, 'wrangler.toml'),
+        path.join(targetDir, 'functions')
+      );
+    } else {
+      removePaths.push(
+        path.join(targetDir, 'wrangler.jsonc'),
+        path.join(targetDir, 'workers'),
+        path.join(targetDir, 'worker-configuration.d.ts')
+      );
+    }
+  }
+
+  if (!isVercel) {
+    removePaths.push(path.join(targetDir, 'vercel.json'));
+  }
+  if (!isNetlify) {
+    removePaths.push(path.join(targetDir, 'netlify.toml'));
+  }
+  if (!isDocker) {
+    removePaths.push(path.join(targetDir, 'Dockerfile'));
+  }
+
+  // Framework transitions (Remix vs React Router)
   if (isRemix) {
     removePaths.push(
-      path.join(targetDir, 'app', 'entry.server.tsx'),
       path.join(targetDir, 'app', 'routes.ts'),
-      path.join(targetDir, 'workers'),
-      path.join(targetDir, 'react-router.config.ts'),
-      path.join(targetDir, 'wrangler.jsonc'),
-      path.join(targetDir, 'vercel.json'),
-      path.join(targetDir, 'netlify.toml'),
-      path.join(targetDir, 'Dockerfile')
+      path.join(targetDir, 'react-router.config.ts')
     );
     depsToRemove.push(
       '@react-router/dev',
@@ -149,10 +185,7 @@ export function cleanFrameworkArtifacts(dir = null, preset) {
     );
   } else if (isReactRouter) {
     removePaths.push(
-      path.join(targetDir, 'functions'),
-      path.join(targetDir, 'wrangler.toml'),
-      path.join(targetDir, 'vercel.json'),
-      path.join(targetDir, 'netlify.toml')
+      path.join(targetDir, 'app', 'entry.server.tsx')
     );
     depsToRemove.push(
       '@remix-run/cloudflare',
