@@ -90,12 +90,77 @@ export class ProjectManager {
 
   loadRegistry() {
     this.ensureInitialized();
+    let reg = { activeProjectId: '', projects: [] };
     try {
       const content = fs.readFileSync(this.registryPath, 'utf8');
-      return JSON.parse(content);
-    } catch {
-      return { activeProjectId: '', projects: [] };
+      reg = JSON.parse(content);
+    } catch {}
+
+    if (!Array.isArray(reg.projects)) reg.projects = [];
+
+    // Scan actual project folders on disk
+    let diskFolders = [];
+    if (fs.existsSync(this.projectsDir)) {
+      try {
+        diskFolders = fs.readdirSync(this.projectsDir, { withFileTypes: true })
+          .filter(e => e.isDirectory() && !e.name.startsWith('.'))
+          .map(e => e.name);
+      } catch {}
     }
+
+    let modified = false;
+    const syncedProjects = [];
+
+    for (const folder of diskFolders) {
+      let existing = reg.projects.find(p => p.id === folder || p.name === folder || p.directory === `projects/${folder}`);
+      if (existing) {
+        // Enforce 1:1 match between folder and name/id
+        if (existing.id !== folder || existing.name !== folder || existing.directory !== `projects/${folder}`) {
+          existing.id = folder;
+          existing.name = folder;
+          existing.directory = `projects/${folder}`;
+          modified = true;
+        }
+        syncedProjects.push(existing);
+      } else {
+        const fullDir = path.join(this.projectsDir, folder);
+        let birthtime = new Date().toISOString();
+        let mtime = new Date().toISOString();
+        try {
+          const stat = fs.statSync(fullDir);
+          birthtime = stat.birthtime?.toISOString() || birthtime;
+          mtime = stat.mtime?.toISOString() || mtime;
+        } catch {}
+
+        syncedProjects.push({
+          id: folder,
+          name: folder,
+          description: '',
+          directory: `projects/${folder}`,
+          createdAt: birthtime,
+          lastModified: mtime
+        });
+        modified = true;
+      }
+    }
+
+    if (syncedProjects.length !== reg.projects.length) {
+      modified = true;
+    }
+
+    reg.projects = syncedProjects;
+
+    // Verify activeProjectId exists on disk
+    if (!diskFolders.includes(reg.activeProjectId)) {
+      reg.activeProjectId = diskFolders[0] || '';
+      modified = true;
+    }
+
+    if (modified) {
+      this.saveRegistry(reg);
+    }
+
+    return reg;
   }
 
   saveRegistry(registry) {
@@ -298,21 +363,36 @@ export class ProjectManager {
       throw new Error('Invalid project name');
     }
 
+    if (projectId === safeName) return this.getActiveProject();
+
     const reg = this.loadRegistry();
     const project = reg.projects.find(p => p.id === projectId);
     if (!project) {
       throw new Error(`Project "${projectId}" not found`);
     }
 
-    if (projectId !== safeName && reg.projects.some(p => p.id === safeName)) {
+    if (reg.projects.some(p => p.id === safeName)) {
       throw new Error(`Project "${safeName}" already exists`);
     }
 
+    const oldFullDir = path.resolve(this.rootDir, project.directory);
+    const newFullDir = path.join(this.projectsDir, safeName);
+
+    // Physically rename directory on disk
+    if (fs.existsSync(oldFullDir)) {
+      try {
+        fs.renameSync(oldFullDir, newFullDir);
+      } catch (err) {
+        throw new Error(`Failed to rename directory on disk: ${err.message}`);
+      }
+    }
+
+    project.id = safeName;
     project.name = safeName;
+    project.directory = `projects/${safeName}`;
     project.lastModified = new Date().toISOString();
 
-    const fullDir = path.resolve(this.rootDir, project.directory);
-    const tomlPath = path.join(fullDir, 'wrangler.toml');
+    const tomlPath = path.join(newFullDir, 'wrangler.toml');
     if (fs.existsSync(tomlPath)) {
       try {
         let toml = fs.readFileSync(tomlPath, 'utf8');
@@ -321,11 +401,12 @@ export class ProjectManager {
       } catch {}
     }
 
-    this.saveRegistry(reg);
     if (reg.activeProjectId === projectId) {
-      this.syncActiveToRoot(fullDir);
+      reg.activeProjectId = safeName;
+      this.syncActiveToRoot(newFullDir);
     }
 
+    this.saveRegistry(reg);
     return project;
   }
 
