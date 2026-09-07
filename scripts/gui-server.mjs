@@ -251,6 +251,7 @@ export function cleanAllTemplateGenerations(dir = null) {
   if (targetDir !== rootDir) {
     pathsToRemove.push(path.join(targetDir, '.npmrc'));
     pathsToRemove.push(path.join(targetDir, 'node_modules'));
+    pathsToRemove.push(path.join(targetDir, 'package-lock.json'));
   }
 
   for (const p of pathsToRemove) {
