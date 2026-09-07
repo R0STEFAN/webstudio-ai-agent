@@ -222,7 +222,6 @@ export class ProjectManager {
 
     fs.writeFileSync(path.join(wsDir, 'data.json'), JSON.stringify(initialData, null, 2) + '\n', 'utf8');
     fs.writeFileSync(path.join(wsDir, 'config.json'), JSON.stringify({ projectId: safeName }, null, 2) + '\n', 'utf8');
-    fs.writeFileSync(path.join(projectDir, 'wrangler.toml'), `name = "${safeName}"\ncompatibility_date = "2024-04-05"\npages_build_output_dir="./build"\n`, 'utf8');
 
     const newProject = {
       id: safeName,

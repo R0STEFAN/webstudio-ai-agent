@@ -454,17 +454,17 @@ export function getHostingAuth(rootDir, targetHosting = null) {
   };
 }
 
-export function getDeployConfig(rootDir, requestedHosting = null, requestedTemplate = null) {
+export function getDeployConfig(dir = null, requestedHosting = null, requestedTemplate = null) {
+  const targetDir = dir || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir);
   let projectName = '';
   let configFile = '';
   let detectedTemplate = 'unknown';
-  const wranglerJsoncPath = path.join(rootDir, 'wrangler.jsonc');
-  const wranglerTomlPath = path.join(rootDir, 'wrangler.toml');
-  const vercelJsonPath = path.join(rootDir, 'vercel.json');
-  const netlifyTomlPath = path.join(rootDir, 'netlify.toml');
-  const dockerfilePath = path.join(rootDir, 'Dockerfile');
-  const packageJsonPath = path.join(rootDir, 'package.json');
-
+  const wranglerJsoncPath = path.join(targetDir, 'wrangler.jsonc');
+  const wranglerTomlPath = path.join(targetDir, 'wrangler.toml');
+  const vercelJsonPath = path.join(targetDir, 'vercel.json');
+  const netlifyTomlPath = path.join(targetDir, 'netlify.toml');
+  const dockerfilePath = path.join(targetDir, 'Dockerfile');
+  const packageJsonPath = path.join(targetDir, 'package.json');
   let pkg = null;
   let availableScripts = [];
   if (fs.existsSync(packageJsonPath)) {
@@ -563,7 +563,7 @@ export function getDeployConfig(rootDir, requestedHosting = null, requestedTempl
     detectedTemplate,
     targetHosting,
     hasWrangler: Boolean(fs.existsSync(wranglerJsoncPath) || fs.existsSync(wranglerTomlPath)),
-    hasBuildDir: Boolean(fs.existsSync(path.join(rootDir, 'build')) || fs.existsSync(path.join(rootDir, 'dist'))),
+    hasBuildDir: Boolean(fs.existsSync(path.join(targetDir, 'build')) || fs.existsSync(path.join(targetDir, 'dist'))),
     availableScripts,
     hostingAuth: getHostingAuth(rootDir, targetHosting)
   };
@@ -619,6 +619,7 @@ export function updateProjectNameOnDisk(rootDir, newName) {
 }
 
 export async function getProjectStatus(targetHosting = null, targetTemplate = null) {
+  const projectDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
   const cliPath = path.join(rootDir, 'node_modules', 'webstudio', 'lib', 'cli.js');
   const pkgPath = path.join(rootDir, 'node_modules', 'webstudio', 'package.json');
   let installed = false;
@@ -635,7 +636,7 @@ export async function getProjectStatus(targetHosting = null, targetTemplate = nu
   const latestVersion = await getLatestVersion();
 
   let config = null;
-  const configPath = path.join(rootDir, '.webstudio', 'config.json');
+  const configPath = path.join(projectDir, '.webstudio', 'config.json');
   if (fs.existsSync(configPath)) {
     try {
       config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -643,7 +644,7 @@ export async function getProjectStatus(targetHosting = null, targetTemplate = nu
   }
 
   let auth = null;
-  const authPath = path.join(rootDir, '.webstudio', 'auth.json');
+  const authPath = path.join(projectDir, '.webstudio', 'auth.json');
   if (fs.existsSync(authPath)) {
     try {
       auth = JSON.parse(fs.readFileSync(authPath, 'utf8'));
@@ -651,7 +652,7 @@ export async function getProjectStatus(targetHosting = null, targetTemplate = nu
   }
 
   let session = null;
-  const sessionPath = path.join(rootDir, '.webstudio', 'session.json');
+  const sessionPath = path.join(projectDir, '.webstudio', 'session.json');
   if (fs.existsSync(sessionPath)) {
     try {
       session = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
@@ -659,7 +660,7 @@ export async function getProjectStatus(targetHosting = null, targetTemplate = nu
   }
 
   let data = null;
-  const dataPath = path.join(rootDir, '.webstudio', 'data.json');
+  const dataPath = path.join(projectDir, '.webstudio', 'data.json');
   if (fs.existsSync(dataPath)) {
     try {
       data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
@@ -708,7 +709,7 @@ export async function getProjectStatus(targetHosting = null, targetTemplate = nu
   if (Array.isArray(data?.assets)) {
     assetsCount = data.assets.length;
   } else {
-    const assetsDir = path.join(rootDir, '.webstudio', 'assets');
+    const assetsDir = path.join(projectDir, '.webstudio', 'assets');
     if (fs.existsSync(assetsDir)) {
       try {
         assetsCount = fs.readdirSync(assetsDir).filter(f => !f.startsWith('.')).length;
@@ -732,8 +733,8 @@ export async function getProjectStatus(targetHosting = null, targetTemplate = nu
       instances: instancesCount,
       assets: assetsCount
     },
-    deploy: getDeployConfig(rootDir, targetHosting, targetTemplate),
-    hostingAuth: getHostingAuth(rootDir, targetHosting),
+    deploy: getDeployConfig(projectDir, targetHosting, targetTemplate),
+    hostingAuth: getHostingAuth(projectDir, targetHosting),
     previewServer: {
       running: Boolean(activePreviewProcess),
       url: activePreviewUrl
@@ -767,8 +768,10 @@ export function executeShellCommand(action, command, options = {}) {
   broadcastLog(`$ ${command}`, 'stdout');
   console.log(`\n\x1b[36m[Webstudio CLI]\x1b[0m \x1b[1m$ ${command}\x1b[0m`);
 
+  const targetCwd = options.cwd || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir);
+
   const child = spawn(command, {
-    cwd: rootDir,
+    cwd: targetCwd,
     shell: true,
     env: process.env
   });
@@ -837,8 +840,10 @@ export function executePreviewCommand() {
   broadcastLog('$ npm run preview', 'stdout');
   console.log(`\n\x1b[36m[Webstudio CLI]\x1b[0m \x1b[1m$ npm run preview\x1b[0m`);
 
+  const targetCwd = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
+
   const child = spawn('npm run preview', {
-    cwd: rootDir,
+    cwd: targetCwd,
     shell: true,
     env: process.env
   });
@@ -993,7 +998,8 @@ export function handleAction(action, params = {}) {
     }
     case 'save-session': {
       try {
-        const webstudioDir = path.join(rootDir, '.webstudio');
+        const projectDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
+        const webstudioDir = path.join(projectDir, '.webstudio');
         if (!fs.existsSync(webstudioDir)) {
           fs.mkdirSync(webstudioDir, { recursive: true });
         }
@@ -1003,6 +1009,9 @@ export function handleAction(action, params = {}) {
           csrfToken: params.csrfToken || ''
         };
         fs.writeFileSync(sessionPath, JSON.stringify(sessionData, null, 2), 'utf8');
+        if (typeof projectManager !== 'undefined' && projectDir !== rootDir) {
+          projectManager.syncActiveToRoot(projectDir);
+        }
         broadcastLog('✅ session.json saved successfully.', 'stdout');
         broadcastComplete('save-session', true, 0);
       } catch (err) {

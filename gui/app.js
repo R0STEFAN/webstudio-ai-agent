@@ -1031,45 +1031,26 @@ export function renderView() {
       }
     }
   }
-  // Auto-fill Input Fields from Saved Server State or LocalStorage
-  if (dom.inputShareLink && !dom.inputShareLink.value) {
-    if (state.status.savedShareLink) {
-      dom.inputShareLink.value = state.status.savedShareLink;
-    } else {
-      try {
-        const localLink = localStorage.getItem('ws_share_link');
-        if (localLink) dom.inputShareLink.value = localLink;
-      } catch {}
-    }
+  // Auto-fill Input Fields strictly from Active Project Server State
+  const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
+  if (dom.inputShareLink && activeEl !== dom.inputShareLink) {
+    dom.inputShareLink.value = state.status?.savedShareLink || '';
   }
 
-  if (dom.inputBuildId && !dom.inputBuildId.value) {
-    try {
-      const localBuildId = localStorage.getItem('ws_build_id');
-      if (localBuildId) dom.inputBuildId.value = localBuildId;
-    } catch {}
+  if (dom.inputBuildId && activeEl !== dom.inputBuildId) {
+    dom.inputBuildId.value = state.status?.buildId || '';
   }
 
-  if (dom.inputCookie && !dom.inputCookie.value) {
-    if (state.status.sessionData?.cookie) {
-      dom.inputCookie.value = state.status.sessionData.cookie;
-    } else {
-      try {
-        const localCookie = localStorage.getItem('ws_cookie');
-        if (localCookie) dom.inputCookie.value = localCookie;
-      } catch {}
-    }
+  if (dom.inputCookie && activeEl !== dom.inputCookie) {
+    dom.inputCookie.value = state.status?.sessionData?.cookie || '';
   }
 
-  if (dom.inputCsrfToken && !dom.inputCsrfToken.value) {
-    if (state.status.sessionData?.csrfToken) {
-      dom.inputCsrfToken.value = state.status.sessionData.csrfToken;
-    } else {
-      try {
-        const localCsrf = localStorage.getItem('ws_csrf_token');
-        if (localCsrf) dom.inputCsrfToken.value = localCsrf;
-      } catch {}
-    }
+  if (dom.inputCsrfToken && activeEl !== dom.inputCsrfToken) {
+    dom.inputCsrfToken.value = state.status?.sessionData?.csrfToken || '';
+  }
+
+  if (dom.inputProjectName && activeEl !== dom.inputProjectName) {
+    dom.inputProjectName.value = state.status?.deploy?.projectName || state.activeProjectId || '';
   }
 
   // Footer Updates
@@ -1212,6 +1193,12 @@ export function renderProjectsList() {
 export async function handleSelectProject(projectId) {
   if (!projectId) return;
   try {
+    if (dom.inputShareLink) dom.inputShareLink.value = '';
+    if (dom.inputBuildId) dom.inputBuildId.value = '';
+    if (dom.inputCookie) dom.inputCookie.value = '';
+    if (dom.inputCsrfToken) dom.inputCsrfToken.value = '';
+    if (dom.inputProjectName) dom.inputProjectName.value = '';
+
     const res = await fetch('/api/projects/select', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1233,6 +1220,12 @@ export async function handleSelectProject(projectId) {
 export async function handleCreateProject(name, description) {
   if (!name || !name.trim()) return;
   try {
+    if (dom.inputShareLink) dom.inputShareLink.value = '';
+    if (dom.inputBuildId) dom.inputBuildId.value = '';
+    if (dom.inputCookie) dom.inputCookie.value = '';
+    if (dom.inputCsrfToken) dom.inputCsrfToken.value = '';
+    if (dom.inputProjectName) dom.inputProjectName.value = '';
+
     const res = await fetch('/api/projects/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1798,33 +1791,19 @@ export function setupEventListeners() {
     });
   }
   
-  // Input Persistence Listeners (Auto-save on input)
+  // Input Persistence Listeners (Scoped per active project)
   if (dom.inputShareLink) {
     dom.inputShareLink.addEventListener('input', () => {
-      try { localStorage.setItem('ws_share_link', dom.inputShareLink.value.trim()); } catch {}
+      const pid = state.activeProjectId || 'default';
+      try { localStorage.setItem(`ws_share_link_${pid}`, dom.inputShareLink.value.trim()); } catch {}
     });
   }
   if (dom.inputBuildId) {
     dom.inputBuildId.addEventListener('input', () => {
-      try { localStorage.setItem('ws_build_id', dom.inputBuildId.value.trim()); } catch {}
+      const pid = state.activeProjectId || 'default';
+      try { localStorage.setItem(`ws_build_id_${pid}`, dom.inputBuildId.value.trim()); } catch {}
     });
   }
-  if (dom.inputCookie) {
-    dom.inputCookie.addEventListener('input', () => {
-      try { localStorage.setItem('ws_cookie', dom.inputCookie.value.trim()); } catch {}
-    });
-  }
-  if (dom.inputCsrfToken) {
-    dom.inputCsrfToken.addEventListener('input', () => {
-      try { localStorage.setItem('ws_csrf_token', dom.inputCsrfToken.value.trim()); } catch {}
-    });
-  }
-  if (dom.inputProjectName) {
-    dom.inputProjectName.addEventListener('input', () => {
-      try { localStorage.setItem('ws_project_name', dom.inputProjectName.value.trim()); } catch {}
-    });
-  }
-
   // Save Session Button
   if (dom.btnSaveSession) {
     dom.btnSaveSession.addEventListener('click', () => {
