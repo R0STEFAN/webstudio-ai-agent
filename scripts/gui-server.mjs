@@ -980,6 +980,9 @@ export function handleAction(action, params = {}) {
         broadcastComplete('install', false, 1);
         break;
       }
+      const relPath = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
+      const targetLabel = relPath === '.' ? './ (root)' : `./${relPath}`;
+      broadcastLog(`📦 Встановлення залежностей шаблону в ${targetLabel}...`, 'stdout');
       executeShellCommand('install', 'npm install', { cwd: targetProjectDir });
       break;
     }
@@ -1202,6 +1205,9 @@ export function handleAction(action, params = {}) {
       break;
     }
     case 'build-project': {
+      const relPath = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
+      const targetLabel = relPath === '.' ? './ (root)' : `./${relPath}`;
+      broadcastLog(`🔨 Збірка проєкту в ${targetLabel}...`, 'stdout');
       executeShellCommand('build-project', 'npm run build', { cwd: targetProjectDir });
       break;
     }
@@ -1217,9 +1223,11 @@ export function handleAction(action, params = {}) {
       break;
     }
     case 'deploy-project': {
+      const relPath = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
+      const targetLabel = relPath === '.' ? './ (root)' : `./${relPath}`;
+      broadcastLog(`🚀 Публікація (деплой) проєкту з ${targetLabel}...`, 'stdout');
       const deployConfig = getDeployConfig(targetProjectDir);
       const provider = deployConfig.hostingAuth?.provider || 'Cloudflare';
-
       if (provider === 'Vercel' || fs.existsSync(path.join(targetProjectDir, 'vercel.json'))) {
         executeShellCommand('deploy-project', 'npx vercel --prod --yes', { cwd: targetProjectDir });
         break;
