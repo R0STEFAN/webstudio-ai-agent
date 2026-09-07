@@ -111,8 +111,9 @@ export const TEMPLATE_PRESETS = {
   'ssg-vercel': ['ssg', 'ssg-vercel'],
   'ssg-netlify': ['ssg', 'ssg-netlify']
 };
-export function cleanFrameworkArtifacts(rootDir, preset) {
-  const pkgPath = path.join(rootDir, 'package.json');
+export function cleanFrameworkArtifacts(dir = null, preset) {
+  const targetDir = dir || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir);
+  const pkgPath = path.join(targetDir, 'package.json');
   let pkg = null;
   if (fs.existsSync(pkgPath)) {
     try {
@@ -128,14 +129,14 @@ export function cleanFrameworkArtifacts(rootDir, preset) {
 
   if (isRemix) {
     removePaths.push(
-      path.join(rootDir, 'app', 'entry.server.tsx'),
-      path.join(rootDir, 'app', 'routes.ts'),
-      path.join(rootDir, 'workers'),
-      path.join(rootDir, 'react-router.config.ts'),
-      path.join(rootDir, 'wrangler.jsonc'),
-      path.join(rootDir, 'vercel.json'),
-      path.join(rootDir, 'netlify.toml'),
-      path.join(rootDir, 'Dockerfile')
+      path.join(targetDir, 'app', 'entry.server.tsx'),
+      path.join(targetDir, 'app', 'routes.ts'),
+      path.join(targetDir, 'workers'),
+      path.join(targetDir, 'react-router.config.ts'),
+      path.join(targetDir, 'wrangler.jsonc'),
+      path.join(targetDir, 'vercel.json'),
+      path.join(targetDir, 'netlify.toml'),
+      path.join(targetDir, 'Dockerfile')
     );
     depsToRemove.push(
       '@react-router/dev',
@@ -148,10 +149,10 @@ export function cleanFrameworkArtifacts(rootDir, preset) {
     );
   } else if (isReactRouter) {
     removePaths.push(
-      path.join(rootDir, 'functions'),
-      path.join(rootDir, 'wrangler.toml'),
-      path.join(rootDir, 'vercel.json'),
-      path.join(rootDir, 'netlify.toml')
+      path.join(targetDir, 'functions'),
+      path.join(targetDir, 'wrangler.toml'),
+      path.join(targetDir, 'vercel.json'),
+      path.join(targetDir, 'netlify.toml')
     );
     depsToRemove.push(
       '@remix-run/cloudflare',
@@ -191,23 +192,24 @@ export function cleanFrameworkArtifacts(rootDir, preset) {
     }
   }
 }
-export function cleanAllTemplateGenerations(rootDir) {
+export function cleanAllTemplateGenerations(dir = null) {
+  const targetDir = dir || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir);
   const pathsToRemove = [
-    path.join(rootDir, 'app'),
-    path.join(rootDir, 'functions'),
-    path.join(rootDir, 'workers'),
-    path.join(rootDir, 'public'),
-    path.join(rootDir, 'build'),
-    path.join(rootDir, 'dist'),
-    path.join(rootDir, '.wrangler'),
-    path.join(rootDir, 'wrangler.jsonc'),
-    path.join(rootDir, 'wrangler.toml'),
-    path.join(rootDir, 'vercel.json'),
-    path.join(rootDir, 'netlify.toml'),
-    path.join(rootDir, 'Dockerfile'),
-    path.join(rootDir, 'vite.config.ts'),
-    path.join(rootDir, 'react-router.config.ts'),
-    path.join(rootDir, 'worker-configuration.d.ts')
+    path.join(targetDir, 'app'),
+    path.join(targetDir, 'functions'),
+    path.join(targetDir, 'workers'),
+    path.join(targetDir, 'public'),
+    path.join(targetDir, 'build'),
+    path.join(targetDir, 'dist'),
+    path.join(targetDir, '.wrangler'),
+    path.join(targetDir, 'wrangler.jsonc'),
+    path.join(targetDir, 'wrangler.toml'),
+    path.join(targetDir, 'vercel.json'),
+    path.join(targetDir, 'netlify.toml'),
+    path.join(targetDir, 'Dockerfile'),
+    path.join(targetDir, 'vite.config.ts'),
+    path.join(targetDir, 'react-router.config.ts'),
+    path.join(targetDir, 'worker-configuration.d.ts')
   ];
 
   for (const p of pathsToRemove) {
@@ -218,7 +220,7 @@ export function cleanAllTemplateGenerations(rootDir) {
     }
   }
 
-  const pkgPath = path.join(rootDir, 'package.json');
+  const pkgPath = path.join(targetDir, 'package.json');
   if (fs.existsSync(pkgPath)) {
     try {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
@@ -913,6 +915,7 @@ export function executePreviewCommand() {
 }
 
 export function handleAction(action, params = {}) {
+  const targetProjectDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
   switch (action) {
     case 'install': {
       executeShellCommand('install', 'npm install');
@@ -957,7 +960,7 @@ export function handleAction(action, params = {}) {
       }
 
       if (!authToken) {
-        const authPath = path.join(rootDir, '.webstudio', 'auth.json');
+        const authPath = path.join(targetProjectDir, '.webstudio', 'auth.json');
         if (fs.existsSync(authPath)) {
           try {
             const authData = JSON.parse(fs.readFileSync(authPath, 'utf8'));
@@ -967,8 +970,8 @@ export function handleAction(action, params = {}) {
       }
 
       if (!origin) {
-        const configPath = path.join(rootDir, '.webstudio', 'config.json');
-        const dataPath = path.join(rootDir, '.webstudio', 'data.json');
+        const configPath = path.join(targetProjectDir, '.webstudio', 'config.json');
+        const dataPath = path.join(targetProjectDir, '.webstudio', 'data.json');
         let pid = null;
         if (fs.existsSync(configPath)) {
           try {
@@ -1063,28 +1066,33 @@ export function handleAction(action, params = {}) {
     }
     case 'generate-template': {
       const preset = params.templatePreset || params.template || 'react-router-cloudflare';
-      cleanFrameworkArtifacts(rootDir, preset);
+      cleanFrameworkArtifacts(targetProjectDir, preset);
 
       const templates = TEMPLATE_PRESETS[preset] || (Array.isArray(preset) ? preset : [preset]);
       let cmd = 'npx webstudio build';
       for (const t of templates) {
         cmd += ` --template ${t}`;
       }
-      executeShellCommand('generate-template', cmd);
+      executeShellCommand('generate-template', cmd, { cwd: targetProjectDir });
       break;
     }
     case 'clean-template': {
       stopPreviewServer();
-      cleanAllTemplateGenerations(rootDir);
-      console.log('\x1b[33m[Webstudio CLI] 🗑️ Cleaned all generated template files, configs, and dependencies.\x1b[0m\n');
+      cleanAllTemplateGenerations(targetProjectDir);
+      console.log(`\x1b[33m[Webstudio CLI] 🗑️ Cleaned all generated template files for ${targetProjectDir}.\x1b[0m\n`);
       broadcastLog('🗑️ Cleaned all generated template files, configs, and dependencies.', 'stdout');
       broadcastComplete('clean-template', true, 0);
       break;
     }
     case 'update-project-name': {
       const newName = params.projectName || params.name || '';
-      const result = updateProjectNameOnDisk(rootDir, newName);
+      const result = updateProjectNameOnDisk(targetProjectDir, newName);
       if (result.updated || result.safeName) {
+        if (typeof projectManager !== 'undefined') {
+          try {
+            projectManager.renameProject(projectManager.getActiveProject()?.id, result.safeName);
+          } catch {}
+        }
         broadcastLog(`✅ Project name updated to: ${result.safeName}`, 'stdout');
         broadcastComplete('update-project-name', true, 0);
       } else {
@@ -1094,7 +1102,7 @@ export function handleAction(action, params = {}) {
       break;
     }
     case 'check-auth': {
-      const deployConfig = getDeployConfig(rootDir);
+      const deployConfig = getDeployConfig(targetProjectDir);
       let provider = params.provider;
       if (!provider && params.template) {
         if (params.template.includes('vercel')) provider = 'Vercel';
@@ -1109,11 +1117,11 @@ export function handleAction(action, params = {}) {
       if (provider === 'Vercel') cmd = 'npx vercel whoami';
       else if (provider === 'Netlify') cmd = 'npx netlify status';
       else if (provider === 'Docker') cmd = 'docker info';
-      executeShellCommand('check-auth', cmd, { provider });
+      executeShellCommand('check-auth', cmd, { provider, cwd: targetProjectDir });
       break;
     }
     case 'login-auth': {
-      const deployConfig = getDeployConfig(rootDir);
+      const deployConfig = getDeployConfig(targetProjectDir);
       let provider = params.provider;
       if (!provider && params.template) {
         if (params.template.includes('vercel')) provider = 'Vercel';
@@ -1128,39 +1136,32 @@ export function handleAction(action, params = {}) {
       if (provider === 'Vercel') cmd = 'npx vercel login';
       else if (provider === 'Netlify') cmd = 'npx netlify login';
       else if (provider === 'Docker') cmd = 'docker login';
-      executeShellCommand('login-auth', cmd, { provider });
+      executeShellCommand('login-auth', cmd, { provider, cwd: targetProjectDir });
       break;
     }
     case 'build-project': {
-      executeShellCommand('build-project', 'npm run build');
+      executeShellCommand('build-project', 'npm run build', { cwd: targetProjectDir });
       break;
     }
     case 'preview-project': {
       executePreviewCommand();
       break;
     }
-    case 'stop-preview': {
-      stopPreviewServer();
-      console.log(`\x1b[33m[Webstudio CLI] ⏹️ Preview server stopped by user.\x1b[0m\n`);
-      broadcastLog('⏹️ Preview server stopped.', 'stdout');
-      broadcastComplete('stop-preview', true, 0);
-      break;
-    }
     case 'deploy-project': {
-      const deployConfig = getDeployConfig(rootDir);
-      const projectName = deployConfig.projectName || 'webstudio-app';
+      const deployConfig = getDeployConfig(targetProjectDir);
       const provider = deployConfig.hostingAuth?.provider || 'Cloudflare';
 
-      if (provider === 'Vercel' || fs.existsSync(path.join(rootDir, 'vercel.json'))) {
-        executeShellCommand('deploy-project', 'npx vercel --prod --yes');
+      if (provider === 'Vercel' || fs.existsSync(path.join(targetProjectDir, 'vercel.json'))) {
+        executeShellCommand('deploy-project', 'npx vercel --prod --yes', { cwd: targetProjectDir });
         break;
       }
 
-      if (provider === 'Netlify' || fs.existsSync(path.join(rootDir, 'netlify.toml'))) {
-        executeShellCommand('deploy-project', 'npx netlify deploy --prod');
+      if (provider === 'Netlify' || fs.existsSync(path.join(targetProjectDir, 'netlify.toml'))) {
+        executeShellCommand('deploy-project', 'npx netlify deploy --prod', { cwd: targetProjectDir });
         break;
       }
-      executeShellCommand('deploy-project', 'npm run deploy');
+
+      executeShellCommand('deploy-project', 'npm run deploy', { cwd: targetProjectDir });
       break;
     }
     default: {
