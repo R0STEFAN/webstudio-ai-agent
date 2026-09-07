@@ -808,11 +808,12 @@ export function stopPreviewServer() {
 }
 
 export function executeShellCommand(action, command, options = {}) {
-  broadcastLog(`$ ${command}`, 'stdout');
-  console.log(`\n\x1b[36m[Webstudio CLI]\x1b[0m \x1b[1m$ ${command}\x1b[0m`);
-
   const targetCwd = options.cwd || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir);
+  const relPath = path.relative(rootDir, targetCwd).replace(/\\/g, '/') || '.';
+  const cwdDisplay = relPath === '.' ? './ (root)' : `./${relPath}`;
 
+  broadcastLog(`📂 [${cwdDisplay}] $ ${command}`, 'stdout');
+  console.log(`\n\x1b[36m[Webstudio CLI]\x1b[0m 📂 \x1b[33m${cwdDisplay}\x1b[0m \x1b[1m$ ${command}\x1b[0m`);
   const child = spawn(command, {
     cwd: targetCwd,
     shell: true,
@@ -890,11 +891,12 @@ export function executeShellCommand(action, command, options = {}) {
 export function executePreviewCommand() {
   stopPreviewServer();
 
-  broadcastLog('$ npm run preview', 'stdout');
-  console.log(`\n\x1b[36m[Webstudio CLI]\x1b[0m \x1b[1m$ npm run preview\x1b[0m`);
-
   const targetCwd = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
+  const relPath = path.relative(rootDir, targetCwd).replace(/\\/g, '/') || '.';
+  const cwdDisplay = relPath === '.' ? './ (root)' : `./${relPath}`;
 
+  broadcastLog(`📂 [${cwdDisplay}] $ npm run preview`, 'stdout');
+  console.log(`\n\x1b[36m[Webstudio CLI]\x1b[0m 📂 \x1b[33m${cwdDisplay}\x1b[0m \x1b[1m$ npm run preview\x1b[0m`);
   const child = spawn('npm run preview', {
     cwd: targetCwd,
     shell: true,
@@ -969,7 +971,16 @@ export function handleAction(action, params = {}) {
   const targetProjectDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
   switch (action) {
     case 'install': {
-      executeShellCommand('install', 'npm install');
+      const targetPkg = path.join(targetProjectDir, 'package.json');
+      if (targetProjectDir !== rootDir && !fs.existsSync(targetPkg)) {
+        const relPath = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
+        const msg = `⚠️ [./${relPath}] У папці проєкту ще немає package.json. Спершу згенеруйте код обраного шаблону (кнопка "Згенерувати шаблон").`;
+        console.log(`\x1b[33m[Webstudio CLI] ${msg}\x1b[0m\n`);
+        broadcastLog(msg, 'stderr');
+        broadcastComplete('install', false, 1);
+        break;
+      }
+      executeShellCommand('install', 'npm install', { cwd: targetProjectDir });
       break;
     }
     case 'update': {
@@ -1196,6 +1207,13 @@ export function handleAction(action, params = {}) {
     }
     case 'preview-project': {
       executePreviewCommand();
+      break;
+    }
+    case 'stop-preview': {
+      stopPreviewServer();
+      console.log(`\x1b[33m[Webstudio CLI] 🛑 Preview server stopped by user.\x1b[0m\n`);
+      broadcastLog('🛑 Preview server stopped.', 'stdout');
+      broadcastComplete('stop-preview', true, 0);
       break;
     }
     case 'deploy-project': {
