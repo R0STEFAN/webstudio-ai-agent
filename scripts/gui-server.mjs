@@ -249,7 +249,7 @@ export function cleanAllTemplateGenerations(rootDir) {
       pkg.scripts.build = 'remix vite:build';
       pkg.scripts.dev = 'remix vite:dev';
       pkg.scripts.preview = 'npm run build && wrangler pages dev ./build/client';
-      pkg.scripts.deploy = 'npm run build && wrangler pages deploy ./build/client';
+      pkg.scripts.deploy = 'npm run build && node scripts/deploy-cloudflare.mjs';
 
       fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
     } catch {}
@@ -1130,14 +1130,6 @@ export function handleAction(action, params = {}) {
         executeShellCommand('deploy-project', 'npx netlify deploy --prod');
         break;
       }
-
-      if (deployConfig.hasWrangler && fs.existsSync(path.join(rootDir, 'wrangler.toml'))) {
-        exec(`npx wrangler pages project create "${projectName}" --production-branch main`, { cwd: rootDir }, () => {
-          executeShellCommand('deploy-project', `npx wrangler pages deploy ./build/client --project-name "${projectName}" --branch main --commit-dirty=true`);
-        });
-        break;
-      }
-
       executeShellCommand('deploy-project', 'npm run deploy');
       break;
     }
