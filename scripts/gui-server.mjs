@@ -301,8 +301,9 @@ export function cleanAllTemplateGenerations(dir = null) {
       if (!pkg.scripts) pkg.scripts = {};
       pkg.scripts.build = 'remix vite:build';
       pkg.scripts.dev = 'remix vite:dev';
+      const deployScriptRel = path.relative(targetDir, path.join(rootDir, 'scripts', 'deploy-cloudflare.mjs')).replace(/\\/g, '/');
       pkg.scripts.preview = 'npm run build && wrangler pages dev ./build/client';
-      pkg.scripts.deploy = 'npm run build && node scripts/deploy-cloudflare.mjs';
+      pkg.scripts.deploy = `npm run build && node ${deployScriptRel}`;
 
       fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
     } catch {}
@@ -818,7 +819,7 @@ export function executeShellCommand(action, command, options = {}) {
   const child = spawn(command, {
     cwd: targetCwd,
     shell: true,
-    env: process.env
+    env: { ...process.env, ...(options.env || {}) }
   });
 
   child.stdout.on('data', (chunk) => {
@@ -876,6 +877,15 @@ export function executeShellCommand(action, command, options = {}) {
           if (targetName) {
             updateProjectNameOnDisk(targetCwd, targetName);
             broadcastLog(`✓ Synced project name "${targetName}" into template config files.`, 'stdout');
+          }
+          // Ensure package.json has universal production deploy script
+          const pkgPath = path.join(targetCwd, 'package.json');
+          if (fs.existsSync(pkgPath)) {
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            const deployScriptRel = path.relative(targetCwd, path.join(rootDir, 'scripts', 'deploy-cloudflare.mjs')).replace(/\\/g, '/');
+            if (!pkg.scripts) pkg.scripts = {};
+            pkg.scripts.deploy = `npm run build && node ${deployScriptRel}`;
+            fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
           }
         } catch {}
       }
@@ -1230,16 +1240,21 @@ export function handleAction(action, params = {}) {
       const deployConfig = getDeployConfig(targetProjectDir);
       const provider = deployConfig.hostingAuth?.provider || 'Cloudflare';
       if (provider === 'Vercel' || fs.existsSync(path.join(targetProjectDir, 'vercel.json'))) {
-        executeShellCommand('deploy-project', 'npx vercel --prod --yes', { cwd: targetProjectDir });
+        executeShellCommand('deploy-project', 'npm run build && npx vercel --prod --yes', { cwd: targetProjectDir });
         break;
       }
 
       if (provider === 'Netlify' || fs.existsSync(path.join(targetProjectDir, 'netlify.toml'))) {
-        executeShellCommand('deploy-project', 'npx netlify deploy --prod', { cwd: targetProjectDir });
+        executeShellCommand('deploy-project', 'npm run build && npx netlify deploy --prod', { cwd: targetProjectDir });
         break;
       }
 
-      executeShellCommand('deploy-project', 'npm run deploy', { cwd: targetProjectDir });
+      const deployScriptPath = path.join(rootDir, 'scripts', 'deploy-cloudflare.mjs');
+      const deployCmd = `npm run build && node "${deployScriptPath}"`;
+      executeShellCommand('deploy-project', deployCmd, {
+        cwd: targetProjectDir,
+        env: { PROJECT_DIR: targetProjectDir }
+      });
       break;
     }
     default: {

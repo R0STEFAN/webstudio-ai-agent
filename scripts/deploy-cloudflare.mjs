@@ -126,7 +126,28 @@ export async function fetchDeployHistory(projectName, limit = 10, retried = fals
   }
 }
 
-export async function detectProductionBranch(projectName) {
+export async function detectProductionBranch(projectName, dir = rootDir) {
+  // 1. Explicit environment variable override
+  if (process.env.CLOUDFLARE_PRODUCTION_BRANCH) {
+    return { branch: process.env.CLOUDFLARE_PRODUCTION_BRANCH.trim(), source: 'environment variable (CLOUDFLARE_PRODUCTION_BRANCH)' };
+  }
+  if (process.env.PRODUCTION_BRANCH) {
+    return { branch: process.env.PRODUCTION_BRANCH.trim(), source: 'environment variable (PRODUCTION_BRANCH)' };
+  }
+
+  // 2. Custom setting in wrangler.toml or wrangler.jsonc
+  if (dir && fs.existsSync(dir)) {
+    const tomlPath = path.join(dir, 'wrangler.toml');
+    if (fs.existsSync(tomlPath)) {
+      try {
+        const tomlContent = fs.readFileSync(tomlPath, 'utf8');
+        const m = tomlContent.match(/^[#\s]*production_branch\s*=\s*"([^"]+)"/m);
+        if (m) return { branch: m[1].trim(), source: `wrangler.toml (${path.basename(dir)})` };
+      } catch {}
+    }
+  }
+
+  // 3. Query Cloudflare API for project configuration
   const token = getWranglerToken();
   if (!token) {
     return { branch: 'main', source: 'default (unauthenticated)' };
@@ -167,7 +188,7 @@ export async function deploy() {
   const projectName = getProjectName(targetDir);
   console.log(`\x1b[36m[Cloudflare Deploy]\x1b[0m Detecting production branch for project: \x1b[1m"${projectName}"\x1b[0m...`);
 
-  const { branch: targetBranch, source } = await detectProductionBranch(projectName);
+  const { branch: targetBranch, source } = await detectProductionBranch(projectName, targetDir);
   console.log(`\x1b[36m[Cloudflare Deploy]\x1b[0m Target production branch: \x1b[32m"${targetBranch}"\x1b[0m (${source})`);
 
   const deployDir = fs.existsSync(path.join(targetDir, 'build', 'client')) ? './build/client' : './build';
