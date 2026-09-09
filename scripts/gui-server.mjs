@@ -663,6 +663,71 @@ export function updateProjectNameOnDisk(rootDir, newName) {
   return { updated, safeName };
 }
 
+export function getGlobalWebstudioToken(projectId) {
+  if (!projectId) return null;
+  const possiblePaths = [
+    path.join(process.env.APPDATA || '', 'webstudio-nodejs', 'Config', 'webstudio-config.json'),
+    path.join(process.env.LOCALAPPDATA || '', 'webstudio-nodejs', 'Config', 'webstudio-config.json'),
+    path.join(os.homedir(), '.config', 'webstudio-nodejs', 'webstudio-config.json'),
+    path.join(os.homedir(), '.config', 'webstudio', 'webstudio-config.json'),
+    path.join(os.homedir(), '.webstudio', 'webstudio-config.json')
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      try {
+        const conf = JSON.parse(fs.readFileSync(p, 'utf8'));
+        if (conf[projectId]?.token) return conf[projectId].token;
+      } catch {}
+    }
+  }
+  return null;
+}
+
+export function saveProjectShareLink(projectDir, shareLink) {
+  if (!shareLink || typeof shareLink !== 'string' || !shareLink.startsWith('http')) return false;
+  const cleanLink = shareLink.trim();
+
+  const wsDir = path.join(projectDir, '.webstudio');
+  if (!fs.existsSync(wsDir)) {
+    fs.mkdirSync(wsDir, { recursive: true });
+  }
+
+  const configPath = path.join(wsDir, 'config.json');
+  let config = {};
+  if (fs.existsSync(configPath)) {
+    try {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch {}
+  }
+  config.shareLink = cleanLink;
+
+  try {
+    const url = new URL(cleanLink);
+    const pMatch = url.hostname.match(/^p-([a-zA-Z0-9-]+)\./);
+    if (pMatch && !config.projectId) {
+      config.projectId = pMatch[1];
+    }
+  } catch {}
+
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
+
+  try {
+    if (typeof projectManager !== 'undefined') {
+      const reg = projectManager.loadRegistry();
+      const proj = reg.projects.find(p => p.id === path.basename(projectDir) || (config.projectId && p.id === config.projectId));
+      if (proj) {
+        proj.shareLink = cleanLink;
+        projectManager.saveRegistry(reg);
+      }
+      if (projectDir !== rootDir) {
+        projectManager.syncActiveToRoot(projectDir);
+      }
+    }
+  } catch {}
+
+  return true;
+}
+
 export async function getProjectStatus(targetHosting = null, targetTemplate = null) {
   const projectDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
   const cliPath = path.join(rootDir, 'node_modules', 'webstudio', 'lib', 'cli.js');
@@ -724,14 +789,42 @@ export async function getProjectStatus(targetHosting = null, targetTemplate = nu
       }
     }
   }
+
+  // Extract authToken from config.shareLink if present
+  if (!authToken && config?.shareLink) {
+    try {
+      const u = new URL(config.shareLink);
+      const tok = u.searchParams.get('authToken');
+      if (tok) authToken = tok;
+    } catch {}
+  }
+
+  // Check global Webstudio credentials config
+  if (!authToken && projectId) {
+    const globTok = getGlobalWebstudioToken(projectId);
+    if (globTok) authToken = globTok;
+  }
+
   const hasAuthToken = Boolean(authToken || data?.authToken);
   const hasSession = Boolean(session?.cookie && session?.csrfToken);
 
-  let savedShareLink = '';
-  if (projectId && authToken) {
-    savedShareLink = `https://p-${projectId}.apps.webstudio.is/?authToken=${authToken}`;
-  } else if (projectId) {
-    savedShareLink = `https://p-${projectId}.apps.webstudio.is`;
+  // Always preserve full original shareLink exactly as entered
+  let savedShareLink = config?.shareLink || '';
+  if (!savedShareLink && typeof projectManager !== 'undefined') {
+    try {
+      const reg = projectManager.loadRegistry();
+      const currentProj = reg.projects.find(p => p.id === path.basename(projectDir) || (projectId && p.id === projectId));
+      if (currentProj?.shareLink) savedShareLink = currentProj.shareLink;
+    } catch {}
+  }
+
+  // If no savedShareLink, synthesize one with authToken if available
+  if (!savedShareLink) {
+    if (projectId && authToken) {
+      savedShareLink = `https://p-${projectId}.apps.webstudio.is/?authToken=${authToken}&mode=design`;
+    } else if (projectId) {
+      savedShareLink = `https://p-${projectId}.apps.webstudio.is`;
+    }
   }
 
   let pagesCount = 0;
@@ -1003,15 +1096,40 @@ export function handleAction(action, params = {}) {
     }
     case 'link': {
       const shareLink = (params.shareLink || '').replace(/"/g, '\\"');
+      if (params.shareLink && params.shareLink.startsWith('http')) {
+        saveProjectShareLink(targetProjectDir, params.shareLink);
+      }
       executeShellCommand('link', `npx webstudio link --link "${shareLink}"`);
       break;
     }
     case 'sync': {
-      executeShellCommand('sync', 'npx webstudio sync');
+      let cmd = 'npx webstudio sync';
+      const confPath = path.join(targetProjectDir, '.webstudio', 'config.json');
+      let tok = '';
+      if (fs.existsSync(confPath)) {
+        try {
+          const c = JSON.parse(fs.readFileSync(confPath, 'utf8'));
+          if (c.shareLink) {
+            const u = new URL(c.shareLink);
+            tok = u.searchParams.get('authToken') || '';
+          }
+        } catch {}
+      }
+      if (!tok) {
+        const pid = path.basename(targetProjectDir);
+        tok = getGlobalWebstudioToken(pid) || '';
+      }
+      if (tok && !cmd.includes('--authToken')) {
+        cmd += ` --authToken "${tok}"`;
+      }
+      executeShellCommand('sync', cmd);
       break;
     }
     case 'sync-draft': {
       let shareLink = params.shareLink || '';
+      if (shareLink && shareLink.startsWith('http')) {
+        saveProjectShareLink(targetProjectDir, shareLink);
+      }
       let buildId = params.buildId || '';
       let origin = '';
       let authToken = '';
@@ -1104,7 +1222,19 @@ export function handleAction(action, params = {}) {
       break;
     }
     case 'import': {
-      const shareLink = (params.shareLink || '').replace(/"/g, '\\"');
+      if (params.shareLink && params.shareLink.startsWith('http')) {
+        saveProjectShareLink(targetProjectDir, params.shareLink);
+      }
+      let shareLink = (params.shareLink || '').replace(/"/g, '\\"');
+      if (!shareLink) {
+        const confPath = path.join(targetProjectDir, '.webstudio', 'config.json');
+        if (fs.existsSync(confPath)) {
+          try {
+            const c = JSON.parse(fs.readFileSync(confPath, 'utf8'));
+            if (c.shareLink) shareLink = c.shareLink.replace(/"/g, '\\"');
+          } catch {}
+        }
+      }
       executeShellCommand('import', `npx webstudio import --to "${shareLink}"`);
       break;
     }
@@ -1400,6 +1530,21 @@ export function createGuiServer(port = 4200) {
           const proj = projectManager.renameProject(payload.projectId, payload.newName);
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
           res.end(JSON.stringify({ ok: true, project: proj }));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+        return;
+      }
+
+      // POST /api/project/share-link -> Save full original shareLink for active project
+      if (pathname === '/api/project/share-link' && req.method === 'POST') {
+        const payload = await readJsonBody();
+        try {
+          const targetDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
+          const ok = saveProjectShareLink(targetDir, payload.shareLink);
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
+          res.end(JSON.stringify({ ok }));
         } catch (err) {
           res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
           res.end(JSON.stringify({ error: err.message }));

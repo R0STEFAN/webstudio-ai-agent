@@ -1034,7 +1034,19 @@ export function renderView() {
   // Auto-fill Input Fields strictly from Active Project Server State
   const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
   if (dom.inputShareLink && activeEl !== dom.inputShareLink) {
-    dom.inputShareLink.value = state.status?.savedShareLink || '';
+    const serverLink = state.status?.savedShareLink || '';
+    const pid = state.activeProjectId || 'default';
+    let localLink = '';
+    try { localLink = localStorage.getItem(`ws_share_link_${pid}`) || ''; } catch {}
+
+    // Never overwrite a full URL containing query parameters with a bare domain URL!
+    if (serverLink && (serverLink.includes('authToken=') || !localLink.includes('authToken='))) {
+      dom.inputShareLink.value = serverLink;
+    } else if (localLink) {
+      dom.inputShareLink.value = localLink;
+    } else {
+      dom.inputShareLink.value = serverLink;
+    }
   }
 
   if (dom.inputBuildId && activeEl !== dom.inputBuildId) {
@@ -1816,9 +1828,22 @@ export function setupEventListeners() {
   
   // Input Persistence Listeners (Scoped per active project)
   if (dom.inputShareLink) {
+    let shareLinkSaveTimer = null;
     dom.inputShareLink.addEventListener('input', () => {
       const pid = state.activeProjectId || 'default';
-      try { localStorage.setItem(`ws_share_link_${pid}`, dom.inputShareLink.value.trim()); } catch {}
+      const val = dom.inputShareLink.value.trim();
+      try { localStorage.setItem(`ws_share_link_${pid}`, val); } catch {}
+
+      clearTimeout(shareLinkSaveTimer);
+      if (val && val.startsWith('http')) {
+        shareLinkSaveTimer = setTimeout(() => {
+          fetch('/api/project/share-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ shareLink: val })
+          }).catch(() => {});
+        }, 400);
+      }
     });
   }
   if (dom.inputBuildId) {
