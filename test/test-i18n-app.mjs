@@ -174,8 +174,8 @@ assert.strictEqual(t('appTitle', {}, 'ua'), 'Webstudio Control Center');
 assert.strictEqual(t('appTitle', {}, 'en'), 'Webstudio Control Center');
 
 // Tabs keys
-assert.strictEqual(t('tabs.workspace', {}, 'ua'), '⚡ Керування проєктом');
-assert.strictEqual(t('tabs.workspace', {}, 'en'), '⚡ Project Workspace');
+assert.strictEqual(t('tabs.workspace', {}, 'ua'), '⚡ Робоча область');
+assert.strictEqual(t('tabs.workspace', {}, 'en'), '⚡ Workspace');
 assert.strictEqual(t('tabs.deploy', {}, 'ua'), '🚀 Деплой та Шаблони');
 assert.strictEqual(t('tabs.deploy', {}, 'en'), '🚀 Build & Deploy');
 

@@ -1784,10 +1784,10 @@ export function setupEventListeners() {
     });
   }
   
-  // Install Webstudio Button
+  // Install Webstudio Button (First Run Wizard - Root Dependencies)
   if (dom.btnInstall) {
     dom.btnInstall.addEventListener('click', () => {
-      dispatchAction('install');
+      dispatchAction('install', { scope: 'root' });
     });
   }
   
@@ -1954,10 +1954,10 @@ export function setupEventListeners() {
       fetchStatus(provider, selectedPreset);
     });
   }
-  // Deploy Lifecycle: Install Dependencies
+  // Deploy Lifecycle: Install Dependencies (Project Template)
   if (dom.btnDeployInstall) {
     dom.btnDeployInstall.addEventListener('click', () => {
-      dispatchAction('install');
+      dispatchAction('install', { scope: 'project' });
     });
   }
 

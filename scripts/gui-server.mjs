@@ -1074,20 +1074,31 @@ export function executePreviewCommand() {
 export function handleAction(action, params = {}) {
   const targetProjectDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
   switch (action) {
+    case 'install-root':
     case 'install': {
+      const cliPath = path.join(rootDir, 'node_modules', 'webstudio', 'lib', 'cli.js');
+      const isRootInstalled = fs.existsSync(cliPath);
+      const isRootInstall = action === 'install-root' || params.scope === 'root' || !isRootInstalled;
+
+      if (isRootInstall) {
+        broadcastLog('📦 Встановлення актуальної версії Webstudio CLI (@latest) та системних залежностей...', 'stdout');
+        executeShellCommand(action, 'npm run update-webstudio', { cwd: rootDir });
+        break;
+      }
+
       const targetPkg = path.join(targetProjectDir, 'package.json');
       if (targetProjectDir !== rootDir && !fs.existsSync(targetPkg)) {
         const relPath = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
         const msg = `⚠️ [./${relPath}] У папці проєкту ще немає package.json. Спершу згенеруйте код обраного шаблону (кнопка "Згенерувати шаблон").`;
         console.log(`\x1b[33m[Webstudio CLI] ${msg}\x1b[0m\n`);
         broadcastLog(msg, 'stderr');
-        broadcastComplete('install', false, 1);
+        broadcastComplete(action, false, 1);
         break;
       }
       const relPath = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
       const targetLabel = relPath === '.' ? './ (root)' : `./${relPath}`;
       broadcastLog(`📦 Встановлення залежностей шаблону в ${targetLabel}...`, 'stdout');
-      executeShellCommand('install', 'npm install', { cwd: targetProjectDir });
+      executeShellCommand(action, 'npm install', { cwd: targetProjectDir });
       break;
     }
     case 'update': {
