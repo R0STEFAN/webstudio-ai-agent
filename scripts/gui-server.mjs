@@ -1051,7 +1051,7 @@ export function executeShellCommand(action, command, options = {}) {
           // Ensure project has standard .gitignore for clean git / coolify deployment
           const gitignorePath = path.join(targetCwd, '.gitignore');
           if (!fs.existsSync(gitignorePath)) {
-            const defaultGitignore = "node_modules/\nbuild/\n.react-router/\n.webstudio-backups/\n.env\n.env.*\n!.env.example\n.DS_Store\n*.log\n";
+            const defaultGitignore = "node_modules/\nbuild/\ndist/\n.wrangler/\n.react-router/\n.webstudio-backups/\n.env\n.env.*\n!.env.example\n.DS_Store\n*.log\n";
             fs.writeFileSync(gitignorePath, defaultGitignore, 'utf8');
           }
         } catch {}
@@ -1544,7 +1544,7 @@ export function handleAction(action, params = {}) {
         if (!fs.existsSync(gitignorePath)) {
           fs.writeFileSync(
             gitignorePath,
-            'node_modules/\nbuild/\ndist/\n.react-router/\n.webstudio-backups/\n.env\n.env.*\n!.env.example\n.DS_Store\n*.log\n',
+            'node_modules/\nbuild/\ndist/\n.wrangler/\n.react-router/\n.webstudio-backups/\n.env\n.env.*\n!.env.example\n.DS_Store\n*.log\n',
             'utf8'
           );
         }
