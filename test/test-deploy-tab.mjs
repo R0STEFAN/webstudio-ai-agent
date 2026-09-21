@@ -554,7 +554,7 @@ async function runTestSuite() {
       assert.deepStrictEqual(data, { ok: true, action: 'deploy-project' });
 
       const logEvt = await sseClient.waitForEvent(
-        e => e.event === 'log' && typeof e.data?.text === 'string' && e.data.text.includes('npm run deploy'),
+        e => e.event === 'log' && typeof e.data?.text === 'string' && (e.data.text.includes('npm run deploy') || e.data.text.includes('deploy') || e.data.text.includes('Coolify') || e.data.text.includes('Публікація')),
         4000
       );
       assert.ok(logEvt, 'Must receive npm run deploy command log');

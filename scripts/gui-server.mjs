@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { spawn, exec } from 'node:child_process';
+import { spawn, exec, execSync } from 'node:child_process';
 import { ProjectManager } from './project-manager.mjs';
 import { BackupManager } from './backup-manager.mjs';
 import { fetchDeployHistory } from './deploy-cloudflare.mjs';
@@ -440,9 +440,21 @@ export function getHostingAuth(rootDir, targetHosting = null) {
   }
 
   if (provider === 'Docker') {
+    let accountName = cachedHostingAccounts.Docker;
+    if (!accountName) {
+      const gitDir = path.join(rootDir, '.git');
+      if (fs.existsSync(gitDir)) {
+        try {
+          const remotes = execSync('git remote -v', { cwd: rootDir, encoding: 'utf8' });
+          const match = remotes.match(/github\.com[:/]([^/]+\/[^/\s.]+)/i);
+          if (match) accountName = `GitHub: ${match[1]}`;
+        } catch {}
+      }
+      accountName = accountName || 'Coolify (Dockerfile Ready)';
+    }
     return {
       authenticated: true,
-      account: cachedHostingAccounts.Docker || 'Docker Engine',
+      account: accountName,
       provider: 'Docker',
       checked: true
     };
@@ -1358,7 +1370,12 @@ export function handleAction(action, params = {}) {
       let cmd = 'npx wrangler whoami';
       if (provider === 'Vercel') cmd = 'npx vercel whoami';
       else if (provider === 'Netlify') cmd = 'npx netlify status';
-      else if (provider === 'Docker') cmd = 'docker info';
+      else if (provider === 'Docker') {
+        const gitDir = path.join(targetProjectDir, '.git');
+        cmd = fs.existsSync(gitDir)
+          ? 'git remote -v && git status --short'
+          : 'echo "✓ Dockerfile is ready for Coolify. Connect a GitHub repository to enable 1-click auto-deploy."';
+      }
       executeShellCommand('check-auth', cmd, { provider, cwd: targetProjectDir });
       break;
     }
@@ -1377,7 +1394,10 @@ export function handleAction(action, params = {}) {
       let cmd = 'npx wrangler login';
       if (provider === 'Vercel') cmd = 'npx vercel login';
       else if (provider === 'Netlify') cmd = 'npx netlify login';
-      else if (provider === 'Docker') cmd = 'docker login';
+      else if (provider === 'Docker') {
+        const gitDir = path.join(targetProjectDir, '.git');
+        cmd = fs.existsSync(gitDir) ? 'git remote -v' : 'echo "📌 To link GitHub with Coolify, run: git init && git remote add origin <URL>"';
+      }
       executeShellCommand('login-auth', cmd, { provider, cwd: targetProjectDir });
       break;
     }
@@ -1417,9 +1437,33 @@ export function handleAction(action, params = {}) {
 
       if (provider === 'Docker' || fs.existsSync(path.join(targetProjectDir, 'Dockerfile'))) {
         const activeProj = typeof projectManager !== 'undefined' ? projectManager.getActiveProject() : null;
-        const imageName = (activeProj?.name || path.basename(targetProjectDir)).toLowerCase().replace(/[^a-z0-9_-]/g, '-');
-        broadcastLog(`🐳 Збірка Docker-образу "${imageName}:latest"...`, 'stdout');
-        executeShellCommand('deploy-project', `docker build -t ${imageName}:latest .`, { cwd: targetProjectDir });
+        const projName = activeProj?.name || path.basename(targetProjectDir);
+        const gitDir = path.join(targetProjectDir, '.git');
+        let hasRemote = false;
+        if (fs.existsSync(gitDir)) {
+          try {
+            const remotes = execSync('git remote -v', { cwd: targetProjectDir, encoding: 'utf8' }).trim();
+            if (remotes.length > 0) hasRemote = true;
+          } catch {}
+        }
+
+        if (hasRemote) {
+          broadcastLog(`🐙 Push оновлень на GitHub для автоматичного оновлення у Coolify...`, 'stdout');
+          const pushCmd = 'git add . && git commit -m "deploy: update Webstudio build" || true && git push';
+          executeShellCommand('deploy-project', pushCmd, { cwd: targetProjectDir });
+        } else {
+          broadcastLog(`🐳 Проєкт "${projName}" готовий до деплою на Coolify через GitHub!`, 'stdout');
+          broadcastLog(`📌 Рекомендований процес Coolify:`, 'stdout');
+          broadcastLog(`   1. Створіть новий репозиторій на GitHub (наприклад, ${projName})`, 'stdout');
+          broadcastLog(`   2. У папці projects/${path.basename(targetProjectDir)} виконайте:`, 'stdout');
+          broadcastLog(`      git init`, 'stdout');
+          broadcastLog(`      git remote add origin <URL_GITHUB_РЕПОЗИТОРІЮ>`, 'stdout');
+          broadcastLog(`      git add . && git commit -m "Initial commit"`, 'stdout');
+          broadcastLog(`      git push -u origin main`, 'stdout');
+          broadcastLog(`   3. У панелі Coolify додайте цей GitHub Repo ➔ Build Pack: Dockerfile ➔ Port: 3000`, 'stdout');
+          broadcastLog(`   4. Натисніть Deploy у Coolify — і ваш сайт працює!`, 'stdout');
+          broadcastComplete('deploy-project', true, 0);
+        }
         break;
       }
 

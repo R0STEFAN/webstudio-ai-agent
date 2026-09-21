@@ -126,8 +126,8 @@ export const i18n = {
           'vercel': '▲ React Router v7 + Vercel',
           'react-router-netlify': '🌐 React Router v7 + Netlify',
           'netlify': '🌐 React Router v7 + Netlify',
-          'react-router-docker': '🐳 React Router v7 + Docker',
-          'docker': '🐳 React Router v7 + Docker',
+          'react-router-docker': '🐳 Docker / Coolify (React Router v7)',
+          'docker': '🐳 Docker / Coolify (React Router v7)',
           'ssg': '📄 Static Site (SSG / Vike)',
           'ssg-vercel': '▲ SSG + Vercel Static',
           'ssg-netlify': '🌐 SSG + Netlify Static'
@@ -373,8 +373,8 @@ export const i18n = {
           'vercel': '▲ React Router v7 + Vercel',
           'react-router-netlify': '🌐 React Router v7 + Netlify',
           'netlify': '🌐 React Router v7 + Netlify',
-          'react-router-docker': '🐳 React Router v7 + Docker',
-          'docker': '🐳 React Router v7 + Docker',
+          'react-router-docker': '🐳 Docker / Coolify (React Router v7)',
+          'docker': '🐳 Docker / Coolify (React Router v7)',
           'ssg': '📄 Static Site (SSG / Vike)',
           'ssg-vercel': '▲ SSG + Vercel Static',
           'ssg-netlify': '🌐 SSG + Netlify Static'
