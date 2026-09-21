@@ -986,6 +986,12 @@ export function executeShellCommand(action, command, options = {}) {
             }
             fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
           }
+          // Ensure project has standard .gitignore for clean git / coolify deployment
+          const gitignorePath = path.join(targetCwd, '.gitignore');
+          if (!fs.existsSync(gitignorePath)) {
+            const defaultGitignore = "node_modules/\nbuild/\n.react-router/\n.webstudio-backups/\n.env\n.env.*\n!.env.example\n.DS_Store\n*.log\n";
+            fs.writeFileSync(gitignorePath, defaultGitignore, 'utf8');
+          }
         } catch {}
       }
     } else {
