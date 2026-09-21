@@ -1028,15 +1028,23 @@ export function executeShellCommand(action, command, options = {}) {
             updateProjectNameOnDisk(targetCwd, targetName);
             broadcastLog(`✓ Synced project name "${targetName}" into template config files.`, 'stdout');
           }
-          // Ensure package.json has universal production deploy script
+          // Ensure package.json has appropriate scripts
           const pkgPath = path.join(targetCwd, 'package.json');
           if (fs.existsSync(pkgPath)) {
             const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-            const deployScriptRel = path.relative(targetCwd, path.join(rootDir, 'scripts', 'deploy-cloudflare.mjs')).replace(/\\/g, '/');
             if (!pkg.scripts) pkg.scripts = {};
-            pkg.scripts.deploy = `npm run build && node ${deployScriptRel}`;
-            if (!pkg.scripts.preview && pkg.scripts.start) {
-              pkg.scripts.preview = pkg.scripts.start;
+            const isDocker = (options.template && options.template.includes('docker')) || fs.existsSync(path.join(targetCwd, 'Dockerfile'));
+            if (isDocker) {
+              pkg.scripts.start = 'react-router-serve ./build/server/index.js';
+              pkg.scripts.preview = 'react-router-serve ./build/server/index.js';
+              delete pkg.scripts.typegen;
+              if (pkg.dependencies?.wrangler) delete pkg.dependencies.wrangler;
+            } else {
+              const deployScriptRel = path.relative(targetCwd, path.join(rootDir, 'scripts', 'deploy-cloudflare.mjs')).replace(/\\/g, '/');
+              pkg.scripts.deploy = `npm run build && node ${deployScriptRel}`;
+              if (!pkg.scripts.preview && pkg.scripts.start) {
+                pkg.scripts.preview = pkg.scripts.start;
+              }
             }
             fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
           }
@@ -1065,12 +1073,17 @@ export function executePreviewCommand() {
   const relPath = path.relative(rootDir, targetCwd).replace(/\\/g, '/') || '.';
   const cwdDisplay = relPath === '.' ? './ (root)' : `./${relPath}`;
 
+  const isDocker = fs.existsSync(path.join(targetCwd, 'Dockerfile'));
   let previewCmd = 'npm run preview';
   const pkgPath = path.join(targetCwd, 'package.json');
   if (fs.existsSync(pkgPath)) {
     try {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-      if (!pkg.scripts?.preview && pkg.scripts?.start) {
+      if (isDocker) {
+        const hasBuild = fs.existsSync(path.join(targetCwd, 'build', 'server', 'index.js'));
+        const startCmd = pkg.scripts?.start ? 'npm run start' : 'npx react-router-serve ./build/server/index.js';
+        previewCmd = hasBuild ? startCmd : `npm run build && ${startCmd}`;
+      } else if (!pkg.scripts?.preview && pkg.scripts?.start) {
         previewCmd = 'npm run start';
       } else if (!pkg.scripts?.preview && pkg.scripts?.dev) {
         previewCmd = 'npm run dev';
