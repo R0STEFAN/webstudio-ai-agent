@@ -143,11 +143,13 @@ export const i18n = {
       nameSection: {
         title: '2. Назва проєкту для хостингу',
         projectNameLabel: 'Ім\'я проєкту (Project Name)',
+        projectNameLabelDocker: 'Ім\'я репозиторію на GitHub (Project Name)',
         placeholder: 'my-webstudio-app',
         applyBtn: '💾 Застосувати назву',
         applied: 'Назву оновлено!',
         detectedConfig: 'Конфігураційний файл: {file}',
-        hint: 'Автоматично оновлює назву у wrangler.jsonc, wrangler.toml та package.json'
+        hint: 'Автоматично оновлює назву у wrangler.jsonc, wrangler.toml та package.json',
+        hintDocker: 'Для Docker / Coolify назва має співпадати з назвою репозиторію на GitHub. Оновлює назву у package.json'
       },
       authSection: {
         title: '3. Авторизація хостингу',
@@ -158,7 +160,8 @@ export const i18n = {
         authorized: 'Авторизовано ({account})',
         notAuthorized: 'Не авторизовано',
         notChecked: 'Не перевірено',
-        hint: 'Потрібно для публікації на Cloudflare / Vercel'
+        hint: 'Потрібно для публікації на Cloudflare / Vercel',
+        hintDocker: 'Авторизація через GitHub CLI (gh) для деплою в репозиторій для Coolify'
       },
       lifecycleSection: {
         title: '4. Послідовні кроки деплою',
@@ -390,11 +393,13 @@ export const i18n = {
       nameSection: {
         title: '2. Project Name for Hosting',
         projectNameLabel: 'Project Name',
+        projectNameLabelDocker: 'GitHub Repository Name (Project Name)',
         placeholder: 'my-webstudio-app',
         applyBtn: '💾 Apply Project Name',
         applied: 'Project name updated!',
         detectedConfig: 'Configuration file: {file}',
-        hint: 'Automatically updates project name across wrangler.jsonc, wrangler.toml, and package.json'
+        hint: 'Automatically updates project name across wrangler.jsonc, wrangler.toml, and package.json',
+        hintDocker: 'For Docker / Coolify, this must match your GitHub repository name. Updates package.json'
       },
       authSection: {
         title: '3. Hosting Authentication',
@@ -405,7 +410,8 @@ export const i18n = {
         authorized: 'Authorized ({account})',
         notAuthorized: 'Not authorized',
         notChecked: 'Not checked',
-        hint: 'Required for publishing to Cloudflare / Vercel'
+        hint: 'Required for publishing to Cloudflare / Vercel',
+        hintDocker: 'Authentication via GitHub CLI (gh) for deployment to Coolify'
       },
       lifecycleSection: {
         title: '4. Deploy Lifecycle Actions',

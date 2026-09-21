@@ -491,7 +491,7 @@
               </div>
               <div class="card-body">
                 <div class="form-group">
-                  <label for="input-project-name" class="form-label" data-i18n="deploy.nameSection.projectNameLabel">
+                  <label for="input-project-name" id="lbl-project-name" class="form-label" data-i18n="deploy.nameSection.projectNameLabel">
                     Ім'я проєкту (Project Name)
                   </label>
                   <input 
@@ -507,7 +507,7 @@
                 <div id="val-detected-config" class="config-badge" data-i18n="deploy.nameSection.detectedConfig">
                   Конфігураційний файл: —
                 </div>
-                <p class="form-hint" data-i18n="deploy.nameSection.hint">
+                <p id="hint-project-name" class="form-hint" data-i18n="deploy.nameSection.hint">
                   Автоматично оновлює назву у wrangler.jsonc, wrangler.toml та package.json
                 </p>
                 <div class="button-strip">
@@ -534,7 +534,7 @@
                   <span class="auth-status-label" data-i18n="deploy.authSection.statusLabel">Статус облікового запису:</span>
                   <span id="val-hosting-status" class="badge badge-neutral">Не перевірено</span>
                 </div>
-                <p class="form-hint" data-i18n="deploy.authSection.hint">
+                <p id="hint-auth-section" class="form-hint" data-i18n="deploy.authSection.hint">
                   Потрібно для публікації на Cloudflare / Vercel
                 </p>
                 <div class="button-strip">

@@ -128,10 +128,13 @@ export const dom = {
   btnGenerateTemplate: null,
   btnCleanTemplate: null,
   valActiveTemplateBadge: null,
+  lblProjectName: null,
   inputProjectName: null,
+  hintProjectName: null,
   btnUpdateProjectName: null,
   valDetectedConfig: null,
   valHostingStatus: null,
+  hintAuthSection: null,
   btnCheckAuth: null,
   btnLoginAuth: null,
   btnDeployInstall: null,
@@ -262,10 +265,13 @@ export function cacheDOMElements() {
   dom.btnGenerateTemplate = document.getElementById('btn-generate-template');
   dom.btnCleanTemplate = document.getElementById('btn-clean-template');
   dom.valActiveTemplateBadge = document.getElementById('val-active-template-badge');
+  dom.lblProjectName = document.getElementById('lbl-project-name');
   dom.inputProjectName = document.getElementById('input-project-name');
+  dom.hintProjectName = document.getElementById('hint-project-name');
   dom.btnUpdateProjectName = document.getElementById('btn-update-project-name');
   dom.valDetectedConfig = document.getElementById('val-detected-config');
   dom.valHostingStatus = document.getElementById('val-hosting-status');
+  dom.hintAuthSection = document.getElementById('hint-auth-section');
   dom.btnCheckAuth = document.getElementById('btn-check-auth');
   dom.btnLoginAuth = document.getElementById('btn-login-auth');
   dom.btnDeployInstall = document.getElementById('btn-deploy-install');
@@ -438,6 +444,31 @@ export function applyTranslations() {
     } else if (dom.selectTemplatePreset.options && dom.selectTemplatePreset.options.length > 0) {
       dom.selectTemplatePreset.selectedIndex = 0;
     }
+  }
+
+  const currentProv = state.deploy?.targetHosting || (dom.selectTemplatePreset?.value?.includes('docker') ? 'Docker' : 'Cloudflare');
+  updateDynamicDeployLabels(currentProv);
+}
+
+/**
+ * Updates dynamic labels & hints in Step 2 and Step 3 based on provider (Docker / GitHub vs other hosting).
+ */
+export function updateDynamicDeployLabels(provider) {
+  const isDocker = provider === 'Docker' || (state.deploy?.detectedTemplate && state.deploy.detectedTemplate.includes('docker'));
+  if (dom.lblProjectName) {
+    dom.lblProjectName.textContent = isDocker
+      ? t('deploy.nameSection.projectNameLabelDocker', {}, state.lang)
+      : t('deploy.nameSection.projectNameLabel', {}, state.lang);
+  }
+  if (dom.hintProjectName) {
+    dom.hintProjectName.textContent = isDocker
+      ? t('deploy.nameSection.hintDocker', {}, state.lang)
+      : t('deploy.nameSection.hint', {}, state.lang);
+  }
+  if (dom.hintAuthSection) {
+    dom.hintAuthSection.textContent = isDocker
+      ? t('deploy.authSection.hintDocker', {}, state.lang)
+      : t('deploy.authSection.hint', {}, state.lang);
   }
 }
 
@@ -1000,20 +1031,22 @@ export function renderView() {
         else hosting = deployData.detectedTemplate;
       }
       dom.valDeployHosting.textContent = hosting;
+      updateDynamicDeployLabels(hosting);
     }
     // Hosting Auth Status Badge
     if (dom.valHostingStatus) {
       const hostingAuth = deployData.hostingAuth || state.status.hostingAuth;
       const provider = hostingAuth?.provider || 'Cloudflare';
+      const displayProvider = provider === 'Docker' ? 'GitHub' : provider;
       if (hostingAuth?.authenticated) {
-        const account = hostingAuth.account || provider;
+        const account = hostingAuth.account || displayProvider;
         dom.valHostingStatus.textContent = t('deploy.authSection.authorized', { account }, state.lang);
         dom.valHostingStatus.className = 'badge badge-success';
       } else if (hostingAuth?.checked && !hostingAuth?.authenticated) {
-        dom.valHostingStatus.textContent = `${t('deploy.authSection.notAuthorized', {}, state.lang)} (${provider})`;
+        dom.valHostingStatus.textContent = `${t('deploy.authSection.notAuthorized', {}, state.lang)} (${displayProvider})`;
         dom.valHostingStatus.className = 'badge badge-warning';
       } else {
-        dom.valHostingStatus.textContent = `${t('deploy.authSection.notChecked', {}, state.lang)} (${provider})`;
+        dom.valHostingStatus.textContent = `${t('deploy.authSection.notChecked', {}, state.lang)} (${displayProvider})`;
         dom.valHostingStatus.className = 'badge badge-neutral';
       }
     }
@@ -1951,6 +1984,7 @@ export function setupEventListeners() {
       if (dom.valDeployHosting) {
         dom.valDeployHosting.textContent = provider;
       }
+      updateDynamicDeployLabels(provider);
       fetchStatus(provider, selectedPreset);
     });
   }
@@ -1981,7 +2015,13 @@ export function setupEventListeners() {
   // Deploy Lifecycle: Publish / Deploy Project
   if (dom.btnDeployPublish) {
     dom.btnDeployPublish.addEventListener('click', () => {
-      dispatchAction('deploy-project');
+      const selectedPreset = dom.selectTemplatePreset?.value || 'react-router-cloudflare';
+      let provider = 'Cloudflare';
+      if (selectedPreset.includes('vercel')) provider = 'Vercel';
+      else if (selectedPreset.includes('netlify')) provider = 'Netlify';
+      else if (selectedPreset.includes('docker')) provider = 'Docker';
+      else if (selectedPreset.includes('ssg')) provider = 'Static';
+      dispatchAction('deploy-project', { provider, template: selectedPreset });
     });
   }
   

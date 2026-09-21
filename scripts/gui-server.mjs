@@ -314,6 +314,42 @@ export function cleanAllTemplateGenerations(dir = null) {
 }
 
 
+export function getGitHubUser() {
+  if (cachedHostingAccounts.Docker) {
+    const m = cachedHostingAccounts.Docker.match(/^([^\s(]+)/);
+    if (m) return m[1];
+  }
+  if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) {
+    try {
+      const out = execSync('gh api user -q .login', { encoding: 'utf8', timeout: 3000 }).trim();
+      if (out) return out;
+    } catch {}
+  }
+  const home = os.homedir();
+  const ghPaths = [
+    path.join(home, '.config', 'gh', 'hosts.yml'),
+    path.join(process.env.XDG_CONFIG_HOME || '', 'gh', 'hosts.yml'),
+    path.join(process.env.APPDATA || '', 'GitHub CLI', 'hosts.yml'),
+    path.join(process.env.LOCALAPPDATA || '', 'GitHub CLI', 'hosts.yml')
+  ].filter(Boolean);
+
+  for (const p of ghPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        const content = fs.readFileSync(p, 'utf8');
+        const userMatch = content.match(/user:\s*([^\r\n]+)/i);
+        if (userMatch) return userMatch[1].trim();
+      } catch {}
+    }
+  }
+
+  try {
+    const out = execSync('gh api user -q .login', { encoding: 'utf8', timeout: 3000 }).trim();
+    if (out) return out;
+  } catch {}
+  return null;
+}
+
 let cachedHostingAccounts = {
   Cloudflare: null,
   Vercel: null,
@@ -442,19 +478,16 @@ export function getHostingAuth(rootDir, targetHosting = null) {
   if (provider === 'Docker') {
     let accountName = cachedHostingAccounts.Docker;
     if (!accountName) {
-      const gitDir = path.join(rootDir, '.git');
-      if (fs.existsSync(gitDir)) {
-        try {
-          const remotes = execSync('git remote -v', { cwd: rootDir, encoding: 'utf8' });
-          const match = remotes.match(/github\.com[:/]([^/]+\/[^/\s.]+)/i);
-          if (match) accountName = `GitHub: ${match[1]}`;
-        } catch {}
+      const ghUser = getGitHubUser();
+      if (ghUser) {
+        accountName = `${ghUser} (GitHub)`;
+        cachedHostingAccounts.Docker = accountName;
       }
-      accountName = accountName || 'Coolify (Dockerfile Ready)';
     }
+    const isAuthed = Boolean(accountName);
     return {
-      authenticated: true,
-      account: accountName,
+      authenticated: isAuthed,
+      account: accountName || null,
       provider: 'Docker',
       checked: true
     };
@@ -625,7 +658,7 @@ export function getDeployConfig(dir = null, requestedHosting = null, requestedTe
     hasWrangler: Boolean(fs.existsSync(wranglerJsoncPath) || fs.existsSync(wranglerTomlPath)),
     hasBuildDir: Boolean(fs.existsSync(path.join(targetDir, 'build')) || fs.existsSync(path.join(targetDir, 'dist'))),
     availableScripts,
-    hostingAuth: getHostingAuth(rootDir, targetHosting)
+    hostingAuth: getHostingAuth(targetDir, targetHosting)
   };
 }
 
@@ -949,6 +982,9 @@ export function executeShellCommand(action, command, options = {}) {
       } else if (prov === 'Netlify') {
         const netMatch = text.match(/Email:\s*([^\r\n]+)/i) || text.match(/Name:\s*([^\r\n]+)/i);
         if (netMatch) cachedHostingAccounts.Netlify = netMatch[1].trim();
+      } else if (prov === 'Docker') {
+        const ghMatch = text.match(/Logged in to github\.com account\s+([^\s(]+)/i) || text.match(/account\s+([^\s(]+)/i) || text.match(/user:\s*([^\s]+)/i);
+        if (ghMatch) cachedHostingAccounts.Docker = `${ghMatch[1].trim()} (GitHub)`;
       }
     }
   });
@@ -977,6 +1013,12 @@ export function executeShellCommand(action, command, options = {}) {
             broadcastLog(`📦 Auto-backup snapshot created: ${autoSnap.displayName}`, 'stdout');
           }
         } catch {}
+      }
+      if ((action === 'check-auth' || action === 'login-auth') && options.provider === 'Docker') {
+        if (!cachedHostingAccounts.Docker) {
+          const ghUser = getGitHubUser();
+          if (ghUser) cachedHostingAccounts.Docker = `${ghUser} (GitHub)`;
+        }
       }
       if (action === 'generate-template') {
         try {
@@ -1371,10 +1413,7 @@ export function handleAction(action, params = {}) {
       if (provider === 'Vercel') cmd = 'npx vercel whoami';
       else if (provider === 'Netlify') cmd = 'npx netlify status';
       else if (provider === 'Docker') {
-        const gitDir = path.join(targetProjectDir, '.git');
-        cmd = fs.existsSync(gitDir)
-          ? 'git remote -v && git status --short'
-          : 'echo "✓ Dockerfile is ready for Coolify. Connect a GitHub repository to enable 1-click auto-deploy."';
+        cmd = 'gh auth status';
       }
       executeShellCommand('check-auth', cmd, { provider, cwd: targetProjectDir });
       break;
@@ -1395,8 +1434,7 @@ export function handleAction(action, params = {}) {
       if (provider === 'Vercel') cmd = 'npx vercel login';
       else if (provider === 'Netlify') cmd = 'npx netlify login';
       else if (provider === 'Docker') {
-        const gitDir = path.join(targetProjectDir, '.git');
-        cmd = fs.existsSync(gitDir) ? 'git remote -v' : 'echo "📌 To link GitHub with Coolify, run: git init && git remote add origin <URL>"';
+        cmd = 'gh auth login --web -h github.com --git-protocol https';
       }
       executeShellCommand('login-auth', cmd, { provider, cwd: targetProjectDir });
       break;
@@ -1424,7 +1462,17 @@ export function handleAction(action, params = {}) {
       const targetLabel = relPath === '.' ? './ (root)' : `./${relPath}`;
       broadcastLog(`🚀 Публікація (деплой) проєкту з ${targetLabel}...`, 'stdout');
       const deployConfig = getDeployConfig(targetProjectDir);
-      const provider = deployConfig.hostingAuth?.provider || 'Cloudflare';
+      let provider = params.provider;
+      if (!provider && params.template) {
+        if (params.template.includes('vercel')) provider = 'Vercel';
+        else if (params.template.includes('netlify')) provider = 'Netlify';
+        else if (params.template.includes('docker')) provider = 'Docker';
+        else if (params.template.includes('ssg')) provider = 'Static';
+        else if (params.template.includes('cloudflare')) provider = 'Cloudflare';
+      }
+      if (!provider) {
+        provider = deployConfig.targetHosting || deployConfig.hostingAuth?.provider || 'Cloudflare';
+      }
       if (provider === 'Vercel' || fs.existsSync(path.join(targetProjectDir, 'vercel.json'))) {
         executeShellCommand('deploy-project', 'npm run build && npx vercel --prod --yes', { cwd: targetProjectDir });
         break;
@@ -1436,34 +1484,69 @@ export function handleAction(action, params = {}) {
       }
 
       if (provider === 'Docker' || fs.existsSync(path.join(targetProjectDir, 'Dockerfile'))) {
-        const activeProj = typeof projectManager !== 'undefined' ? projectManager.getActiveProject() : null;
-        const projName = activeProj?.name || path.basename(targetProjectDir);
-        const gitDir = path.join(targetProjectDir, '.git');
-        let hasRemote = false;
-        if (fs.existsSync(gitDir)) {
-          try {
-            const remotes = execSync('git remote -v', { cwd: targetProjectDir, encoding: 'utf8' }).trim();
-            if (remotes.length > 0) hasRemote = true;
-          } catch {}
+        const deployConfig = getDeployConfig(targetProjectDir);
+        const projName = deployConfig.projectName || path.basename(targetProjectDir);
+
+        // 1. Verify GitHub authentication
+        const ghUser = getGitHubUser();
+        if (!ghUser) {
+          broadcastLog('❌ Помилка деплою: Ви не авторизовані у GitHub CLI (gh)!', 'stderr');
+          broadcastLog('💡 Будь ласка, натисніть "🔑 Увійти в акаунт (Login)" у кроці 3, щоб підключити акаунт GitHub.', 'stdout');
+          broadcastComplete('deploy-project', false, 1);
+          break;
         }
 
-        if (hasRemote) {
-          broadcastLog(`🐙 Push оновлень на GitHub для автоматичного оновлення у Coolify...`, 'stdout');
-          const pushCmd = 'git add . && git commit -m "deploy: update Webstudio build" || true && git push';
-          executeShellCommand('deploy-project', pushCmd, { cwd: targetProjectDir });
-        } else {
-          broadcastLog(`🐳 Проєкт "${projName}" готовий до деплою на Coolify через GitHub!`, 'stdout');
-          broadcastLog(`📌 Рекомендований процес Coolify:`, 'stdout');
-          broadcastLog(`   1. Створіть новий репозиторій на GitHub (наприклад, ${projName})`, 'stdout');
-          broadcastLog(`   2. У папці projects/${path.basename(targetProjectDir)} виконайте:`, 'stdout');
-          broadcastLog(`      git init`, 'stdout');
-          broadcastLog(`      git remote add origin <URL_GITHUB_РЕПОЗИТОРІЮ>`, 'stdout');
-          broadcastLog(`      git add . && git commit -m "Initial commit"`, 'stdout');
-          broadcastLog(`      git push -u origin main`, 'stdout');
-          broadcastLog(`   3. У панелі Coolify додайте цей GitHub Repo ➔ Build Pack: Dockerfile ➔ Port: 3000`, 'stdout');
-          broadcastLog(`   4. Натисніть Deploy у Coolify — і ваш сайт працює!`, 'stdout');
-          broadcastComplete('deploy-project', true, 0);
+        // 2. Determine target GitHub repository name
+        const repoTarget = projName.includes('/') ? projName : `${ghUser}/${projName}`;
+        broadcastLog(`🔍 Перевірка наявності репозиторію "${repoTarget}" на GitHub...`, 'stdout');
+
+        // 3. Check if repository exists on GitHub
+        let repoInfo = null;
+        try {
+          const out = execSync(`gh repo view "${repoTarget}" --json name,url,defaultBranchRef`, {
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'pipe']
+          }).trim();
+          repoInfo = JSON.parse(out);
+        } catch {
+          repoInfo = null;
         }
+
+        if (!repoInfo || !repoInfo.name) {
+          broadcastLog(`❌ Помилка деплою: Репозиторій "${repoTarget}" не знайдено на GitHub!`, 'stderr');
+          broadcastLog(`💡 Для хостингу Docker / Coolify назва проєкту в пункті 2 (${projName}) має співпадати з назвою вашого репозиторію на GitHub.`, 'stderr');
+          broadcastLog(`👉 Створіть новий репозиторій "${projName}" на GitHub (https://github.com/new) або вкажіть назву існуючого репозиторію у пункті 2.`, 'stdout');
+          broadcastComplete('deploy-project', false, 1);
+          break;
+        }
+
+        // 4. Repository exists -> prepare git and push
+        const defaultBranch = repoInfo.defaultBranchRef?.name || 'main';
+        const remoteUrl = repoInfo.url ? `${repoInfo.url}.git` : `https://github.com/${repoTarget}.git`;
+        broadcastLog(`✅ Репозиторій "${repoTarget}" знайдено на GitHub!`, 'stdout');
+        broadcastLog(`📦 Публікація файлів проєкту в гілку "${defaultBranch}"...`, 'stdout');
+
+        // Ensure standard .gitignore exists so node_modules / build are never committed
+        const gitignorePath = path.join(targetProjectDir, '.gitignore');
+        if (!fs.existsSync(gitignorePath)) {
+          fs.writeFileSync(
+            gitignorePath,
+            'node_modules/\nbuild/\ndist/\n.react-router/\n.webstudio-backups/\n.env\n.env.*\n!.env.example\n.DS_Store\n*.log\n',
+            'utf8'
+          );
+        }
+
+        const gitDir = path.join(targetProjectDir, '.git');
+        let initCmd = '';
+        if (!fs.existsSync(gitDir)) {
+          initCmd = `git init -b ${defaultBranch} 2>/dev/null || (git init && git branch -M ${defaultBranch}) && `;
+        }
+
+        const remoteCmd = `git remote remove origin 2>/dev/null || true && git remote add origin "${remoteUrl}"`;
+        const userCmd = `(git config user.name >/dev/null 2>&1 || git config user.name "${ghUser}") && (git config user.email >/dev/null 2>&1 || git config user.email "${ghUser}@users.noreply.github.com")`;
+        const pushCmd = `${initCmd}${remoteCmd} && ${userCmd} && git add -A && (git diff --cached --quiet || git commit -m "deploy: update Webstudio build") && git push -u origin HEAD:${defaultBranch}`;
+
+        executeShellCommand('deploy-project', pushCmd, { provider: 'Docker', cwd: targetProjectDir });
         break;
       }
 
@@ -1538,11 +1621,12 @@ export function createGuiServer(port = 4200) {
           });
           res.end(JSON.stringify(status));
         } catch (err) {
+          console.error('[API Error /api/status]', err);
           res.writeHead(500, {
             'Content-Type': 'application/json; charset=utf-8',
             ...corsHeaders
           });
-          res.end(JSON.stringify({ error: err.message }));
+          res.end(JSON.stringify({ error: err.message, stack: err.stack }));
         }
         return;
       }
