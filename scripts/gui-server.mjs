@@ -1409,6 +1409,14 @@ export function handleAction(action, params = {}) {
         break;
       }
 
+      if (provider === 'Docker' || fs.existsSync(path.join(targetProjectDir, 'Dockerfile'))) {
+        const activeProj = typeof projectManager !== 'undefined' ? projectManager.getActiveProject() : null;
+        const imageName = (activeProj?.name || path.basename(targetProjectDir)).toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+        broadcastLog(`🐳 Збірка Docker-образу "${imageName}:latest"...`, 'stdout');
+        executeShellCommand('deploy-project', `docker build -t ${imageName}:latest .`, { cwd: targetProjectDir });
+        break;
+      }
+
       const deployScriptPath = path.join(rootDir, 'scripts', 'deploy-cloudflare.mjs');
       const deployCmd = `npm run build && node "${deployScriptPath}"`;
       executeShellCommand('deploy-project', deployCmd, {
