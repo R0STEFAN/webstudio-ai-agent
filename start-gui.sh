@@ -17,5 +17,7 @@ if ! command -v node >/dev/null 2>&1; then
     exit 1
 fi
 
+export SHARP_IGNORE_GLOBAL_LIBVIPS=1
+
 echo "Starting Webstudio Control Center GUI..."
 node scripts/gui-server.mjs "$@"

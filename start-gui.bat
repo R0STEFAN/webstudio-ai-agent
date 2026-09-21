@@ -18,6 +18,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
+set SHARP_IGNORE_GLOBAL_LIBVIPS=1
+
 echo Starting Webstudio Control Center GUI...
 node scripts\gui-server.mjs %*
 

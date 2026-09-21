@@ -8,6 +8,9 @@ import { ProjectManager } from './project-manager.mjs';
 import { BackupManager } from './backup-manager.mjs';
 import { fetchDeployHistory } from './deploy-cloudflare.mjs';
 
+// Prevent sharp from failing on systems with globally installed libvips
+process.env.SHARP_IGNORE_GLOBAL_LIBVIPS = process.env.SHARP_IGNORE_GLOBAL_LIBVIPS || '1';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
@@ -978,6 +981,9 @@ export function executeShellCommand(action, command, options = {}) {
             const deployScriptRel = path.relative(targetCwd, path.join(rootDir, 'scripts', 'deploy-cloudflare.mjs')).replace(/\\/g, '/');
             if (!pkg.scripts) pkg.scripts = {};
             pkg.scripts.deploy = `npm run build && node ${deployScriptRel}`;
+            if (!pkg.scripts.preview && pkg.scripts.start) {
+              pkg.scripts.preview = pkg.scripts.start;
+            }
             fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
           }
         } catch {}
@@ -999,9 +1005,22 @@ export function executePreviewCommand() {
   const relPath = path.relative(rootDir, targetCwd).replace(/\\/g, '/') || '.';
   const cwdDisplay = relPath === '.' ? './ (root)' : `./${relPath}`;
 
-  broadcastLog(`📂 [${cwdDisplay}] $ npm run preview`, 'stdout');
-  console.log(`\n\x1b[36m[Webstudio CLI]\x1b[0m 📂 \x1b[33m${cwdDisplay}\x1b[0m \x1b[1m$ npm run preview\x1b[0m`);
-  const child = spawn('npm run preview', {
+  let previewCmd = 'npm run preview';
+  const pkgPath = path.join(targetCwd, 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      if (!pkg.scripts?.preview && pkg.scripts?.start) {
+        previewCmd = 'npm run start';
+      } else if (!pkg.scripts?.preview && pkg.scripts?.dev) {
+        previewCmd = 'npm run dev';
+      }
+    } catch {}
+  }
+
+  broadcastLog(`📂 [${cwdDisplay}] $ ${previewCmd}`, 'stdout');
+  console.log(`\n\x1b[36m[Webstudio CLI]\x1b[0m 📂 \x1b[33m${cwdDisplay}\x1b[0m \x1b[1m$ ${previewCmd}\x1b[0m`);
+  const child = spawn(previewCmd, {
     cwd: targetCwd,
     shell: true,
     env: process.env
