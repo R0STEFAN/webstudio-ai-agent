@@ -1194,7 +1194,15 @@ export function handleAction(action, params = {}) {
       break;
     }
     case 'update': {
-      executeShellCommand('update', 'npm run update-webstudio');
+      broadcastLog('⬆️ Оновлення глобального ядра Webstudio Engine...', 'stdout');
+      const hasActiveProj = targetProjectDir !== rootDir && fs.existsSync(path.join(targetProjectDir, 'package.json'));
+      let updateCmd = 'npm run update-webstudio';
+      if (hasActiveProj) {
+        const relProj = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
+        broadcastLog(`📦 Також оновлюються Webstudio SDK пакети у проєкті ./${relProj}...`, 'stdout');
+        updateCmd += ` && (npm --prefix "${targetProjectDir}" update @webstudio-is/image @webstudio-is/react-sdk @webstudio-is/sdk @webstudio-is/sdk-components-animation @webstudio-is/sdk-components-react @webstudio-is/sdk-components-react-radix @webstudio-is/sdk-components-react-router @webstudio-is/wsauth || true)`;
+      }
+      executeShellCommand('update', updateCmd, { cwd: rootDir });
       break;
     }
     case 'link': {
