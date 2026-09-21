@@ -8,6 +8,7 @@ import {
   getGitHubUser,
   getDeployConfig,
   updateProjectNameOnDisk,
+  fetchDeployGitHistory,
   createGuiServer
 } from '../scripts/gui-server.mjs';
 import { t } from '../gui/i18n.js';
@@ -78,20 +79,41 @@ it('should dynamically switch labels and hints when Docker is selected', () => {
   dom.lblProjectName = { textContent: '' };
   dom.hintProjectName = { textContent: '' };
   dom.hintAuthSection = { textContent: '' };
+  dom.lblDeployHistoryTitle = { textContent: '' };
 
   updateDynamicDeployLabels('Docker');
   assert.strictEqual(dom.lblProjectName.textContent, t('deploy.nameSection.projectNameLabelDocker', {}, 'uk'));
   assert.strictEqual(dom.hintProjectName.textContent, t('deploy.nameSection.hintDocker', {}, 'uk'));
   assert.strictEqual(dom.hintAuthSection.textContent, t('deploy.authSection.hintDocker', {}, 'uk'));
+  assert.strictEqual(dom.lblDeployHistoryTitle.textContent, t('deploy.history.titleDocker', {}, 'uk'));
 
   updateDynamicDeployLabels('Cloudflare');
   assert.strictEqual(dom.lblProjectName.textContent, t('deploy.nameSection.projectNameLabel', {}, 'uk'));
   assert.strictEqual(dom.hintProjectName.textContent, t('deploy.nameSection.hint', {}, 'uk'));
   assert.strictEqual(dom.hintAuthSection.textContent, t('deploy.authSection.hint', {}, 'uk'));
+  assert.strictEqual(dom.lblDeployHistoryTitle.textContent, t('deploy.history.title', {}, 'uk'));
 });
 
-// 3. Test API Action handling with non-existent GitHub repository
-console.log('\n3. Testing deploy-project validation with non-existent repo...');
+// 3. Test fetchDeployGitHistory directly
+console.log('\n3. Testing fetchDeployGitHistory...');
+
+it('should parse git log and return formatted deployment history for projects with git', async () => {
+  const history = await fetchDeployGitHistory(path.join(rootDir, 'projects', 'tattoo-v3-test'), 5);
+  assert.strictEqual(history.success, true);
+  assert.strictEqual(history.provider, 'Docker');
+  assert.ok(Array.isArray(history.deployments));
+  if (history.deployments.length > 0) {
+    const first = history.deployments[0];
+    assert.ok(first.id, 'Deployment must have id');
+    assert.ok(first.shortId, 'Deployment must have shortId');
+    assert.ok(first.commitHash, 'Deployment must have commitHash');
+    assert.strictEqual(first.provider, 'Docker');
+    assert.ok(first.createdOn, 'Deployment must have timestamp');
+  }
+});
+
+// 4. Test API Action handling and /api/deploy/history endpoint
+console.log('\n4. Testing deploy-project validation and /api/deploy/history for Docker...');
 
 async function runApiTest() {
   const testPort = 4296;
@@ -109,6 +131,17 @@ async function runApiTest() {
     assert.strictEqual(checkRes.status, 200);
     assert.strictEqual(checkData.ok, true);
     console.log('  ✅ [PASS] POST /api/action with check-auth for Docker executed successfully');
+    passedTests++;
+    totalTests++;
+
+    // Test GET /api/deploy/history for Docker project
+    const histRes = await fetch(`http://localhost:${testPort}/api/deploy/history?project=tattoo-v3-test&provider=Docker`);
+    assert.strictEqual(histRes.status, 200);
+    const histData = await histRes.json();
+    assert.strictEqual(histData.success, true);
+    assert.strictEqual(histData.provider, 'Docker');
+    assert.ok(Array.isArray(histData.deployments));
+    console.log('  ✅ [PASS] GET /api/deploy/history returned git history for Docker provider');
     passedTests++;
     totalTests++;
 

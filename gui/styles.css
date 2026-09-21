@@ -1561,6 +1561,13 @@ body {
   border: 1px solid rgba(234, 179, 8, 0.35);
 }
 
+.deploy-badge.docker,
+.deploy-badge.github {
+  background: rgba(14, 165, 233, 0.18);
+  color: #38BDF8;
+  border: 1px solid rgba(14, 165, 233, 0.35);
+}
+
 .deploy-item-meta {
   display: flex;
   flex-direction: column;
@@ -1579,6 +1586,16 @@ body {
 .deploy-item-time {
   font-size: 0.74rem;
   color: #9CA3AF;
+}
+
+.deploy-item-msg {
+  font-size: 0.73rem;
+  color: #D1D5DB;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 480px;
+  margin-top: 2px;
 }
 
 .deploy-item-actions {

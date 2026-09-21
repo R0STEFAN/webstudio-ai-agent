@@ -711,6 +711,97 @@ export function updateProjectNameOnDisk(rootDir, newName) {
   return { updated, safeName };
 }
 
+/**
+ * Fetches recent git deployment/commit history for a project (used for Docker / Coolify / GitHub).
+ * 
+ * @param {string} projectDir - Absolute path to project directory
+ * @param {number} [limit=10] - Number of commits to return
+ * @returns {Promise<{ success: boolean, provider: string, projectName?: string, repoUrl?: string, total: number, deployments: Array<object>, error?: string }>}
+ */
+export async function fetchDeployGitHistory(projectDir, limit = 10) {
+  try {
+    if (!fs.existsSync(path.join(projectDir, '.git'))) {
+      return { success: true, provider: 'Docker', total: 0, deployments: [] };
+    }
+
+    let originUrl = '';
+    try {
+      originUrl = execSync('git remote get-url origin', {
+        cwd: projectDir,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      }).trim();
+    } catch {}
+
+    let webRepoUrl = '';
+    if (originUrl) {
+      webRepoUrl = originUrl
+        .replace(/^git@([^:]+):/, 'https://$1/')
+        .replace(/^ssh:\/\/git@([^/]+)\//, 'https://$1/')
+        .replace(/\.git$/, '');
+    }
+
+    let currentBranch = 'main';
+    try {
+      currentBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+        cwd: projectDir,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      }).trim();
+    } catch {}
+
+    let rawLog = '';
+    try {
+      rawLog = execSync(
+        `git log -n ${limit} --pretty=format:"%H%x00%h%x00%s%x00%cI%x00%an%x00%D"`,
+        {
+          cwd: projectDir,
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore']
+        }
+      ).trim();
+    } catch {}
+
+    if (!rawLog) {
+      return { success: true, provider: 'Docker', total: 0, deployments: [] };
+    }
+
+    const lines = rawLog.split('\n').filter(Boolean);
+    const deployments = lines.map(line => {
+      const [fullHash, shortHash, commitMessage, createdOn, author, refNames] = line.split('\0');
+      const isProd = currentBranch === 'main' || currentBranch === 'master' || currentBranch === 'production';
+      const commitUrl = webRepoUrl ? `${webRepoUrl}/commit/${fullHash}` : '';
+
+      return {
+        id: fullHash || shortHash,
+        shortId: shortHash,
+        environment: isProd ? 'production' : 'preview',
+        branch: currentBranch || 'main',
+        commitMessage: commitMessage || '',
+        commitHash: shortHash || '',
+        url: commitUrl || webRepoUrl || '',
+        repoUrl: webRepoUrl,
+        createdOn: createdOn || new Date().toISOString(),
+        status: 'success',
+        isProduction: isProd,
+        provider: 'Docker',
+        author: author || ''
+      };
+    });
+
+    return {
+      success: true,
+      provider: 'Docker',
+      projectName: path.basename(projectDir),
+      repoUrl: webRepoUrl,
+      total: deployments.length,
+      deployments
+    };
+  } catch (err) {
+    return { success: false, provider: 'Docker', deployments: [], error: err.message };
+  }
+}
+
 export function getGlobalWebstudioToken(projectId) {
   if (!projectId) return null;
   const possiblePaths = [
@@ -1836,12 +1927,35 @@ export function createGuiServer(port = 4200) {
         return;
       }
 
-      // GET /api/deploy/history -> Fetch deployment history from Cloudflare
+      // GET /api/deploy/history -> Fetch deployment history (Cloudflare Pages or Git/Docker)
       if (pathname === '/api/deploy/history' && req.method === 'GET') {
         try {
-          const targetProj = parsedUrl.searchParams.get('project') || projectManager.getActiveProject()?.name || getDeployConfig(rootDir).projectName;
+          const activeProject = projectManager.getActiveProject();
+          const requestedProj = parsedUrl.searchParams.get('project');
+          let targetDir = projectManager.getActiveProjectDir();
+          if (requestedProj && (!activeProject || requestedProj !== activeProject.name)) {
+            const customPath = path.join(projectManager.projectsDir, requestedProj);
+            if (fs.existsSync(customPath)) {
+              targetDir = customPath;
+            }
+          }
+
+          const deployConfig = getDeployConfig(targetDir);
+          const targetProj = requestedProj || deployConfig.projectName || (activeProject ? activeProject.name : 'webstudio-app');
+          const requestedProvider = parsedUrl.searchParams.get('provider');
+          const provider = requestedProvider || deployConfig.targetHosting || 'Cloudflare';
           const limit = parseInt(parsedUrl.searchParams.get('limit') || '10', 10);
-          const history = await fetchDeployHistory(targetProj, limit);
+
+          let history;
+          if (provider === 'Docker' || deployConfig.targetHosting === 'Docker') {
+            history = await fetchDeployGitHistory(targetDir, limit);
+          } else {
+            history = await fetchDeployHistory(targetProj, limit);
+            if (history && typeof history === 'object') {
+              history.provider = 'Cloudflare';
+            }
+          }
+
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
           res.end(JSON.stringify(history));
         } catch (err) {

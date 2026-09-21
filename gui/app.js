@@ -231,6 +231,7 @@ export function cacheDOMElements() {
   // Deploy History
   dom.deployHistoryList = document.getElementById('deploy-history-list');
   dom.btnRefreshDeployHistory = document.getElementById('btn-refresh-deploy-history');
+  dom.lblDeployHistoryTitle = document.getElementById('lbl-deploy-history-title');
   dom.terminalOutput = document.getElementById('terminal-output') || document.getElementById('setup-terminal-output');
   dom.setupTerminalOutput = document.getElementById('setup-terminal-output');
   dom.terminalContainer = document.getElementById('terminal-container') || document.getElementById('setup-terminal-container');
@@ -469,6 +470,17 @@ export function updateDynamicDeployLabels(provider) {
     dom.hintAuthSection.textContent = isDocker
       ? t('deploy.authSection.hintDocker', {}, state.lang)
       : t('deploy.authSection.hint', {}, state.lang);
+  }
+  if (dom.lblDeployHistoryTitle) {
+    if (isDocker) {
+      dom.lblDeployHistoryTitle.textContent = t('deploy.history.titleDocker', {}, state.lang);
+    } else if (provider === 'Vercel') {
+      dom.lblDeployHistoryTitle.textContent = t('deploy.history.titleVercel', {}, state.lang);
+    } else if (provider === 'Netlify') {
+      dom.lblDeployHistoryTitle.textContent = t('deploy.history.titleNetlify', {}, state.lang);
+    } else {
+      dom.lblDeployHistoryTitle.textContent = t('deploy.history.title', {}, state.lang);
+    }
   }
 }
 
@@ -741,6 +753,9 @@ export function initSSE() {
       
       // Refresh status after command completes
       fetchStatus();
+      if (finishedAction === 'deploy' || finishedAction === 'deploy-project') {
+        fetchDeployHistory();
+      }
     } catch (err) {
       console.error('Error parsing SSE complete event:', err);
       state.isRunning = false;
@@ -1520,10 +1535,14 @@ export async function handleSaveAutoBackupConfig() {
 export async function fetchDeployHistory() {
   if (!dom.deployHistoryList) return;
   try {
-    const res = await fetch('/api/deploy/history');
+    const provider = state.deploy?.targetHosting || (dom.selectTemplatePreset?.value?.includes('docker') ? 'Docker' : 'Cloudflare');
+    const proj = state.activeProjectId || '';
+    const res = await fetch(`/api/deploy/history?project=${encodeURIComponent(proj)}&provider=${encodeURIComponent(provider)}`);
     if (res.ok) {
       const data = await res.json();
       state.deployHistory = data.deployments || [];
+      state.deployHistoryProvider = data.provider || provider;
+      updateDynamicDeployLabels(state.deployHistoryProvider);
       renderDeployHistory();
     }
   } catch {}
@@ -1533,6 +1552,8 @@ export function renderDeployHistory() {
   if (!dom.deployHistoryList) return;
   const list = state.deployHistory || [];
   const isEn = state.lang === 'en';
+  const isDocker = state.deployHistoryProvider === 'Docker' || (state.deploy?.targetHosting === 'Docker');
+
   if (list.length === 0) {
     dom.deployHistoryList.innerHTML = `
       <div class="history-empty">
@@ -1542,23 +1563,35 @@ export function renderDeployHistory() {
     return;
   }
 
-  const viewText = t('deploy.history.viewBtn', {}, state.lang) || (isEn ? 'View ↗' : 'Переглянути ↗');
-
   dom.deployHistoryList.innerHTML = '';
   for (const item of list) {
     const el = document.createElement('div');
     el.className = 'deploy-history-item';
 
     const timeAgo = item.createdOn ? new Date(item.createdOn).toLocaleString(isEn ? 'en-US' : 'uk-UA') : '';
-    const badgeClass = item.isProduction ? 'production' : 'preview';
-    const badgeText = item.isProduction ? (isEn ? '🟢 Production' : '🟢 Продакшн') : (isEn ? '🟡 Preview' : '🟡 Прев\'ю');
+    const itemIsDocker = item.provider === 'Docker' || isDocker;
+
+    let badgeClass = item.isProduction ? 'production' : 'preview';
+    let badgeText = item.isProduction ? (isEn ? '🟢 Production' : '🟢 Продакшн') : (isEn ? '🟡 Preview' : '🟡 Прев\'ю');
+
+    if (itemIsDocker) {
+      badgeClass = 'docker';
+      badgeText = `🐙 ${item.branch || 'main'}`;
+    }
+
+    const viewText = itemIsDocker
+      ? (t('deploy.history.viewGithubBtn', {}, state.lang) || 'GitHub ↗')
+      : (t('deploy.history.viewBtn', {}, state.lang) || (isEn ? 'View ↗' : 'Переглянути ↗'));
+
+    const safeMsg = item.commitMessage ? String(item.commitMessage).replace(/"/g, '&quot;') : '';
 
     el.innerHTML = `
       <div class="deploy-item-left">
         <span class="deploy-badge ${badgeClass}">${badgeText}</span>
         <div class="deploy-item-meta">
-          <span class="deploy-item-branch">${item.branch || 'unknown'}</span>
+          <span class="deploy-item-branch">${item.branch || 'main'}</span>
           <span class="deploy-item-time">${timeAgo} ${item.commitHash ? `(${item.commitHash})` : ''}</span>
+          ${item.commitMessage ? `<span class="deploy-item-msg" title="${safeMsg}">${item.commitMessage}</span>` : ''}
         </div>
       </div>
       <div class="deploy-item-actions">
@@ -1986,6 +2019,7 @@ export function setupEventListeners() {
       }
       updateDynamicDeployLabels(provider);
       fetchStatus(provider, selectedPreset);
+      fetchDeployHistory();
     });
   }
   // Deploy Lifecycle: Install Dependencies (Project Template)

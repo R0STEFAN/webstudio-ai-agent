@@ -187,9 +187,14 @@ export const i18n = {
       },
       history: {
         title: 'Історія деплоїв (Cloudflare Pages)',
+        titleDocker: 'Історія деплоїв (GitHub / Docker)',
+        titleVercel: 'Історія деплоїв (Vercel)',
+        titleNetlify: 'Історія деплоїв (Netlify)',
+        titleGeneric: 'Історія деплоїв',
         subtitle: 'Останні публікації та знімки поточного проєкту',
         refresh: 'Оновити',
         viewBtn: 'Переглянути ↗',
+        viewGithubBtn: 'GitHub ↗',
         loading: 'Завантаження історії деплоїв...',
         empty: 'Історії деплоїв для цього проєкту ще немає'
       }
@@ -437,9 +442,14 @@ export const i18n = {
       },
       history: {
         title: 'Deploy History (Cloudflare Pages)',
+        titleDocker: 'Deploy History (GitHub / Docker)',
+        titleVercel: 'Deploy History (Vercel)',
+        titleNetlify: 'Deploy History (Netlify)',
+        titleGeneric: 'Deploy History',
         subtitle: 'Recent deployments and snapshots for the active project',
         refresh: 'Refresh',
         viewBtn: 'View ↗',
+        viewGithubBtn: 'GitHub ↗',
         loading: 'Loading deployment history...',
         empty: 'No deployment history found for this project yet'
       }
