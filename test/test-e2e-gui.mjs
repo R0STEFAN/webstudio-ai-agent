@@ -286,6 +286,9 @@ async function runTests() {
     // -------------------------------------------------------------
     console.log('\n6. Verifying Draft Sync Action & Share Link Parameter Parsing...');
 
+    const statusPreTest = await (await fetch(`${BASE_URL}/api/status`)).json();
+    const originalShareLink = statusPreTest.savedShareLink || '';
+
     // Test URL format A: Subdomain format with query params
     const shareLinkA = 'https://p-my-draft-proj-123.apps.webstudio.is/builder?authToken=auth-tok-789&buildId=build-custom-456';
     const draftResA = await fetch(`${BASE_URL}/api/action`, {
@@ -322,6 +325,15 @@ async function runTests() {
       4000
     );
     assert.ok(syncDraftLogB, 'Must stream sync command with transformed project path origin');
+
+    // Restore original shareLink
+    if (originalShareLink) {
+      await fetch(`${BASE_URL}/api/project/share-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shareLink: originalShareLink })
+      });
+    }
 
     console.log('   ✅ Draft sync accurately extracts origin, authToken, and buildId across multiple link formats.');
 
