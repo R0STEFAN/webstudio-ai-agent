@@ -257,6 +257,7 @@ async function runServerTests() {
       // Restore initial project name immediately
       if (initialActiveProject && initialActiveProject !== 'test-demo-app') {
         try {
+          updateProjectNameOnDisk(pm.getActiveProjectDir(), initialActiveProject);
           pm.renameProject('test-demo-app', initialActiveProject);
         } catch {}
       }
