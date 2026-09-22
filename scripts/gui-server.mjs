@@ -1098,7 +1098,9 @@ export function executeShellCommand(action, command, options = {}) {
       broadcastLog(`Action "${action}" completed successfully.`, 'stdout');
       if (action === 'import' || action === 'sync' || action === 'sync-draft') {
         try {
-          projectManager.syncRootToActive();
+          if (typeof projectManager !== 'undefined') {
+            projectManager.syncActiveToRoot(targetCwd);
+          }
           const autoSnap = getActiveBackupManager().triggerImportBackup();
           if (autoSnap) {
             broadcastLog(`📦 Auto-backup snapshot created: ${autoSnap.displayName}`, 'stdout');
