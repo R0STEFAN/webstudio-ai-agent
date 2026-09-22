@@ -562,8 +562,19 @@ function formatTime(isoString) {
 export function appendLog(text, type = 'stdout', timestamp = null) {
   if (!text) return;
   
+  // Smart log classification: Git, npm, Vite output informational progress to stderr.
+  // Avoid painting standard progress (like "Everything up-to-date", "branch set up", etc.) in error red.
+  let effectiveType = type;
+  if (type === 'stderr') {
+    const isHarmlessProgress = /^(Everything up-to-date|branch\s+|To\s+https?:\/\/|Enumerating objects|Counting objects|Compressing objects|Writing objects|Total\s+\d+|remote:\s+|[+*]\s+|Updating\s+|Switched to\s+|Already on\s+|[0-9a-f]+\.\.[0-9a-f]+|github\.com|Active account:|Token:|Git operations protocol:)/im.test(text.trim());
+    const hasActualError = /(error:|fatal:|ERR!|SyntaxError|TypeError|Unhandled|Failed to|Command failed)/i.test(text);
+    if (isHarmlessProgress && !hasActualError) {
+      effectiveType = 'stdout';
+    }
+  }
+
   const time = formatTime(timestamp);
-  state.logs.push({ text, type, timestamp: timestamp || new Date().toISOString() });
+  state.logs.push({ text, type: effectiveType, timestamp: timestamp || new Date().toISOString() });
   
   // Cap logs in memory
   if (state.logs.length > 2500) {
@@ -579,7 +590,7 @@ export function appendLog(text, type = 'stdout', timestamp = null) {
 
   outputs.forEach((output) => {
     const row = document.createElement('div');
-    row.className = `terminal-line line-${type}`;
+    row.className = `terminal-line line-${effectiveType}`;
     
     const timeSpan = document.createElement('span');
     timeSpan.className = 'terminal-timestamp';
