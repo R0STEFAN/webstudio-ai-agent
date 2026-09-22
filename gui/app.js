@@ -1632,10 +1632,11 @@ export async function dispatchAction(action, params = {}) {
   appendLog(`\n[Action: ${action}] Dispatched...`, 'system');
   
   try {
+    const payload = { action, params: { ...params, lang: state.lang } };
     const response = await fetch('/api/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, params })
+      body: JSON.stringify(payload)
     });
     
     if (!response.ok) {

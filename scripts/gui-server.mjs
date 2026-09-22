@@ -1328,6 +1328,7 @@ export function executePreviewCommand() {
 }
 
 export function handleAction(action, params = {}) {
+  const isEn = params.lang === 'en';
   const targetProjectDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
   switch (action) {
     case 'install-root':
@@ -1337,7 +1338,12 @@ export function handleAction(action, params = {}) {
       const isRootInstall = action === 'install-root' || params.scope === 'root' || !isRootInstalled;
 
       if (isRootInstall) {
-        broadcastLog('📦 Встановлення актуальної версії Webstudio CLI (@latest) та системних залежностей...', 'stdout');
+        broadcastLog(
+          isEn
+            ? '📦 Installing latest Webstudio CLI (@latest) and system dependencies...'
+            : '📦 Встановлення актуальної версії Webstudio CLI (@latest) та системних залежностей...',
+          'stdout'
+        );
         executeShellCommand(action, 'npm run update-webstudio', { cwd: rootDir });
         break;
       }
@@ -1345,7 +1351,9 @@ export function handleAction(action, params = {}) {
       const targetPkg = path.join(targetProjectDir, 'package.json');
       if (targetProjectDir !== rootDir && !fs.existsSync(targetPkg)) {
         const relPath = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
-        const msg = `⚠️ [./${relPath}] У папці проєкту ще немає package.json. Спершу згенеруйте код обраного шаблону (кнопка "Згенерувати шаблон").`;
+        const msg = isEn
+          ? `⚠️ [./${relPath}] No package.json found in project folder. Please generate the template code first ("Generate Template" button).`
+          : `⚠️ [./${relPath}] У папці проєкту ще немає package.json. Спершу згенеруйте код обраного шаблону (кнопка "Згенерувати шаблон").`;
         console.log(`\x1b[33m[Webstudio CLI] ${msg}\x1b[0m\n`);
         broadcastLog(msg, 'stderr');
         broadcastComplete(action, false, 1);
@@ -1353,17 +1361,32 @@ export function handleAction(action, params = {}) {
       }
       const relPath = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
       const targetLabel = relPath === '.' ? './ (root)' : `./${relPath}`;
-      broadcastLog(`📦 Встановлення залежностей шаблону в ${targetLabel}...`, 'stdout');
+      broadcastLog(
+        isEn
+          ? `📦 Installing template dependencies in ${targetLabel}...`
+          : `📦 Встановлення залежностей шаблону в ${targetLabel}...`,
+        'stdout'
+      );
       executeShellCommand(action, 'npm install', { cwd: targetProjectDir });
       break;
     }
     case 'update': {
-      broadcastLog('⬆️ Оновлення глобального ядра Webstudio Engine...', 'stdout');
+      broadcastLog(
+        isEn
+          ? '⬆️ Updating global Webstudio Engine core...'
+          : '⬆️ Оновлення глобального ядра Webstudio Engine...',
+        'stdout'
+      );
       const hasActiveProj = targetProjectDir !== rootDir && fs.existsSync(path.join(targetProjectDir, 'package.json'));
       let updateCmd = 'npm run update-webstudio';
       if (hasActiveProj) {
         const relProj = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
-        broadcastLog(`📦 Також оновлюються Webstudio SDK пакети у проєкті ./${relProj}...`, 'stdout');
+        broadcastLog(
+          isEn
+            ? `📦 Also updating Webstudio SDK packages in ./${relProj}...`
+            : `📦 Також оновлюються Webstudio SDK пакети у проєкті ./${relProj}...`,
+          'stdout'
+        );
         updateCmd += ` && (npm --prefix "${targetProjectDir}" update @webstudio-is/image @webstudio-is/react-sdk @webstudio-is/sdk @webstudio-is/sdk-components-animation @webstudio-is/sdk-components-react @webstudio-is/sdk-components-react-radix @webstudio-is/sdk-components-react-router @webstudio-is/wsauth || true)`;
       }
       executeShellCommand('update', updateCmd, { cwd: rootDir });
@@ -1627,7 +1650,12 @@ export function handleAction(action, params = {}) {
     case 'build-project': {
       const relPath = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
       const targetLabel = relPath === '.' ? './ (root)' : `./${relPath}`;
-      broadcastLog(`🔨 Збірка проєкту в ${targetLabel}...`, 'stdout');
+      broadcastLog(
+        isEn
+          ? `🔨 Building project in ${targetLabel}...`
+          : `🔨 Збірка проєкту в ${targetLabel}...`,
+        'stdout'
+      );
       executeShellCommand('build-project', 'npm run build', { cwd: targetProjectDir });
       break;
     }
@@ -1638,14 +1666,19 @@ export function handleAction(action, params = {}) {
     case 'stop-preview': {
       stopPreviewServer();
       console.log(`\x1b[33m[Webstudio CLI] 🛑 Preview server stopped by user.\x1b[0m\n`);
-      broadcastLog('🛑 Preview server stopped.', 'stdout');
+      broadcastLog(isEn ? '🛑 Preview server stopped.' : '🛑 Preview server stopped.', 'stdout');
       broadcastComplete('stop-preview', true, 0);
       break;
     }
     case 'deploy-project': {
       const relPath = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
       const targetLabel = relPath === '.' ? './ (root)' : `./${relPath}`;
-      broadcastLog(`🚀 Публікація (деплой) проєкту з ${targetLabel}...`, 'stdout');
+      broadcastLog(
+        isEn
+          ? `🚀 Deploying project from ${targetLabel}...`
+          : `🚀 Публікація (деплой) проєкту з ${targetLabel}...`,
+        'stdout'
+      );
       const deployConfig = getDeployConfig(targetProjectDir);
       let provider = params.provider;
       if (!provider && params.template) {
@@ -1675,15 +1708,30 @@ export function handleAction(action, params = {}) {
         // 1. Verify GitHub authentication
         const ghUser = getGitHubUser();
         if (!ghUser) {
-          broadcastLog('❌ Помилка деплою: Ви не авторизовані у GitHub CLI (gh)!', 'stderr');
-          broadcastLog('💡 Будь ласка, натисніть "🔑 Увійти в акаунт (Login)" у кроці 3, щоб підключити акаунт GitHub.', 'stdout');
+          broadcastLog(
+            isEn
+              ? '❌ Deployment error: You are not authenticated with GitHub CLI (gh)!'
+              : '❌ Помилка деплою: Ви не авторизовані у GitHub CLI (gh)!',
+            'stderr'
+          );
+          broadcastLog(
+            isEn
+              ? '💡 Please click "🔑 Login to Account" in step 3 to connect your GitHub account.'
+              : '💡 Будь ласка, натисніть "🔑 Увійти в акаунт (Login)" у кроці 3, щоб підключити акаунт GitHub.',
+            'stdout'
+          );
           broadcastComplete('deploy-project', false, 1);
           break;
         }
 
         // 2. Determine target GitHub repository name
         const repoTarget = projName.includes('/') ? projName : `${ghUser}/${projName}`;
-        broadcastLog(`🔍 Перевірка наявності репозиторію "${repoTarget}" на GitHub...`, 'stdout');
+        broadcastLog(
+          isEn
+            ? `🔍 Checking repository "${repoTarget}" on GitHub...`
+            : `🔍 Перевірка наявності репозиторію "${repoTarget}" на GitHub...`,
+          'stdout'
+        );
 
         // 3. Check if repository exists on GitHub
         let repoInfo = null;
@@ -1698,9 +1746,24 @@ export function handleAction(action, params = {}) {
         }
 
         if (!repoInfo || !repoInfo.name) {
-          broadcastLog(`❌ Помилка деплою: Репозиторій "${repoTarget}" не знайдено на GitHub!`, 'stderr');
-          broadcastLog(`💡 Для хостингу Docker / Coolify назва проєкту в пункті 2 (${projName}) має співпадати з назвою вашого репозиторію на GitHub.`, 'stderr');
-          broadcastLog(`👉 Створіть новий репозиторій "${projName}" на GitHub (https://github.com/new) або вкажіть назву існуючого репозиторію у пункті 2.`, 'stdout');
+          broadcastLog(
+            isEn
+              ? `❌ Deployment error: Repository "${repoTarget}" not found on GitHub!`
+              : `❌ Помилка деплою: Репозиторій "${repoTarget}" не знайдено на GitHub!`,
+            'stderr'
+          );
+          broadcastLog(
+            isEn
+              ? `💡 For Docker / Coolify hosting, the project name in step 2 (${projName}) must match your repository name on GitHub.`
+              : `💡 Для хостингу Docker / Coolify назва проєкту в пункті 2 (${projName}) має співпадати з назвою вашого репозиторію на GitHub.`,
+            'stderr'
+          );
+          broadcastLog(
+            isEn
+              ? `👉 Create a new repository "${projName}" on GitHub (https://github.com/new) or specify an existing repository in step 2.`
+              : `👉 Створіть новий репозиторій "${projName}" на GitHub (https://github.com/new) або вкажіть назву існуючого репозиторію у пункті 2.`,
+            'stdout'
+          );
           broadcastComplete('deploy-project', false, 1);
           break;
         }
@@ -1708,8 +1771,18 @@ export function handleAction(action, params = {}) {
         // 4. Repository exists -> prepare git and push
         const defaultBranch = repoInfo.defaultBranchRef?.name || 'main';
         const remoteUrl = repoInfo.url ? `${repoInfo.url}.git` : `https://github.com/${repoTarget}.git`;
-        broadcastLog(`✅ Репозиторій "${repoTarget}" знайдено на GitHub!`, 'stdout');
-        broadcastLog(`📦 Публікація файлів проєкту в гілку "${defaultBranch}"...`, 'stdout');
+        broadcastLog(
+          isEn
+            ? `✅ Repository "${repoTarget}" found on GitHub!`
+            : `✅ Репозиторій "${repoTarget}" знайдено на GitHub!`,
+          'stdout'
+        );
+        broadcastLog(
+          isEn
+            ? `📦 Publishing project files to branch "${defaultBranch}"...`
+            : `📦 Публікація файлів проєкту в гілку "${defaultBranch}"...`,
+          'stdout'
+        );
 
         // Ensure standard .gitignore exists so node_modules / build are never committed
         const gitignorePath = path.join(targetProjectDir, '.gitignore');
