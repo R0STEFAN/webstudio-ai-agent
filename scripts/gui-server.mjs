@@ -832,6 +832,53 @@ export function getGlobalWebstudioToken(projectId) {
   return null;
 }
 
+export function ensureSafariPatchScript(projectDir) {
+  try {
+    const patchScriptPath = path.join(projectDir, 'patch-safari.mjs');
+    const patchContent = `import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const buildDir = path.join(__dirname, 'build', 'client', 'assets');
+
+if (!fs.existsSync(buildDir)) {
+  process.exit(0);
+}
+
+let patchedCount = 0;
+const files = fs.readdirSync(buildDir);
+
+for (const file of files) {
+  if (!file.endsWith('.js')) continue;
+  const fullPath = path.join(buildDir, file);
+  let code = fs.readFileSync(fullPath, 'utf8');
+
+  const targetPattern = '[new RegExp("(?<=^|\\\\s|\\\\p{P}|\\\\p{S})([-.\\\\w+]+)@([-\\\\w]+(?:\\\\.[-\\\\w]+)+)","gu"),hu]';
+  const targetPatternAlt = '[new RegExp("(?<=^|\\\\s|\\\\p{P}|\\\\p{S})([-.\\\\w+]+)@([-\\\\w]+(?:\\\\.[-\\\\w]+)+)", "gu"), hu]';
+  const safeReplacement = '[/([-.\\\\w+]+)@([-\\w]+(?:\\\\.[-\\w]+)+)/g,hu]';
+
+  if (code.includes(targetPattern)) {
+    code = code.replaceAll(targetPattern, safeReplacement);
+    fs.writeFileSync(fullPath, code, 'utf8');
+    patchedCount++;
+    console.log(\`✅ [patch-safari] Patched iOS Safari RegExp in: \${file}\`);
+  } else if (code.includes(targetPatternAlt)) {
+    code = code.replaceAll(targetPatternAlt, safeReplacement);
+    fs.writeFileSync(fullPath, code, 'utf8');
+    patchedCount++;
+    console.log(\`✅ [patch-safari] Patched iOS Safari RegExp in: \${file}\`);
+  }
+}
+
+if (patchedCount > 0) {
+  console.log(\`🎉 [patch-safari] Successfully patched \${patchedCount} file(s) for iOS Safari compatibility.\`);
+}
+`;
+    fs.writeFileSync(patchScriptPath, patchContent, 'utf8');
+  } catch {}
+}
+
 export function saveProjectShareLink(projectDir, shareLink) {
   if (!shareLink || typeof shareLink !== 'string' || !shareLink.startsWith('http')) return false;
   const cleanLink = shareLink.trim();
@@ -1136,6 +1183,8 @@ export function executeShellCommand(action, command, options = {}) {
           if (fs.existsSync(pkgPath)) {
             const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
             if (!pkg.scripts) pkg.scripts = {};
+            pkg.scripts.postbuild = 'node patch-safari.mjs';
+            pkg.scripts['patch-safari'] = 'node patch-safari.mjs';
             const isDocker = (options.template && options.template.includes('docker')) || fs.existsSync(path.join(targetCwd, 'Dockerfile'));
             if (isDocker) {
               pkg.scripts.start = 'react-router-serve ./build/server/index.js';
@@ -1151,11 +1200,23 @@ export function executeShellCommand(action, command, options = {}) {
             }
             fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
           }
+          // Ensure patch-safari.mjs is always present in project
+          ensureSafariPatchScript(targetCwd);
           // Ensure project has standard .gitignore for clean git / coolify deployment
           const gitignorePath = path.join(targetCwd, '.gitignore');
           if (!fs.existsSync(gitignorePath)) {
             const defaultGitignore = "node_modules/\nbuild/\ndist/\n.wrangler/\n.react-router/\n.webstudio-backups/\n.env\n.env.*\n!.env.example\n.DS_Store\n*.log\n";
             fs.writeFileSync(gitignorePath, defaultGitignore, 'utf8');
+          }
+        } catch {}
+      }
+      if (action === 'build-project') {
+        try {
+          ensureSafariPatchScript(targetCwd);
+          const patchFile = path.join(targetCwd, 'patch-safari.mjs');
+          if (fs.existsSync(patchFile)) {
+            execSync('node patch-safari.mjs', { cwd: targetCwd, stdio: 'ignore' });
+            broadcastLog('✓ Applied iOS Safari RegExp patch to built assets.', 'stdout');
           }
         } catch {}
       }
