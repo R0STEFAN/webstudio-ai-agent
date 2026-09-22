@@ -1651,15 +1651,44 @@ export function handleAction(action, params = {}) {
         }
 
         const gitDir = path.join(targetProjectDir, '.git');
-        let initCmd = '';
-        if (!fs.existsSync(gitDir)) {
-          initCmd = `git init -b ${defaultBranch} 2>/dev/null || (git init && git branch -M ${defaultBranch}) && `;
+        try {
+          if (!fs.existsSync(gitDir)) {
+            try {
+              execSync(`git init -b ${defaultBranch}`, { cwd: targetProjectDir, stdio: 'ignore' });
+            } catch {
+              execSync('git init', { cwd: targetProjectDir, stdio: 'ignore' });
+              execSync(`git branch -M ${defaultBranch}`, { cwd: targetProjectDir, stdio: 'ignore' });
+            }
+          }
+        } catch {}
+
+        try {
+          execSync('git remote remove origin', { cwd: targetProjectDir, stdio: 'ignore' });
+        } catch {}
+        try {
+          execSync(`git remote add origin "${remoteUrl}"`, { cwd: targetProjectDir, stdio: 'ignore' });
+        } catch {}
+
+        try {
+          execSync('git config user.name', { cwd: targetProjectDir, stdio: 'ignore' });
+        } catch {
+          try { execSync(`git config user.name "${ghUser}"`, { cwd: targetProjectDir, stdio: 'ignore' }); } catch {}
+        }
+        try {
+          execSync('git config user.email', { cwd: targetProjectDir, stdio: 'ignore' });
+        } catch {
+          try { execSync(`git config user.email "${ghUser}@users.noreply.github.com"`, { cwd: targetProjectDir, stdio: 'ignore' }); } catch {}
         }
 
-        const remoteCmd = `git remote remove origin 2>/dev/null || true && git remote add origin "${remoteUrl}"`;
-        const userCmd = `(git config user.name >/dev/null 2>&1 || git config user.name "${ghUser}") && (git config user.email >/dev/null 2>&1 || git config user.email "${ghUser}@users.noreply.github.com")`;
-        const pushCmd = `${initCmd}${remoteCmd} && ${userCmd} && git add -A && (git diff --cached --quiet || git commit -m "deploy: update Webstudio build") && git push -u origin HEAD:${defaultBranch}`;
+        try {
+          execSync('git add -A', { cwd: targetProjectDir, stdio: 'ignore' });
+          const status = execSync('git status --porcelain', { cwd: targetProjectDir, encoding: 'utf8' }).trim();
+          if (status) {
+            execSync('git commit -m "deploy: update Webstudio build"', { cwd: targetProjectDir, stdio: 'ignore' });
+          }
+        } catch {}
 
+        const pushCmd = `git push -u origin HEAD:${defaultBranch} --force`;
         executeShellCommand('deploy-project', pushCmd, { provider: 'Docker', cwd: targetProjectDir });
         break;
       }
