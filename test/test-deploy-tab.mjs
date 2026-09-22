@@ -480,6 +480,8 @@ async function runTestSuite() {
       // Restore project name
       if (initialActiveProject && initialActiveProject !== 'webstudio-e2e-app') {
         try {
+          const { updateProjectNameOnDisk } = await import('../scripts/gui-server.mjs');
+          updateProjectNameOnDisk(pm.getActiveProjectDir(), initialActiveProject);
           pm.renameProject('webstudio-e2e-app', initialActiveProject);
         } catch {}
       }

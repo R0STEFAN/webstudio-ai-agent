@@ -570,6 +570,16 @@ export function getDeployConfig(dir = null, requestedHosting = null, requestedTe
     } catch {}
   }
 
+  // Prioritize active project name from Project Hub registry if available
+  if (typeof projectManager !== 'undefined') {
+    try {
+      const active = projectManager.getActiveProject();
+      if (active && (path.resolve(targetDir) === path.resolve(projectManager.getActiveProjectDir()) || active.id === path.basename(targetDir))) {
+        if (active.name) projectName = active.name;
+      }
+    } catch {}
+  }
+
   const candidateConfigs = [
     { file: 'wrangler.toml', path: wranglerTomlPath, template: 'remix-cloudflare' },
     { file: 'wrangler.jsonc', path: wranglerJsoncPath, template: 'react-router-cloudflare' },
