@@ -336,6 +336,7 @@ assert.strictEqual(state.currentTab, 'workspace', 'switchTab with invalid tab mu
   dom.valDeployHosting = createMockEl('val-deploy-hosting', 'span');
   dom.valDeployConfigFile = createMockEl('val-deploy-config-file', 'span');
   dom.valDeployScriptsCount = createMockEl('val-deploy-scripts-count', 'span');
+  dom.valHeaderActiveProject = createMockEl('val-header-active-project', 'span');
 
   // Test switchTab toggles CSS classes
   switchTab('deploy');
@@ -383,7 +384,24 @@ assert.strictEqual(state.currentTab, 'workspace', 'switchTab with invalid tab mu
   assert.strictEqual(dom.valDeployScriptsCount.textContent, '3');
   assert.strictEqual(dom.valDeployHosting.textContent, 'Cloudflare');
   assert.strictEqual(dom.valDeployTemplate.textContent, '⚡ React Router v7 + Cloudflare Workers');
-  assert.strictEqual(dom.valDetectedConfig.textContent, 'Конфігураційний файл: wrangler.jsonc');
+  // Test that renderView preserves and displays active project name in header badge
+  state.status.activeProject = { id: 'my-project-1', name: 'My Portfolio' };
+  state.activeProjectId = 'my-project-1';
+  renderView();
+  assert.strictEqual(dom.valHeaderActiveProject.textContent, 'My Portfolio');
+
+  // Test that applyTranslations does not reset active project name
+  applyTranslations();
+  assert.strictEqual(dom.valHeaderActiveProject.textContent, 'My Portfolio');
+
+  // Test fallback when no active project exists
+  state.status.activeProject = null;
+  state.activeProjectId = '';
+  renderView();
+  assert.strictEqual(dom.valHeaderActiveProject.textContent, 'Немає проєкту');
+  state.lang = 'en';
+  applyTranslations();
+  assert.strictEqual(dom.valHeaderActiveProject.textContent, 'No active project');
 
   delete globalThis.document;
 }

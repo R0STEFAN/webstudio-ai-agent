@@ -15,6 +15,8 @@ export const i18n = {
       backups: '📦 Локальні бекапи'
     },
     projects: {
+      noActiveProject: 'Немає проєкту',
+      headerBadgeTitle: 'Активний проєкт (клікніть для перегляду всіх проєктів)',
       newBtn: 'Новий',
       newBtnTitle: 'Створити новий проєкт',
       create: {
@@ -270,6 +272,8 @@ export const i18n = {
       backups: '📦 Local Backups'
     },
     projects: {
+      noActiveProject: 'No active project',
+      headerBadgeTitle: 'Active project (click to view all projects)',
       newBtn: 'New',
       newBtnTitle: 'Create New Project',
       create: {

@@ -56,18 +56,15 @@ function makeTempDir(prefix = 'pm-test-') {
   return p;
 }
 
-it('should initialize and discover legacy root project', () => {
+it('should initialize with empty project list and no active project', () => {
   const temp = makeTempDir();
-  const wsDir = path.join(temp, '.webstudio');
-  fs.mkdirSync(wsDir, { recursive: true });
-  fs.writeFileSync(path.join(wsDir, 'data.json'), JSON.stringify({ pages: [{}, {}] }), 'utf8');
-
   const pm = new ProjectManager(temp);
   const reg = pm.loadRegistry();
-  assert.ok(reg.projects.length >= 1);
+  assert.strictEqual(reg.projects.length, 0);
+  assert.strictEqual(reg.activeProjectId, '');
   const active = pm.getActiveProject();
-  assert.ok(active);
-  assert.strictEqual(active.id, reg.activeProjectId);
+  assert.strictEqual(active, null);
+  assert.strictEqual(pm.getActiveProjectDir(), null);
 });
 
 it('should create a new project and switch active context', () => {
@@ -100,15 +97,19 @@ it('should rename a project and update wrangler.toml name', () => {
   assert.strictEqual(active.name, 'barber-zp');
 });
 
-it('should prevent deleting the last remaining project', () => {
+it('should allow deleting all projects down to zero', () => {
   const temp = makeTempDir();
   const pm = new ProjectManager(temp);
-  const list = pm.listProjects();
+  pm.createProject('temp-proj-1');
+  let list = pm.listProjects();
   assert.strictEqual(list.projects.length, 1);
 
-  assert.throws(() => {
-    pm.deleteProject(list.projects[0].id);
-  }, /Cannot delete the last remaining project/);
+  pm.deleteProject('temp-proj-1');
+  list = pm.listProjects();
+  assert.strictEqual(list.projects.length, 0);
+  assert.strictEqual(list.activeProjectId, '');
+  assert.strictEqual(pm.getActiveProject(), null);
+  assert.strictEqual(pm.getActiveProjectDir(), null);
 });
 
 // --------------------------------------------------------------------------
@@ -221,8 +222,6 @@ async function runApiTests() {
       assert.strictEqual(res.status, 200);
       const data = await res.json();
       assert.ok(Array.isArray(data.projects));
-      assert.ok(data.projects.length >= 1);
-      assert.ok(data.activeProjectId);
     });
 
     // 3.2 POST /api/projects/create
@@ -293,7 +292,7 @@ async function runApiTests() {
 
     // 3.7 GET /api/deploy/history
     await itAsync('GET /api/deploy/history should return deployments or graceful error', async () => {
-      const res = await fetch(`${BASE_URL}/api/deploy/history?project=tattoo-v3-test&limit=3`);
+      const res = await fetch(`${BASE_URL}/api/deploy/history?project=${createdProjId}&limit=3`);
       assert.strictEqual(res.status, 200);
       const data = await res.json();
       assert.ok(typeof data === 'object');
@@ -304,11 +303,6 @@ async function runApiTests() {
 
     // Clean up created test project
     if (createdProjId) {
-      await fetch(`${BASE_URL}/api/projects/select`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: 'tattoo-v3-test' })
-      });
       await fetch(`${BASE_URL}/api/projects/delete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

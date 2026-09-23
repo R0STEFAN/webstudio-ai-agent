@@ -115,7 +115,8 @@ export const TEMPLATE_PRESETS = {
   'ssg-netlify': ['ssg', 'ssg-netlify']
 };
 export function cleanFrameworkArtifacts(dir = null, preset) {
-  const targetDir = dir || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir);
+  const targetDir = dir || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : null);
+  if (!targetDir) return;
   const pkgPath = path.join(targetDir, 'package.json');
   let pkg = null;
   if (fs.existsSync(pkgPath)) {
@@ -229,7 +230,8 @@ export function cleanFrameworkArtifacts(dir = null, preset) {
   }
 }
 export function cleanAllTemplateGenerations(dir = null) {
-  const targetDir = dir || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir);
+  const targetDir = dir || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : null);
+  if (!targetDir) return;
   const pathsToRemove = [
     path.join(targetDir, 'app'),
     path.join(targetDir, 'functions'),
@@ -548,7 +550,22 @@ export function getHostingAuth(rootDir, targetHosting = null) {
 }
 
 export function getDeployConfig(dir = null, requestedHosting = null, requestedTemplate = null) {
-  const targetDir = dir || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir);
+  const activeProj = typeof projectManager !== 'undefined' ? projectManager.getActiveProject() : null;
+  const targetDir = dir || (activeProj && typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : null);
+  
+  if (!targetDir) {
+    return {
+      projectName: '',
+      configFile: 'none',
+      detectedTemplate: 'none',
+      targetHosting: requestedHosting || 'Cloudflare',
+      hasWrangler: false,
+      hasBuildDir: false,
+      availableScripts: [],
+      hostingAuth: { ok: false, message: 'No active project' }
+    };
+  }
+
   let projectName = '';
   let configFile = '';
   let detectedTemplate = 'unknown';
@@ -574,7 +591,7 @@ export function getDeployConfig(dir = null, requestedHosting = null, requestedTe
   if (typeof projectManager !== 'undefined') {
     try {
       const active = projectManager.getActiveProject();
-      if (active && (path.resolve(targetDir) === path.resolve(projectManager.getActiveProjectDir()) || active.id === path.basename(targetDir))) {
+      if (active && (path.resolve(targetDir) === path.resolve(projectManager.getActiveProjectDir() || '') || active.id === path.basename(targetDir))) {
         if (active.name) projectName = active.name;
       }
     } catch {}
@@ -672,14 +689,14 @@ export function getDeployConfig(dir = null, requestedHosting = null, requestedTe
   };
 }
 
-export function updateProjectNameOnDisk(rootDir, newName) {
-  if (!newName || typeof newName !== 'string') return { updated: false, safeName: '' };
+export function updateProjectNameOnDisk(dir, newName) {
+  if (!dir || !newName || typeof newName !== 'string') return { updated: false, safeName: '' };
   const safeName = newName.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-');
   if (!safeName) return { updated: false, safeName: '' };
 
-  const wranglerJsoncPath = path.join(rootDir, 'wrangler.jsonc');
-  const wranglerTomlPath = path.join(rootDir, 'wrangler.toml');
-  const packageJsonPath = path.join(rootDir, 'package.json');
+  const wranglerJsoncPath = path.join(dir, 'wrangler.jsonc');
+  const wranglerTomlPath = path.join(dir, 'wrangler.toml');
+  const packageJsonPath = path.join(dir, 'package.json');
 
   let updated = false;
 
@@ -709,7 +726,8 @@ export function updateProjectNameOnDisk(rootDir, newName) {
     } catch {}
   }
 
-  if (fs.existsSync(packageJsonPath)) {
+  // Never mutate the root repository package.json!
+  if (path.resolve(dir) !== path.resolve(rootDir) && fs.existsSync(packageJsonPath)) {
     try {
       const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
       pkg.name = safeName;
@@ -730,7 +748,7 @@ export function updateProjectNameOnDisk(rootDir, newName) {
  */
 export async function fetchDeployGitHistory(projectDir, limit = 10) {
   try {
-    if (!fs.existsSync(path.join(projectDir, '.git'))) {
+    if (!projectDir || !fs.existsSync(path.join(projectDir, '.git'))) {
       return { success: true, provider: 'Docker', total: 0, deployments: [] };
     }
 
@@ -925,7 +943,7 @@ export function saveProjectShareLink(projectDir, shareLink) {
 }
 
 export async function getProjectStatus(targetHosting = null, targetTemplate = null) {
-  const projectDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
+  const projectDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : null;
   const cliPath = path.join(rootDir, 'node_modules', 'webstudio', 'lib', 'cli.js');
   const pkgPath = path.join(rootDir, 'node_modules', 'webstudio', 'package.json');
   let installed = false;
@@ -942,32 +960,32 @@ export async function getProjectStatus(targetHosting = null, targetTemplate = nu
   const latestVersion = await getLatestVersion();
 
   let config = null;
-  const configPath = path.join(projectDir, '.webstudio', 'config.json');
-  if (fs.existsSync(configPath)) {
+  const configPath = projectDir ? path.join(projectDir, '.webstudio', 'config.json') : '';
+  if (configPath && fs.existsSync(configPath)) {
     try {
       config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     } catch {}
   }
 
   let auth = null;
-  const authPath = path.join(projectDir, '.webstudio', 'auth.json');
-  if (fs.existsSync(authPath)) {
+  const authPath = projectDir ? path.join(projectDir, '.webstudio', 'auth.json') : '';
+  if (authPath && fs.existsSync(authPath)) {
     try {
       auth = JSON.parse(fs.readFileSync(authPath, 'utf8'));
     } catch {}
   }
 
   let session = null;
-  const sessionPath = path.join(projectDir, '.webstudio', 'session.json');
-  if (fs.existsSync(sessionPath)) {
+  const sessionPath = projectDir ? path.join(projectDir, '.webstudio', 'session.json') : '';
+  if (sessionPath && fs.existsSync(sessionPath)) {
     try {
       session = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
     } catch {}
   }
 
   let data = null;
-  const dataPath = path.join(projectDir, '.webstudio', 'data.json');
-  if (fs.existsSync(dataPath)) {
+  const dataPath = projectDir ? path.join(projectDir, '.webstudio', 'data.json') : '';
+  if (dataPath && fs.existsSync(dataPath)) {
     try {
       data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
     } catch {}
@@ -1042,7 +1060,7 @@ export async function getProjectStatus(targetHosting = null, targetTemplate = nu
   let assetsCount = 0;
   if (Array.isArray(data?.assets)) {
     assetsCount = data.assets.length;
-  } else {
+  } else if (projectDir) {
     const assetsDir = path.join(projectDir, '.webstudio', 'assets');
     if (fs.existsSync(assetsDir)) {
       try {
@@ -1068,7 +1086,7 @@ export async function getProjectStatus(targetHosting = null, targetTemplate = nu
       assets: assetsCount
     },
     deploy: getDeployConfig(projectDir, targetHosting, targetTemplate),
-    hostingAuth: getHostingAuth(projectDir, targetHosting),
+    hostingAuth: projectDir ? getHostingAuth(projectDir, targetHosting) : { ok: false, message: 'No active project' },
     previewServer: {
       running: Boolean(activePreviewProcess),
       url: activePreviewUrl
@@ -1099,7 +1117,7 @@ export function stopPreviewServer() {
 }
 
 export function executeShellCommand(action, command, options = {}) {
-  const targetCwd = options.cwd || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir);
+  const targetCwd = options.cwd || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : null) || rootDir;
   const relPath = path.relative(rootDir, targetCwd).replace(/\\/g, '/') || '.';
   const cwdDisplay = relPath === '.' ? './ (root)' : `./${relPath}`;
 
@@ -1197,6 +1215,9 @@ export function executeShellCommand(action, command, options = {}) {
               if (!pkg.scripts.preview && pkg.scripts.start) {
                 pkg.scripts.preview = pkg.scripts.start;
               }
+            }
+            if (pkg.devDependencies?.typescript && String(pkg.devDependencies.typescript).startsWith('7.')) {
+              pkg.devDependencies.typescript = '^6.0.3';
             }
             fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
           }
@@ -1329,7 +1350,25 @@ export function executePreviewCommand() {
 
 export function handleAction(action, params = {}) {
   const isEn = params.lang === 'en';
-  const targetProjectDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
+  const hasActiveProj = Boolean(typeof projectManager !== 'undefined' && projectManager.getActiveProject());
+  const targetProjectDir = hasActiveProj ? projectManager.getActiveProjectDir() : null;
+
+  const projectSpecificActions = [
+    'link', 'sync', 'sync-draft', 'import', 'upload-assets',
+    'generate-template', 'clean-template', 'build', 'build-project',
+    'preview', 'preview-project', 'publish', 'deploy', 'deploy-project',
+    'save-session', 'update-project-name'
+  ];
+
+  if (projectSpecificActions.includes(action) && !targetProjectDir) {
+    const msg = isEn
+      ? '⚠️ No active project selected. Please create or select a project in the Projects tab first.'
+      : '⚠️ Немає активного проєкту. Будь ласка, створіть або оберіть проєкт у вкладці "Проєкти".';
+    console.log(`\x1b[33m[Webstudio CLI] ${msg}\x1b[0m\n`);
+    broadcastLog(msg, 'stderr');
+    broadcastComplete(action, false, 1);
+    return;
+  }
   switch (action) {
     case 'install-root':
     case 'install': {
@@ -1397,7 +1436,7 @@ export function handleAction(action, params = {}) {
       if (params.shareLink && params.shareLink.startsWith('http')) {
         saveProjectShareLink(targetProjectDir, params.shareLink);
       }
-      executeShellCommand('link', `npx webstudio link --link "${shareLink}"`);
+      executeShellCommand('link', `npx webstudio link --link "${shareLink}"`, { cwd: targetProjectDir });
       break;
     }
     case 'sync': {
@@ -1420,7 +1459,7 @@ export function handleAction(action, params = {}) {
       if (tok && !cmd.includes('--authToken')) {
         cmd += ` --authToken "${tok}"`;
       }
-      executeShellCommand('sync', cmd);
+      executeShellCommand('sync', cmd, { cwd: targetProjectDir });
       break;
     }
     case 'sync-draft': {
@@ -1488,7 +1527,7 @@ export function handleAction(action, params = {}) {
       if (origin) cmd += ` --origin "${origin.replace(/"/g, '\\"')}"`;
       if (authToken) cmd += ` --authToken "${authToken.replace(/"/g, '\\"')}"`;
 
-      executeShellCommand('sync-draft', cmd);
+      executeShellCommand('sync-draft', cmd, { cwd: targetProjectDir });
       break;
     }
     case 'save-session': {
@@ -1516,7 +1555,7 @@ export function handleAction(action, params = {}) {
       break;
     }
     case 'upload-assets': {
-      executeShellCommand('upload-assets', 'node scripts/upload-assets.mjs');
+      executeShellCommand('upload-assets', 'node scripts/upload-assets.mjs', { cwd: targetProjectDir });
       break;
     }
     case 'import': {
@@ -1533,7 +1572,7 @@ export function handleAction(action, params = {}) {
           } catch {}
         }
       }
-      executeShellCommand('import', `npx webstudio import --to "${shareLink}"`);
+      executeShellCommand('import', `npx webstudio import --to "${shareLink}"`, { cwd: targetProjectDir });
       break;
     }
     case 'check-updates': {
@@ -2000,7 +2039,8 @@ export function createGuiServer(port = 4200) {
       if (pathname === '/api/project/share-link' && req.method === 'POST') {
         const payload = await readJsonBody();
         try {
-          const targetDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : rootDir;
+          const targetDir = typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : null;
+          if (!targetDir) throw new Error('No active project');
           const ok = saveProjectShareLink(targetDir, payload.shareLink);
           res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders });
           res.end(JSON.stringify({ ok }));

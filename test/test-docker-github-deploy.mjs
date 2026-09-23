@@ -98,7 +98,7 @@ it('should dynamically switch labels and hints when Docker is selected', () => {
 console.log('\n3. Testing fetchDeployGitHistory...');
 
 it('should parse git log and return formatted deployment history for projects with git', async () => {
-  const history = await fetchDeployGitHistory(path.join(rootDir, 'projects', 'tattoo-v3-test'), 5);
+  const history = await fetchDeployGitHistory(rootDir, 5);
   assert.strictEqual(history.success, true);
   assert.strictEqual(history.provider, 'Docker');
   assert.ok(Array.isArray(history.deployments));
@@ -135,7 +135,7 @@ async function runApiTest() {
     totalTests++;
 
     // Test GET /api/deploy/history for Docker project
-    const histRes = await fetch(`http://localhost:${testPort}/api/deploy/history?project=tattoo-v3-test&provider=Docker`);
+    const histRes = await fetch(`http://localhost:${testPort}/api/deploy/history?project=test-docker-app&provider=Docker`);
     assert.strictEqual(histRes.status, 200);
     const histData = await histRes.json();
     assert.strictEqual(histData.success, true);

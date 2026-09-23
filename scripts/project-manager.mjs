@@ -40,49 +40,9 @@ export class ProjectManager {
 
     if (!fs.existsSync(this.registryPath)) {
       const initialRegistry = {
-        activeProjectId: 'tattoo-v3-test',
+        activeProjectId: '',
         projects: []
       };
-
-      // Detect legacy / root project
-      const rootWsDir = path.join(this.rootDir, '.webstudio');
-      let rootProjectName = 'tattoo-v3-test';
-
-      const pkgPath = path.join(this.rootDir, 'package.json');
-      const tomlPath = path.join(this.rootDir, 'wrangler.toml');
-      if (fs.existsSync(tomlPath)) {
-        try {
-          const m = fs.readFileSync(tomlPath, 'utf8').match(/^name\s*=\s*"([^"]+)"/m);
-          if (m) rootProjectName = m[1].trim();
-        } catch {}
-      } else if (fs.existsSync(pkgPath)) {
-        try {
-          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-          if (pkg.name && pkg.name !== 'webstudio-ai-agent') rootProjectName = pkg.name;
-        } catch {}
-      }
-
-      const defaultProjectDir = path.join(this.projectsDir, rootProjectName);
-      if (!fs.existsSync(defaultProjectDir)) {
-        fs.mkdirSync(defaultProjectDir, { recursive: true });
-        if (fs.existsSync(rootWsDir)) {
-          copyDirSync(rootWsDir, path.join(defaultProjectDir, '.webstudio'));
-        }
-        if (fs.existsSync(tomlPath)) {
-          try {
-            fs.copyFileSync(tomlPath, path.join(defaultProjectDir, 'wrangler.toml'));
-          } catch {}
-        }
-      }
-
-      initialRegistry.activeProjectId = rootProjectName;
-      initialRegistry.projects.push({
-        id: rootProjectName,
-        name: rootProjectName,
-        directory: path.relative(this.rootDir, defaultProjectDir).replace(/\\/g, '/'),
-        createdAt: new Date().toISOString(),
-        lastModified: new Date().toISOString()
-      });
 
       fs.writeFileSync(this.registryPath, JSON.stringify(initialRegistry, null, 2) + '\n', 'utf8');
     }
@@ -184,7 +144,7 @@ export class ProjectManager {
       const fullPath = path.resolve(this.rootDir, active.directory);
       if (fs.existsSync(fullPath)) return fullPath;
     }
-    return this.rootDir;
+    return null;
   }
 
   getProjectStats(projectDir) {
@@ -325,9 +285,6 @@ export class ProjectManager {
 
   deleteProject(projectId) {
     const reg = this.loadRegistry();
-    if (reg.projects.length <= 1) {
-      throw new Error('Cannot delete the last remaining project');
-    }
 
     const idx = reg.projects.findIndex(p => p.id === projectId);
     if (idx === -1) {
@@ -336,9 +293,14 @@ export class ProjectManager {
 
     const [deleted] = reg.projects.splice(idx, 1);
     if (reg.activeProjectId === projectId) {
-      reg.activeProjectId = reg.projects[0].id;
-      const nextDir = path.resolve(this.rootDir, reg.projects[0].directory);
-      this.syncActiveToRoot(nextDir);
+      if (reg.projects.length > 0) {
+        reg.activeProjectId = reg.projects[0].id;
+        const nextDir = path.resolve(this.rootDir, reg.projects[0].directory);
+        this.syncActiveToRoot(nextDir);
+      } else {
+        reg.activeProjectId = '';
+        this.syncActiveToRoot(null);
+      }
     }
 
     this.saveRegistry(reg);
@@ -411,8 +373,14 @@ export class ProjectManager {
   }
 
   syncActiveToRoot(activeProjectDir) {
-    const activeWs = path.join(activeProjectDir, '.webstudio');
     const rootWs = path.join(this.rootDir, '.webstudio');
+    if (!activeProjectDir) {
+      if (fs.existsSync(rootWs)) {
+        try { fs.rmSync(rootWs, { recursive: true, force: true }); } catch {}
+      }
+      return;
+    }
+    const activeWs = path.join(activeProjectDir, '.webstudio');
 
     if (fs.existsSync(activeWs)) {
       copyDirSync(activeWs, rootWs);
@@ -421,7 +389,7 @@ export class ProjectManager {
 
   syncRootToActive() {
     const activeDir = this.getActiveProjectDir();
-    if (activeDir === this.rootDir) return;
+    if (!activeDir || activeDir === this.rootDir) return;
 
     const rootWs = path.join(this.rootDir, '.webstudio');
     const activeWs = path.join(activeDir, '.webstudio');

@@ -40,14 +40,17 @@ function computeFileHash(filePath) {
 
 export class BackupManager {
   constructor(projectDir) {
-    this.projectDir = projectDir;
-    this.wsDir = path.join(projectDir, '.webstudio');
-    this.backupsDir = path.join(projectDir, '.webstudio-backups');
-    this.registryPath = path.join(this.backupsDir, 'backups.json');
-    this.ensureInitialized();
+    this.projectDir = projectDir || null;
+    this.wsDir = projectDir ? path.join(projectDir, '.webstudio') : '';
+    this.backupsDir = projectDir ? path.join(projectDir, '.webstudio-backups') : '';
+    this.registryPath = this.backupsDir ? path.join(this.backupsDir, 'backups.json') : '';
+    if (this.projectDir) {
+      this.ensureInitialized();
+    }
   }
 
   ensureInitialized() {
+    if (!this.projectDir || !this.backupsDir) return;
     if (!fs.existsSync(this.backupsDir)) {
       fs.mkdirSync(this.backupsDir, { recursive: true });
     }
@@ -68,12 +71,20 @@ export class BackupManager {
   }
 
   loadRegistry() {
+    if (!this.projectDir || !this.registryPath || !fs.existsSync(this.registryPath)) {
+      return {
+        config: { autoBackupEnabled: false, intervalMinutes: 10, backupOnImport: true },
+        lastBackupTimestamp: null,
+        lastDataHash: '',
+        backups: []
+      };
+    }
     this.ensureInitialized();
     try {
       return JSON.parse(fs.readFileSync(this.registryPath, 'utf8'));
     } catch {
       return {
-        config: { autoBackupEnabled: true, intervalMinutes: 10, backupOnImport: true },
+        config: { autoBackupEnabled: false, intervalMinutes: 10, backupOnImport: true },
         lastBackupTimestamp: null,
         lastDataHash: '',
         backups: []
@@ -82,10 +93,18 @@ export class BackupManager {
   }
 
   saveRegistry(registry) {
+    if (!this.registryPath) return;
     fs.writeFileSync(this.registryPath, JSON.stringify(registry, null, 2) + '\n', 'utf8');
   }
 
   listBackups() {
+    if (!this.projectDir || !this.backupsDir) {
+      return {
+        config: { autoBackupEnabled: false, intervalMinutes: 10, backupOnImport: true },
+        totalCount: 0,
+        backups: []
+      };
+    }
     const reg = this.loadRegistry();
     // Validate that folders exist on disk
     const validBackups = reg.backups.filter(b => {
@@ -109,6 +128,15 @@ export class BackupManager {
   }
 
   getProjectStats() {
+    if (!this.wsDir || !fs.existsSync(this.wsDir)) {
+      return {
+        pagesCount: 0,
+        instancesCount: 0,
+        assetsCount: 0,
+        sizeBytes: 0,
+        formattedSize: '0 B'
+      };
+    }
     let pagesCount = 0;
     let instancesCount = 0;
     let assetsCount = 0;
@@ -147,7 +175,7 @@ export class BackupManager {
   }
 
   createBackup(customDescription = '', type = 'manual') {
-    if (!fs.existsSync(this.wsDir)) {
+    if (!this.projectDir || !this.wsDir || !fs.existsSync(this.wsDir)) {
       throw new Error('No .webstudio directory found to backup');
     }
 
@@ -219,6 +247,9 @@ export class BackupManager {
   }
 
   restoreBackup(backupId) {
+    if (!this.projectDir || !this.backupsDir) {
+      throw new Error('No active project');
+    }
     const reg = this.loadRegistry();
     const meta = reg.backups.find(b => b.id === backupId);
     if (!meta) {

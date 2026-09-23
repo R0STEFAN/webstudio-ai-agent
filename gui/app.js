@@ -449,6 +449,7 @@ export function applyTranslations() {
 
   const currentProv = state.deploy?.targetHosting || (dom.selectTemplatePreset?.value?.includes('docker') ? 'Docker' : 'Cloudflare');
   updateDynamicDeployLabels(currentProv);
+  renderProjectSelector();
 }
 
 /**
@@ -762,8 +763,9 @@ export function initSSE() {
         showToast(t('messages.actionFailed', { action: finishedAction || 'Action', code: data.code || 1 }, state.lang), 'error');
       }
       
-      // Refresh status after command completes
+      // Refresh status and projects after command completes
       fetchStatus();
+      fetchProjects();
       if (finishedAction === 'deploy' || finishedAction === 'deploy-project') {
         fetchDeployHistory();
       }
@@ -917,7 +919,13 @@ export async function fetchStatus(provider = null, template = null) {
     if (data && data.deploy) {
       state.deploy = data.deploy;
     }
+    if (data && data.activeProject) {
+      state.activeProjectId = data.activeProject.id;
+    } else if (data && data.activeProject === null) {
+      state.activeProjectId = '';
+    }
     renderView();
+    renderProjectSelector();
     return data;
   } catch (err) {
     console.error('Failed to fetch status:', err);
@@ -963,6 +971,14 @@ export function renderView() {
       dot.style.boxShadow = installed ? '0 0 8px var(--color-success)' : 'none';
       dot.style.animation = installed ? 'pulse-dot 2.5s infinite' : 'none';
     }
+  }
+
+  // Header Active Project Badge
+  if (dom.valHeaderActiveProject) {
+    const isEn = state.lang === 'en';
+    const noProjText = t('projects.noActiveProject', {}, state.lang) || (isEn ? 'No active project' : 'Немає проєкту');
+    const activeProject = state.status?.activeProject || state.projects?.find(p => p.id === state.activeProjectId || p.isActive);
+    dom.valHeaderActiveProject.textContent = activeProject?.name || state.activeProjectId || noProjText;
   }
 
   // Telemetry Card Updates
@@ -1171,13 +1187,26 @@ export async function fetchProjects() {
 }
 
 export function renderProjectSelector() {
+  const isEn = state.lang === 'en';
+  const noProjText = t('projects.noActiveProject', {}, state.lang) || (isEn ? 'No active project' : 'Немає проєкту');
   if (dom.valHeaderActiveProject) {
-    dom.valHeaderActiveProject.textContent = state.activeProjectId || 'tattoo-v3-test';
+    const activeProject = state.projects?.find(p => p.id === state.activeProjectId || p.isActive) || state.status?.activeProject;
+    dom.valHeaderActiveProject.textContent = activeProject?.name || state.activeProjectId || noProjText;
   }
 
   if (!dom.selectActiveProject) return;
   dom.selectActiveProject.innerHTML = '';
-  for (const proj of (state.projects || [])) {
+  const projects = state.projects || [];
+  if (projects.length === 0) {
+    const emptyOpt = document.createElement('option');
+    emptyOpt.value = '';
+    emptyOpt.textContent = noProjText;
+    emptyOpt.selected = true;
+    emptyOpt.disabled = true;
+    dom.selectActiveProject.appendChild(emptyOpt);
+    return;
+  }
+  for (const proj of projects) {
     const opt = document.createElement('option');
     opt.value = proj.id;
     opt.textContent = proj.name || proj.id;
@@ -1189,28 +1218,30 @@ export function renderProjectSelector() {
 }
 
 export function renderProjectsList() {
+  const isEn = state.lang === 'en';
+  const noProjText = t('projects.noActiveProject', {}, state.lang) || (isEn ? 'No active project' : 'Немає проєкту');
   if (dom.valHeaderActiveProject) {
-    dom.valHeaderActiveProject.textContent = state.activeProjectId || 'tattoo-v3-test';
+    const activeProject = state.projects?.find(p => p.id === state.activeProjectId || p.isActive) || state.status?.activeProject;
+    dom.valHeaderActiveProject.textContent = activeProject?.name || state.activeProjectId || noProjText;
   }
 
   if (!dom.projectsListContainer) return;
   const projects = state.projects || [];
 
   if (dom.badgeProjectsTotal) {
-    dom.badgeProjectsTotal.textContent = `${projects.length} проєктів`;
+    dom.badgeProjectsTotal.textContent = `${projects.length} ${t('projects.list.count', {}, state.lang) || (isEn ? 'projects' : 'проєктів')}`;
   }
 
   if (projects.length === 0) {
     dom.projectsListContainer.innerHTML = `
       <div class="backups-empty-state">
-        Не знайдено жодного проєкту. Створіть перший проєкт.
+        ${t('projects.list.noProjects', {}, state.lang) || (isEn ? 'No projects found. Create your first project.' : 'Не знайдено жодного проєкту. Створіть перший проєкт.')}
       </div>
     `;
     return;
   }
 
   dom.projectsListContainer.innerHTML = '';
-  const isEn = state.lang === 'en';
   const openBtnText = t('projects.list.openBtn', {}, state.lang) || (isEn ? 'Open in Workspace' : 'Відкрити в робочій області');
   const activeBtnText = t('projects.list.currentActive', {}, state.lang) || (isEn ? 'Active' : 'Активний');
   const deleteTitle = t('projects.list.deleteBtn', {}, state.lang) || (isEn ? 'Delete' : 'Видалити');
@@ -1228,7 +1259,6 @@ export function renderProjectsList() {
     const modifiedLocale = isEn ? 'en-US' : 'uk-UA';
     const modifiedStr = p.lastModified ? new Date(p.lastModified).toLocaleString(modifiedLocale) : '—';
     const activeBadge = isActive ? `<span class="project-active-badge">${activeBadgeText}</span>` : '';
-    const isOnly = projects.length <= 1;
 
     card.innerHTML = `
       <div class="project-hub-header">
@@ -1259,11 +1289,9 @@ export function renderProjectsList() {
             <span>⚡</span> <span>${openBtnText}</span>
           </button>
         `}
-        ${!isOnly ? `
-          <button type="button" class="btn btn-outline btn-sm" data-action="delete-project" data-project-id="${p.id}" title="${deleteTitle}">
-            <span>🗑️</span>
-          </button>
-        ` : ''}
+        <button type="button" class="btn btn-outline btn-sm" data-action="delete-project" data-project-id="${p.id}" title="${deleteTitle}">
+          <span>🗑️</span>
+        </button>
       </div>
     `;
 

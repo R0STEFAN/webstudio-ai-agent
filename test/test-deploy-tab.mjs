@@ -421,6 +421,13 @@ async function runTestSuite() {
     originalPkgBackup = fs.readFileSync(rootPkgPath, 'utf8');
   }
 
+  const { ProjectManager } = await import('../scripts/project-manager.mjs');
+  const pm = new ProjectManager(rootDir);
+  let testProj = null;
+  try {
+    testProj = pm.createProject('test-e2e-proj', 'E2E Test Project');
+  } catch {}
+
   try {
     // 4.1 generate-template action
     await itAsync('POST /api/action with generate-template should stream npx webstudio build command log', async () => {
@@ -562,6 +569,11 @@ async function runTestSuite() {
       assert.ok(logEvt, 'Must receive npm run deploy command log');
     });
   } finally {
+    // Delete test project
+    if (testProj) {
+      try { pm.deleteProject('test-e2e-proj'); } catch {}
+    }
+
     // Restore original package.json if it was modified
     if (originalPkgBackup !== null) {
       fs.writeFileSync(rootPkgPath, originalPkgBackup, 'utf8');
