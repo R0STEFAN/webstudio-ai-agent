@@ -141,6 +141,10 @@ export const dom = {
   btnDeployBuild: null,
   btnDeployPreview: null,
   btnDeployPublish: null,
+  containerDockerBuildMode: null,
+  btnDockerModePrebuilt: null,
+  btnDockerModeServer: null,
+  hintDockerMode: null,
   valDeployTemplate: null,
   valDeployHosting: null,
   valDeployConfigFile: null,
@@ -279,6 +283,10 @@ export function cacheDOMElements() {
   dom.btnDeployBuild = document.getElementById('btn-deploy-build');
   dom.btnDeployPreview = document.getElementById('btn-deploy-preview');
   dom.btnDeployPublish = document.getElementById('btn-deploy-publish');
+  dom.containerDockerBuildMode = document.getElementById('container-docker-build-mode');
+  dom.btnDockerModePrebuilt = document.getElementById('btn-docker-mode-prebuilt');
+  dom.btnDockerModeServer = document.getElementById('btn-docker-mode-server');
+  dom.hintDockerMode = document.getElementById('hint-docker-mode');
   dom.valDeployTemplate = document.getElementById('val-deploy-template');
   dom.valDeployHosting = document.getElementById('val-deploy-hosting');
   dom.valDeployConfigFile = document.getElementById('val-deploy-config-file');
@@ -482,6 +490,62 @@ export function updateDynamicDeployLabels(provider) {
     } else {
       dom.lblDeployHistoryTitle.textContent = t('deploy.history.title', {}, state.lang);
     }
+  }
+
+  // Toggle Docker Build Mode segmented control visibility
+  if (dom.containerDockerBuildMode) {
+    if (isDocker) {
+      dom.containerDockerBuildMode.classList.remove('hidden');
+      updateDockerBuildModeUI(state.deploy?.dockerBuildMode || 'prebuilt');
+    } else {
+      dom.containerDockerBuildMode.classList.add('hidden');
+    }
+  }
+}
+
+/**
+ * Updates UI state of Docker build mode segmented control buttons and hint.
+ */
+export function updateDockerBuildModeUI(mode = 'prebuilt') {
+  const isPrebuilt = mode === 'prebuilt';
+  if (dom.btnDockerModePrebuilt) {
+    dom.btnDockerModePrebuilt.classList.toggle('active', isPrebuilt);
+    dom.btnDockerModePrebuilt.setAttribute('aria-checked', String(isPrebuilt));
+  }
+  if (dom.btnDockerModeServer) {
+    dom.btnDockerModeServer.classList.toggle('active', !isPrebuilt);
+    dom.btnDockerModeServer.setAttribute('aria-checked', String(!isPrebuilt));
+  }
+  if (dom.hintDockerMode) {
+    dom.hintDockerMode.textContent = isPrebuilt
+      ? t('deploy.dockerMode.prebuiltHint', {}, state.lang)
+      : t('deploy.dockerMode.serverHint', {}, state.lang);
+  }
+}
+
+/**
+ * Handles switching Docker build mode (prebuilt vs server).
+ */
+export async function handleSetDockerBuildMode(mode) {
+  updateDockerBuildModeUI(mode);
+  if (state.deploy) state.deploy.dockerBuildMode = mode;
+  try {
+    const res = await fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'set-docker-build-mode',
+        params: { mode }
+      })
+    });
+    if (res.ok) {
+      const modeName = mode === 'prebuilt'
+        ? t('deploy.dockerMode.prebuiltTitle', {}, state.lang)
+        : t('deploy.dockerMode.serverTitle', {}, state.lang);
+      showToast(t('deploy.dockerMode.updatedToast', { mode: modeName }, state.lang), 'info');
+    }
+  } catch (err) {
+    console.error('Failed to set Docker build mode:', err);
   }
 }
 
@@ -2062,6 +2126,18 @@ export function setupEventListeners() {
       fetchDeployHistory();
     });
   }
+  // Docker Build Mode Segmented Control
+  if (dom.btnDockerModePrebuilt) {
+    dom.btnDockerModePrebuilt.addEventListener('click', () => {
+      handleSetDockerBuildMode('prebuilt');
+    });
+  }
+  if (dom.btnDockerModeServer) {
+    dom.btnDockerModeServer.addEventListener('click', () => {
+      handleSetDockerBuildMode('server');
+    });
+  }
+
   // Deploy Lifecycle: Install Dependencies (Project Template)
   if (dom.btnDeployInstall) {
     dom.btnDeployInstall.addEventListener('click', () => {

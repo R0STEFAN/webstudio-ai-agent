@@ -165,6 +165,14 @@ export const i18n = {
         hint: 'Потрібно для публікації на Cloudflare / Vercel',
         hintDocker: 'Авторизація через GitHub CLI (gh) для деплою в репозиторій для Coolify'
       },
+      dockerMode: {
+        label: '⚙️ Режим збірки Docker (Coolify):',
+        prebuiltTitle: 'Швидкий деплой (Pre-built)',
+        serverTitle: 'Збірка на сервері (Full Build)',
+        prebuiltHint: '⚡ Локальна збірка + автопатч Safari ➔ Coolify запускає готовий контейнер за 15 сек.',
+        serverHint: '🔨 Лише вихідний код у Git ➔ Coolify збирає та патчить проєкт усередині контейнера.',
+        updatedToast: 'Режим збірки оновлено: {mode}'
+      },
       lifecycleSection: {
         title: '4. Послідовні кроки деплою',
         installBtn: '📦 Встановити залежності',
@@ -421,6 +429,14 @@ export const i18n = {
         notChecked: 'Not checked',
         hint: 'Required for publishing to Cloudflare / Vercel',
         hintDocker: 'Authentication via GitHub CLI (gh) for deployment to Coolify'
+      },
+      dockerMode: {
+        label: '⚙️ Docker Build Mode (Coolify):',
+        prebuiltTitle: 'Fast Deploy (Pre-built)',
+        serverTitle: 'Build on Server (Full Build)',
+        prebuiltHint: '⚡ Local build + Safari auto-patch ➔ Coolify starts ready container in 15 sec.',
+        serverHint: '🔨 Source code only in Git ➔ Coolify builds and patches inside Docker container.',
+        updatedToast: 'Build mode updated: {mode}'
       },
       lifecycleSection: {
         title: '4. Deploy Lifecycle Actions',

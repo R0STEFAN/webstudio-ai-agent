@@ -559,6 +559,24 @@
                 <h3 class="card-title" data-i18n="deploy.lifecycleSection.title">4. Послідовні кроки деплою</h3>
               </div>
               <div class="card-body">
+                <!-- Docker Build Mode Segmented Control (Visible for Docker / Coolify) -->
+                <div id="container-docker-build-mode" class="docker-mode-box hidden">
+                  <div class="docker-mode-header">
+                    <span class="docker-mode-title" data-i18n="deploy.dockerMode.label">⚙️ Режим збірки Docker (Coolify):</span>
+                  </div>
+                  <div class="segmented-control" role="radiogroup" aria-label="Docker Build Mode">
+                    <button type="button" class="segmented-btn active" id="btn-docker-mode-prebuilt" data-mode="prebuilt" role="radio" aria-checked="true">
+                      ⚡ <span data-i18n="deploy.dockerMode.prebuiltTitle">Швидкий деплой (Pre-built)</span>
+                    </button>
+                    <button type="button" class="segmented-btn" id="btn-docker-mode-server" data-mode="server" role="radio" aria-checked="false">
+                      🔨 <span data-i18n="deploy.dockerMode.serverTitle">Збірка на сервері (Full Build)</span>
+                    </button>
+                  </div>
+                  <p id="hint-docker-mode" class="form-hint docker-mode-hint" data-i18n="deploy.dockerMode.prebuiltHint">
+                    ⚡ Локальна збірка + автопатч Safari ➔ Coolify запускає готовий контейнер за 15 сек.
+                  </p>
+                </div>
+
                 <p class="form-hint" data-i18n="deploy.lifecycleSection.hint">
                   Універсальні команди: npm install ➔ npm run build ➔ npm run preview ➔ npm run deploy
                 </p>

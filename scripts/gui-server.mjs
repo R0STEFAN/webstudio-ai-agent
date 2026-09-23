@@ -604,6 +604,7 @@ export function getDeployConfig(dir = null, requestedHosting = null, requestedTe
     configFile: configFile || 'none',
     detectedTemplate,
     targetHosting,
+    dockerBuildMode: getDockerBuildMode(targetDir),
     hasWrangler: Boolean(fs.existsSync(wranglerJsoncPath) || fs.existsSync(wranglerTomlPath)),
     hasBuildDir: Boolean(fs.existsSync(path.join(targetDir, 'build')) || fs.existsSync(path.join(targetDir, 'dist'))),
     availableScripts,
@@ -882,6 +883,86 @@ export function ensureLockfileSynced(projectDir) {
   } catch {}
 }
 
+export function getDockerBuildMode(projectDir) {
+  try {
+    const dockerfilePath = path.join(projectDir, 'Dockerfile');
+    if (fs.existsSync(dockerfilePath)) {
+      const content = fs.readFileSync(dockerfilePath, 'utf8');
+      if (content.includes('FROM dependencies-env AS build-env') || content.includes('RUN npm run build')) {
+        return 'server';
+      }
+      if (content.includes('COPY build /app/build')) {
+        return 'prebuilt';
+      }
+    }
+  } catch {}
+  return 'prebuilt';
+}
+
+export function setDockerBuildMode(projectDir, mode = 'prebuilt') {
+  try {
+    if (!projectDir || !fs.existsSync(projectDir)) return { success: false, error: 'Directory not found' };
+
+    const targetMode = mode === 'server' ? 'server' : 'prebuilt';
+    const dockerfilePath = path.join(projectDir, 'Dockerfile');
+    const gitignorePath = path.join(projectDir, '.gitignore');
+
+    if (targetMode === 'prebuilt') {
+      const prebuiltDocker = `FROM node:22-alpine
+COPY .npmrc package.json /app/
+WORKDIR /app
+RUN npm install --omit=dev
+COPY build /app/build
+COPY public /app/public
+CMD ["npm", "run", "start"]
+`;
+      fs.writeFileSync(dockerfilePath, prebuiltDocker, 'utf8');
+
+      if (fs.existsSync(gitignorePath)) {
+        let gitignore = fs.readFileSync(gitignorePath, 'utf8');
+        gitignore = gitignore.replace(/^build\/$/gm, '# build/');
+        fs.writeFileSync(gitignorePath, gitignore, 'utf8');
+      }
+    } else {
+      const serverDocker = `FROM node:22-alpine AS dependencies-env
+COPY .npmrc package.json /app/
+WORKDIR /app
+RUN npm install --omit=dev
+
+FROM dependencies-env AS build-env
+COPY . /app/
+WORKDIR /app
+RUN npm install
+RUN npm run build
+RUN node -e 'const fs=require("fs"),p="build/client/assets";fs.existsSync(p)&&fs.readdirSync(p).filter(f=>f.endsWith(".js")).forEach(f=>{const fp=p+"/"+f;let c=fs.readFileSync(fp,"utf8"),t=\`[new RegExp("(?<=^|\\\\s|\\\\p{P}|\\\\p{S})([-.\\\\w+]+)@([-\\\\w]+(?:\\\\.[-\\\\w]+)+)","gu"),hu]\`;if(c.includes(t))fs.writeFileSync(fp,c.replaceAll(t,\`[/([-.\\\\w+]+)@([-\\w]+(?:\\\\.[-\\w]+)+)/g,hu]\`),"utf8");});'
+
+FROM node:22-alpine
+COPY .npmrc package.json /app/
+COPY --from=dependencies-env /app/node_modules /app/node_modules
+COPY --from=build-env /app/build /app/build
+COPY --from=build-env /app/public /app/public
+WORKDIR /app
+CMD ["npm", "run", "start"]
+`;
+      fs.writeFileSync(dockerfilePath, serverDocker, 'utf8');
+
+      if (fs.existsSync(gitignorePath)) {
+        let gitignore = fs.readFileSync(gitignorePath, 'utf8');
+        if (gitignore.includes('# build/')) {
+          gitignore = gitignore.replace(/^# build\/$/gm, 'build/');
+        } else if (!/^build\/$/gm.test(gitignore)) {
+          gitignore = "build/\n" + gitignore;
+        }
+        fs.writeFileSync(gitignorePath, gitignore, 'utf8');
+      }
+    }
+
+    return { success: true, mode: targetMode };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 export function ensureProjectIntegrity(projectDir, options = {}) {
   try {
     if (!projectDir || !fs.existsSync(projectDir)) return;
@@ -894,13 +975,10 @@ export function ensureProjectIntegrity(projectDir, options = {}) {
     );
 
     if (isDocker) {
-      // If Dockerfile is missing for Docker hosting, copy official Webstudio template
+      // If Dockerfile is missing for Docker hosting, create it using current mode
       const dockerfilePath = path.join(projectDir, 'Dockerfile');
       if (!fs.existsSync(dockerfilePath)) {
-        const tplDocker = path.join(rootDir, 'node_modules', 'webstudio', 'templates', 'react-router-docker', 'Dockerfile');
-        if (fs.existsSync(tplDocker)) {
-          fs.copyFileSync(tplDocker, dockerfilePath);
-        }
+        setDockerBuildMode(projectDir, 'prebuilt');
       }
 
       // Ensure .npmrc has legacy-peer-deps=true for clean Docker / CI builds
@@ -1707,6 +1785,19 @@ export function handleAction(action, params = {}) {
       broadcastComplete('stop-preview', true, 0);
       break;
     }
+    case 'set-docker-build-mode': {
+      const mode = params.mode === 'server' ? 'server' : 'prebuilt';
+      const result = setDockerBuildMode(targetProjectDir, mode);
+      const isPrebuilt = mode === 'prebuilt';
+      broadcastLog(
+        isEn
+          ? `✓ Docker build mode set to: ${isPrebuilt ? '⚡ Fast Deploy (Pre-built)' : '🔨 Full Build (on server)'}`
+          : `✓ Режим збірки Docker встановлено: ${isPrebuilt ? '⚡ Швидкий деплой (Pre-built)' : '🔨 Повна збірка (на сервері)'}`,
+        'stdout'
+      );
+      broadcastComplete('set-docker-build-mode', result.success, result.success ? 0 : 1);
+      break;
+    }
     case 'deploy-project': {
       const relPath = path.relative(rootDir, targetProjectDir).replace(/\\/g, '/') || '.';
       const targetLabel = relPath === '.' ? './ (root)' : `./${relPath}`;
@@ -1870,6 +1961,41 @@ export function handleAction(action, params = {}) {
             : '🔒 Перевірено цілісність залежностей, Dockerfile та синхронізацію lockfile для Coolify.',
           'stdout'
         );
+
+        const buildMode = getDockerBuildMode(targetProjectDir);
+        if (buildMode === 'prebuilt') {
+          broadcastLog(
+            isEn
+              ? '⚡ Pre-built mode: Compiling locally and applying iOS Safari patch before push...'
+              : '⚡ Режим Pre-built: Локальна компіляція та накладання патчу iOS Safari перед відправкою...',
+            'stdout'
+          );
+          try {
+            execSync('npm run build', { cwd: targetProjectDir, stdio: 'inherit' });
+            patchSafariAssets(targetProjectDir);
+            setDockerBuildMode(targetProjectDir, 'prebuilt');
+            try { execSync('git add -f build', { cwd: targetProjectDir, stdio: 'ignore' }); } catch {}
+            broadcastLog(
+              isEn
+                ? '✓ Built assets and iOS Safari patch prepared for deployment.'
+                : '✓ Білд-файли та патч iOS Safari успішно підготовлені до деплою.',
+              'stdout'
+            );
+          } catch (buildErr) {
+            broadcastLog(`❌ Build error: ${buildErr.message}`, 'stderr');
+            broadcastComplete('deploy-project', false, 1);
+            break;
+          }
+        } else {
+          setDockerBuildMode(targetProjectDir, 'server');
+          try { execSync('git rm -r --cached build', { cwd: targetProjectDir, stdio: 'ignore' }); } catch {}
+          broadcastLog(
+            isEn
+              ? '🔨 Server build mode: Pushing source code. Coolify will build in Docker container.'
+              : '🔨 Режим збірки на сервері: Відправка вихідного коду. Coolify збиратиме проєкт у контейнері.',
+            'stdout'
+          );
+        }
 
         try {
           execSync('git add -A', { cwd: targetProjectDir, stdio: 'ignore' });
