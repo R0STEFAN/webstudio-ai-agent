@@ -537,7 +537,7 @@ export async function handleSetDockerBuildMode(mode) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'set-docker-build-mode',
-        params: { mode }
+        params: { mode, lang: state.lang }
       })
     });
     if (res.ok) {
