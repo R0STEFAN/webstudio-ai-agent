@@ -171,6 +171,9 @@ export function cleanFrameworkArtifacts(dir = null, preset) {
   if (!isDocker) {
     removePaths.push(path.join(targetDir, 'Dockerfile'));
   }
+  if (!isCloudflare && !isVercel) {
+    removePaths.push(path.join(targetDir, 'react-router.config.ts'));
+  }
 
   // Framework transitions (Remix vs React Router)
   if (isRemix) {
@@ -190,6 +193,18 @@ export function cleanFrameworkArtifacts(dir = null, preset) {
         fs.rmSync(p, { recursive: true, force: true });
       } catch {}
     }
+  }
+
+  // Sanitize react-router.config.ts if it remains for Cloudflare/Vercel
+  const targetRrConfig = path.join(targetDir, 'react-router.config.ts');
+  if (fs.existsSync(targetRrConfig)) {
+    try {
+      let content = fs.readFileSync(targetRrConfig, 'utf8');
+      if (content.includes('unstable_viteEnvironmentApi')) {
+        content = content.replace('unstable_viteEnvironmentApi', 'v8_viteEnvironmentApi');
+        fs.writeFileSync(targetRrConfig, content, 'utf8');
+      }
+    } catch {}
   }
 }
 export function cleanAllTemplateGenerations(dir = null) {
@@ -987,6 +1002,22 @@ export function ensureProjectIntegrity(projectDir, options = {}) {
           npmrcContent = "legacy-peer-deps=true\n" + npmrcContent;
           fs.writeFileSync(npmrcPath, npmrcContent, 'utf8');
         }
+      }
+    }
+
+    // Docker and Netlify do not use react-router.config.ts (it belongs to Cloudflare/Vercel)
+    const rrConfigPath = path.join(projectDir, 'react-router.config.ts');
+    if (fs.existsSync(rrConfigPath)) {
+      if (isDocker || (options.template && (options.template.includes('netlify') || options.template.includes('docker') || options.template.includes('ssg')))) {
+        try { fs.rmSync(rrConfigPath, { force: true }); } catch {}
+      } else {
+        try {
+          let content = fs.readFileSync(rrConfigPath, 'utf8');
+          if (content.includes('unstable_viteEnvironmentApi')) {
+            content = content.replace('unstable_viteEnvironmentApi', 'v8_viteEnvironmentApi');
+            fs.writeFileSync(rrConfigPath, content, 'utf8');
+          }
+        } catch {}
       }
     }
 
