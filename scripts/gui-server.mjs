@@ -168,7 +168,12 @@ export function cleanFrameworkArtifacts(dir = null, preset) {
   if (!isNetlify) {
     removePaths.push(path.join(targetDir, 'netlify.toml'));
   }
-  if (!isDocker) {
+  let isDockerTarget = isDocker;
+  try {
+    const deployConf = getDeployConfig(targetDir);
+    if (deployConf?.targetHosting === 'Docker') isDockerTarget = true;
+  } catch {}
+  if (!isDockerTarget) {
     removePaths.push(path.join(targetDir, 'Dockerfile'));
   }
 
@@ -178,27 +183,9 @@ export function cleanFrameworkArtifacts(dir = null, preset) {
       path.join(targetDir, 'app', 'routes.ts'),
       path.join(targetDir, 'react-router.config.ts')
     );
-    depsToRemove.push(
-      '@react-router/dev',
-      '@react-router/fs-routes',
-      '@react-router/node',
-      '@react-router/serve',
-      'react-router',
-      '@webstudio-is/sdk-components-react-router',
-      '@cloudflare/vite-plugin'
-    );
   } else if (isReactRouter) {
     removePaths.push(
       path.join(targetDir, 'app', 'entry.server.tsx')
-    );
-    depsToRemove.push(
-      '@remix-run/cloudflare',
-      '@remix-run/cloudflare-pages',
-      '@remix-run/node',
-      '@remix-run/react',
-      '@remix-run/server-runtime',
-      '@remix-run/dev',
-      '@webstudio-is/sdk-components-react-remix'
     );
   }
 
@@ -206,25 +193,6 @@ export function cleanFrameworkArtifacts(dir = null, preset) {
     if (fs.existsSync(p)) {
       try {
         fs.rmSync(p, { recursive: true, force: true });
-      } catch {}
-    }
-  }
-
-  if (pkg) {
-    let modified = false;
-    for (const dep of depsToRemove) {
-      if (pkg.dependencies?.[dep]) {
-        delete pkg.dependencies[dep];
-        modified = true;
-      }
-      if (pkg.devDependencies?.[dep]) {
-        delete pkg.devDependencies[dep];
-        modified = true;
-      }
-    }
-    if (modified) {
-      try {
-        fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
       } catch {}
     }
   }
@@ -267,52 +235,6 @@ export function cleanAllTemplateGenerations(dir = null) {
     }
   }
 
-  const pkgPath = path.join(targetDir, 'package.json');
-  if (fs.existsSync(pkgPath)) {
-    try {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-      const templateDeps = [
-        '@react-router/dev',
-        '@react-router/fs-routes',
-        '@react-router/node',
-        '@react-router/serve',
-        'react-router',
-        '@remix-run/cloudflare',
-        '@remix-run/cloudflare-pages',
-        '@remix-run/node',
-        '@remix-run/react',
-        '@remix-run/server-runtime',
-        '@remix-run/dev',
-        '@cloudflare/vite-plugin',
-        '@cloudflare/workers-types',
-        '@webstudio-is/sdk-components-react-remix',
-        '@webstudio-is/sdk-components-react-router',
-        'isbot',
-        'react',
-        'react-dom',
-        'shiki',
-        '@shikijs/langs',
-        '@shikijs/themes',
-        '@types/react',
-        '@types/react-dom',
-        'typescript',
-        'vite'
-      ];
-
-      for (const dep of templateDeps) {
-        if (pkg.dependencies?.[dep]) delete pkg.dependencies[dep];
-        if (pkg.devDependencies?.[dep]) delete pkg.devDependencies[dep];
-      }
-      if (!pkg.scripts) pkg.scripts = {};
-      pkg.scripts.build = 'remix vite:build';
-      pkg.scripts.dev = 'remix vite:dev';
-      const deployScriptRel = path.relative(targetDir, path.join(rootDir, 'scripts', 'deploy-cloudflare.mjs')).replace(/\\/g, '/');
-      pkg.scripts.preview = 'npm run build && wrangler pages dev ./build/client';
-      pkg.scripts.deploy = `npm run build && node ${deployScriptRel}`;
-
-      fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
-    } catch {}
-  }
 }
 
 
@@ -897,6 +819,118 @@ if (patchedCount > 0) {
   } catch {}
 }
 
+export function patchSafariAssets(projectDir) {
+  try {
+    const buildDir = path.join(projectDir, 'build', 'client', 'assets');
+    if (!fs.existsSync(buildDir)) return;
+
+    let patchedCount = 0;
+    const files = fs.readdirSync(buildDir);
+
+    for (const file of files) {
+      if (!file.endsWith('.js')) continue;
+      const fullPath = path.join(buildDir, file);
+      let code = fs.readFileSync(fullPath, 'utf8');
+
+      const targetPattern = '[new RegExp("(?<=^|\\\\s|\\\\p{P}|\\\\p{S})([-.\\\\w+]+)@([-\\\\w]+(?:\\\\.[-\\\\w]+)+)","gu"),hu]';
+      const targetPatternAlt = '[new RegExp("(?<=^|\\\\s|\\\\p{P}|\\\\p{S})([-.\\\\w+]+)@([-\\\\w]+(?:\\\\.[-\\\\w]+)+)", "gu"), hu]';
+      const safeReplacement = '[/([-.\\\\w+]+)@([-\\w]+(?:\\\\.[-\\w]+)+)/g,hu]';
+
+      if (code.includes(targetPattern)) {
+        code = code.replaceAll(targetPattern, safeReplacement);
+        fs.writeFileSync(fullPath, code, 'utf8');
+        patchedCount++;
+      } else if (code.includes(targetPatternAlt)) {
+        code = code.replaceAll(targetPatternAlt, safeReplacement);
+        fs.writeFileSync(fullPath, code, 'utf8');
+        patchedCount++;
+      }
+    }
+
+    if (patchedCount > 0) {
+      console.log(`[Webstudio CLI] 🎉 Patched ${patchedCount} built asset(s) for iOS Safari compatibility.`);
+    }
+  } catch {}
+}
+
+export function ensureLockfileSynced(projectDir) {
+  try {
+    const pkgPath = path.join(projectDir, 'package.json');
+    const lockPath = path.join(projectDir, 'package-lock.json');
+    if (!fs.existsSync(pkgPath)) return;
+
+    let inSync = false;
+    if (fs.existsSync(lockPath)) {
+      try {
+        execSync('npm ci --dry-run', { cwd: projectDir, stdio: 'pipe', timeout: 10000 });
+        inSync = true;
+      } catch {
+        inSync = false;
+      }
+    }
+
+    if (!inSync) {
+      console.log(`[Webstudio CLI] 🔄 Synchronizing package-lock.json with package.json for clean CI/Coolify deployment...`);
+      try {
+        execSync('npm install --package-lock-only', { cwd: projectDir, stdio: 'ignore', timeout: 20000 });
+      } catch {
+        try {
+          execSync('npm install --package-lock-only --legacy-peer-deps', { cwd: projectDir, stdio: 'ignore', timeout: 20000 });
+        } catch {}
+      }
+    }
+  } catch {}
+}
+
+export function ensureProjectIntegrity(projectDir, options = {}) {
+  try {
+    if (!projectDir || !fs.existsSync(projectDir)) return;
+
+    const isDocker = Boolean(
+      options.isDocker ||
+      (options.template && options.template.includes('docker')) ||
+      (options.provider === 'Docker') ||
+      fs.existsSync(path.join(projectDir, 'Dockerfile'))
+    );
+
+    if (isDocker) {
+      // If Dockerfile is missing for Docker hosting, copy official Webstudio template
+      const dockerfilePath = path.join(projectDir, 'Dockerfile');
+      if (!fs.existsSync(dockerfilePath)) {
+        const tplDocker = path.join(rootDir, 'node_modules', 'webstudio', 'templates', 'react-router-docker', 'Dockerfile');
+        if (fs.existsSync(tplDocker)) {
+          fs.copyFileSync(tplDocker, dockerfilePath);
+        }
+      }
+
+      // Ensure .npmrc has legacy-peer-deps=true for clean Docker / CI builds
+      const npmrcPath = path.join(projectDir, '.npmrc');
+      const standardNpmrc = "legacy-peer-deps=true\nengine-strict=true\naudit=false\nfund=false\n";
+      if (!fs.existsSync(npmrcPath)) {
+        fs.writeFileSync(npmrcPath, standardNpmrc, 'utf8');
+      } else {
+        let npmrcContent = fs.readFileSync(npmrcPath, 'utf8');
+        if (!npmrcContent.includes('legacy-peer-deps=true')) {
+          npmrcContent = "legacy-peer-deps=true\n" + npmrcContent;
+          fs.writeFileSync(npmrcPath, npmrcContent, 'utf8');
+        }
+      }
+    }
+
+    // Ensure standard .gitignore exists
+    const gitignorePath = path.join(projectDir, '.gitignore');
+    if (!fs.existsSync(gitignorePath)) {
+      const defaultGitignore = "node_modules/\nbuild/\ndist/\n.wrangler/\n.react-router/\n.webstudio-backups/\n.env\n.env.*\n!.env.example\n.DS_Store\n*.log\n";
+      fs.writeFileSync(gitignorePath, defaultGitignore, 'utf8');
+    }
+
+    // Ensure package-lock.json is valid and strictly in sync if present
+    ensureLockfileSynced(projectDir);
+  } catch (err) {
+    console.error(`[ensureProjectIntegrity] Error: ${err.message}`);
+  }
+}
+
 export function saveProjectShareLink(projectDir, shareLink) {
   if (!shareLink || typeof shareLink !== 'string' || !shareLink.startsWith('http')) return false;
   const cleanLink = shareLink.trim();
@@ -1196,49 +1230,12 @@ export function executeShellCommand(action, command, options = {}) {
             updateProjectNameOnDisk(targetCwd, targetName);
             broadcastLog(`✓ Synced project name "${targetName}" into template config files.`, 'stdout');
           }
-          // Ensure package.json has appropriate scripts
-          const pkgPath = path.join(targetCwd, 'package.json');
-          if (fs.existsSync(pkgPath)) {
-            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-            if (!pkg.scripts) pkg.scripts = {};
-            pkg.scripts.postbuild = 'node patch-safari.mjs';
-            pkg.scripts['patch-safari'] = 'node patch-safari.mjs';
-            const isDocker = (options.template && options.template.includes('docker')) || fs.existsSync(path.join(targetCwd, 'Dockerfile'));
-            if (isDocker) {
-              pkg.scripts.start = 'react-router-serve ./build/server/index.js';
-              pkg.scripts.preview = 'react-router-serve ./build/server/index.js';
-              delete pkg.scripts.typegen;
-              if (pkg.dependencies?.wrangler) delete pkg.dependencies.wrangler;
-            } else {
-              const deployScriptRel = path.relative(targetCwd, path.join(rootDir, 'scripts', 'deploy-cloudflare.mjs')).replace(/\\/g, '/');
-              pkg.scripts.deploy = `npm run build && node ${deployScriptRel}`;
-              if (!pkg.scripts.preview && pkg.scripts.start) {
-                pkg.scripts.preview = pkg.scripts.start;
-              }
-            }
-            if (pkg.devDependencies?.typescript && String(pkg.devDependencies.typescript).startsWith('7.')) {
-              pkg.devDependencies.typescript = '^6.0.3';
-            }
-            fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
-          }
-          // Ensure patch-safari.mjs is always present in project
-          ensureSafariPatchScript(targetCwd);
-          // Ensure project has standard .gitignore for clean git / coolify deployment
-          const gitignorePath = path.join(targetCwd, '.gitignore');
-          if (!fs.existsSync(gitignorePath)) {
-            const defaultGitignore = "node_modules/\nbuild/\ndist/\n.wrangler/\n.react-router/\n.webstudio-backups/\n.env\n.env.*\n!.env.example\n.DS_Store\n*.log\n";
-            fs.writeFileSync(gitignorePath, defaultGitignore, 'utf8');
-          }
+          ensureProjectIntegrity(targetCwd, { template: options.template });
         } catch {}
       }
       if (action === 'build-project') {
         try {
-          ensureSafariPatchScript(targetCwd);
-          const patchFile = path.join(targetCwd, 'patch-safari.mjs');
-          if (fs.existsSync(patchFile)) {
-            execSync('node patch-safari.mjs', { cwd: targetCwd, stdio: 'ignore' });
-            broadcastLog('✓ Applied iOS Safari RegExp patch to built assets.', 'stdout');
-          }
+          patchSafariAssets(targetCwd);
         } catch {}
       }
     } else {
@@ -1695,6 +1692,7 @@ export function handleAction(action, params = {}) {
           : `🔨 Збірка проєкту в ${targetLabel}...`,
         'stdout'
       );
+      ensureProjectIntegrity(targetProjectDir);
       executeShellCommand('build-project', 'npm run build', { cwd: targetProjectDir });
       break;
     }
@@ -1730,6 +1728,7 @@ export function handleAction(action, params = {}) {
       if (!provider) {
         provider = deployConfig.targetHosting || deployConfig.hostingAuth?.provider || 'Cloudflare';
       }
+      ensureProjectIntegrity(targetProjectDir, { provider, isDocker: provider === 'Docker' });
       if (provider === 'Vercel' || fs.existsSync(path.join(targetProjectDir, 'vercel.json'))) {
         executeShellCommand('deploy-project', 'npm run build && npx vercel --prod --yes', { cwd: targetProjectDir });
         break;
@@ -1863,6 +1862,15 @@ export function handleAction(action, params = {}) {
           try { execSync(`git config user.email "${ghUser}@users.noreply.github.com"`, { cwd: targetProjectDir, stdio: 'ignore' }); } catch {}
         }
 
+        ensureProjectIntegrity(targetProjectDir, { isDocker: true, provider: 'Docker' });
+        ensureLockfileSynced(targetProjectDir);
+        broadcastLog(
+          isEn
+            ? '🔒 Validated dependencies, Dockerfile, and lockfile synchronization for Coolify.'
+            : '🔒 Перевірено цілісність залежностей, Dockerfile та синхронізацію lockfile для Coolify.',
+          'stdout'
+        );
+
         try {
           execSync('git add -A', { cwd: targetProjectDir, stdio: 'ignore' });
           const status = execSync('git status --porcelain', { cwd: targetProjectDir, encoding: 'utf8' }).trim();
@@ -1876,8 +1884,18 @@ export function handleAction(action, params = {}) {
         break;
       }
 
-      const deployScriptPath = path.join(rootDir, 'scripts', 'deploy-cloudflare.mjs');
-      const deployCmd = `npm run build && node "${deployScriptPath}"`;
+      const pkgPath = path.join(targetProjectDir, 'package.json');
+      let deployCmd = 'npm run deploy';
+      if (fs.existsSync(pkgPath)) {
+        try {
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+          if (!pkg.scripts?.deploy) {
+            const isReactRouter = fs.existsSync(path.join(targetProjectDir, 'wrangler.jsonc'));
+            deployCmd = isReactRouter ? 'npm run build && npx wrangler deploy' : 'npm run build && npx wrangler pages deploy ./build/client';
+          }
+        } catch {}
+      }
+
       executeShellCommand('deploy-project', deployCmd, {
         cwd: targetProjectDir,
         env: { PROJECT_DIR: targetProjectDir }

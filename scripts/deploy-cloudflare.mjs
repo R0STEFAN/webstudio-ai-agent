@@ -186,13 +186,20 @@ export async function detectProductionBranch(projectName, dir = rootDir) {
 export async function deploy() {
   const targetDir = process.env.PROJECT_DIR ? path.resolve(process.env.PROJECT_DIR) : process.cwd();
   const projectName = getProjectName(targetDir);
-  console.log(`\x1b[36m[Cloudflare Deploy]\x1b[0m Detecting production branch for project: \x1b[1m"${projectName}"\x1b[0m...`);
+  const isWorkers = fs.existsSync(path.join(targetDir, 'wrangler.jsonc'));
+  let cmd;
 
-  const { branch: targetBranch, source } = await detectProductionBranch(projectName, targetDir);
-  console.log(`\x1b[36m[Cloudflare Deploy]\x1b[0m Target production branch: \x1b[32m"${targetBranch}"\x1b[0m (${source})`);
+  if (isWorkers) {
+    console.log(`\x1b[36m[Cloudflare Deploy]\x1b[0m Detected Cloudflare Worker configuration (wrangler.jsonc) for: \x1b[1m"${projectName}"\x1b[0m`);
+    cmd = 'npx wrangler deploy';
+  } else {
+    console.log(`\x1b[36m[Cloudflare Deploy]\x1b[0m Detecting production branch for Cloudflare Pages project: \x1b[1m"${projectName}"\x1b[0m...`);
+    const { branch: targetBranch, source } = await detectProductionBranch(projectName, targetDir);
+    console.log(`\x1b[36m[Cloudflare Deploy]\x1b[0m Target production branch: \x1b[32m"${targetBranch}"\x1b[0m (${source})`);
 
-  const deployDir = fs.existsSync(path.join(targetDir, 'build', 'client')) ? './build/client' : './build';
-  const cmd = `npx wrangler pages deploy ${deployDir} --project-name "${projectName}" --branch "${targetBranch}" --commit-dirty=true`;
+    const deployDir = fs.existsSync(path.join(targetDir, 'build', 'client')) ? './build/client' : './build';
+    cmd = `npx wrangler pages deploy ${deployDir} --project-name "${projectName}" --branch "${targetBranch}" --commit-dirty=true`;
+  }
 
   console.log(`\x1b[36m[Cloudflare Deploy]\x1b[0m $ ${cmd}\n`);
 
