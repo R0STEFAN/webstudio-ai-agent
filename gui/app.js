@@ -464,7 +464,8 @@ export function applyTranslations() {
  * Updates dynamic labels & hints in Step 2 and Step 3 based on provider (Docker / GitHub vs other hosting).
  */
 export function updateDynamicDeployLabels(provider) {
-  const isDocker = provider === 'Docker' || (state.deploy?.detectedTemplate && state.deploy.detectedTemplate.includes('docker'));
+  const currentProvider = provider || (dom.selectTemplatePreset?.value?.includes('docker') ? 'Docker' : state.deploy?.targetHosting || 'Cloudflare');
+  const isDocker = currentProvider === 'Docker';
   if (dom.lblProjectName) {
     dom.lblProjectName.textContent = isDocker
       ? t('deploy.nameSection.projectNameLabelDocker', {}, state.lang)
