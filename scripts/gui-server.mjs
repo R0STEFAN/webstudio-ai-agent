@@ -168,12 +168,7 @@ export function cleanFrameworkArtifacts(dir = null, preset) {
   if (!isNetlify) {
     removePaths.push(path.join(targetDir, 'netlify.toml'));
   }
-  let isDockerTarget = isDocker;
-  try {
-    const deployConf = getDeployConfig(targetDir);
-    if (deployConf?.targetHosting === 'Docker') isDockerTarget = true;
-  } catch {}
-  if (!isDockerTarget) {
+  if (!isDocker) {
     removePaths.push(path.join(targetDir, 'Dockerfile'));
   }
 
@@ -971,7 +966,7 @@ export function ensureProjectIntegrity(projectDir, options = {}) {
       options.isDocker ||
       (options.template && options.template.includes('docker')) ||
       (options.provider === 'Docker') ||
-      fs.existsSync(path.join(projectDir, 'Dockerfile'))
+      (!options.template && !options.provider && fs.existsSync(path.join(projectDir, 'Dockerfile')))
     );
 
     if (isDocker) {
@@ -1691,7 +1686,7 @@ export function handleAction(action, params = {}) {
       for (const t of templates) {
         cmd += ` --template ${t}`;
       }
-      executeShellCommand('generate-template', cmd, { cwd: targetProjectDir });
+      executeShellCommand('generate-template', cmd, { cwd: targetProjectDir, template: preset });
       break;
     }
     case 'clean-template': {

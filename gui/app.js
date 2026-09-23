@@ -29,6 +29,7 @@ export const state = {
   currentTab: getInitialTab(),
   status: null,
   deploy: null,
+  userSelectedPreset: null,
   logs: [],
   isRunning: false,
   currentAction: null,
@@ -829,6 +830,10 @@ export function initSSE() {
       }
       
       // Refresh status and projects after command completes
+      if (finishedAction === 'generate-template') {
+        state.userSelectedPreset = null;
+        try { localStorage.removeItem('ws_selected_preset'); } catch {}
+      }
       fetchStatus();
       fetchProjects();
       if (finishedAction === 'deploy' || finishedAction === 'deploy-project') {
@@ -1094,14 +1099,14 @@ export function renderView() {
         dom.valActiveTemplateBadge.className = 'badge badge-neutral';
       }
     }
-    // Sync Preset Dropdown with detected template if present
-    if (dom.selectTemplatePreset && deployData.detectedTemplate && deployData.detectedTemplate !== 'unknown' && deployData.detectedTemplate !== 'none') {
-      if (typeof document !== 'undefined' && document.activeElement !== dom.selectTemplatePreset) {
+    // Sync Preset Dropdown only if user hasn't explicitly chosen a different preset
+    if (dom.selectTemplatePreset) {
+      if (state.userSelectedPreset) {
+        dom.selectTemplatePreset.value = state.userSelectedPreset;
+      } else if (deployData.detectedTemplate && deployData.detectedTemplate !== 'unknown' && deployData.detectedTemplate !== 'none') {
         dom.selectTemplatePreset.value = deployData.detectedTemplate;
       }
     }
-
-
 
     // Config file
     if (dom.valDeployConfigFile) {
@@ -1126,16 +1131,17 @@ export function renderView() {
       dom.valDeployScriptsCount.textContent = String(count);
     }
 
-    // Target Hosting
+    // Target Hosting based on active user selection or detected template
     if (dom.valDeployHosting) {
-      let hosting = '—';
-      if (deployData.detectedTemplate) {
-        if (deployData.detectedTemplate.includes('cloudflare')) hosting = 'Cloudflare';
-        else if (deployData.detectedTemplate.includes('vercel')) hosting = 'Vercel';
-        else if (deployData.detectedTemplate.includes('netlify')) hosting = 'Netlify';
-        else if (deployData.detectedTemplate.includes('docker')) hosting = 'Docker';
-        else if (deployData.detectedTemplate.includes('ssg')) hosting = 'Static / CDN';
-        else hosting = deployData.detectedTemplate;
+      let hosting = 'Cloudflare';
+      const activePreset = state.userSelectedPreset || dom.selectTemplatePreset?.value || deployData.detectedTemplate;
+      if (activePreset) {
+        if (activePreset.includes('cloudflare')) hosting = 'Cloudflare';
+        else if (activePreset.includes('vercel')) hosting = 'Vercel';
+        else if (activePreset.includes('netlify')) hosting = 'Netlify';
+        else if (activePreset.includes('docker')) hosting = 'Docker';
+        else if (activePreset.includes('ssg')) hosting = 'Static / CDN';
+        else hosting = activePreset;
       }
       dom.valDeployHosting.textContent = hosting;
       updateDynamicDeployLabels(hosting);
@@ -1372,6 +1378,8 @@ export async function handleSelectProject(projectId) {
     if (dom.inputCookie) dom.inputCookie.value = '';
     if (dom.inputCsrfToken) dom.inputCsrfToken.value = '';
     if (dom.inputProjectName) dom.inputProjectName.value = '';
+    state.userSelectedPreset = null;
+    try { localStorage.removeItem('ws_selected_preset'); } catch {}
 
     const res = await fetch('/api/projects/select', {
       method: 'POST',
@@ -2057,7 +2065,7 @@ export function setupEventListeners() {
   // Generate Template Preset Button
   if (dom.btnGenerateTemplate) {
     dom.btnGenerateTemplate.addEventListener('click', () => {
-      const templatePreset = dom.selectTemplatePreset ? dom.selectTemplatePreset.value : 'react-router-cloudflare';
+      const templatePreset = dom.selectTemplatePreset?.value || state.userSelectedPreset || 'react-router-cloudflare';
       dispatchAction('generate-template', { templatePreset });
     });
   }
@@ -2112,6 +2120,7 @@ export function setupEventListeners() {
   if (dom.selectTemplatePreset) {
     dom.selectTemplatePreset.addEventListener('change', () => {
       const selectedPreset = dom.selectTemplatePreset.value;
+      state.userSelectedPreset = selectedPreset;
       try { localStorage.setItem('ws_selected_preset', selectedPreset); } catch {}
       let provider = 'Cloudflare';
       if (selectedPreset.includes('vercel')) provider = 'Vercel';
