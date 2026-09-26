@@ -14,42 +14,13 @@ This repository contains the Webstudio visual web builder and an AI agent design
    # Setup once per project: npm i webstudio && node scripts/setup-local-mcp.mjs --local
    ```
 6. **Asset Upload & Cloud Sync Protocol:**
-   - When generating new local images in `.webstudio/assets/`, run:
+   - **CRITICAL INVARIANT — NEVER SKIP ASSETS:** NEVER pass `skipAssets: true` during Cloud import/sync. Passing `skipAssets` causes Webstudio Cloud to wipe/delete all uploaded assets and custom fonts from the project in Cloud.
+   - When generating or managing assets in `.webstudio/assets/`, always upload via session cookies:
      ```bash
      npm run upload-assets
      ```
-     This automatically uploads images via the session cookie in `.webstudio/session.json`, remaps all image `src` props in `data.build.props`, and syncs with Webstudio Cloud.
-   - To manually push project structure to Webstudio Cloud:
-     ```bash
-     npx webstudio import --to "<shareLink>"
-     ```
-7. **Strict Breakpoints & Responsive Design Rules:**
-   - **ONLY Standard Webstudio Breakpoints:** Webstudio strictly supports 4 standard breakpoints:
-     - `Base` (Desktop / default, no media query)
-     - `@media (max-width: 991px)` (Tablet)
-     - `@media (max-width: 767px)` (Mobile landscape / general mobile)
-# Webstudio AI Assistant Guide & Rules
-
-## Project Architecture & Workflow
-This repository contains the Webstudio visual web builder and an AI agent design workflow.
-
-### AI Design & Cloud Sync Protocol:
-1. **Local State Source of Truth:** All site pages, instances, and styles are stored in `.webstudio/data.json`.
-2. **Assets:** All images and fonts reside in `.webstudio/assets/`.
-3. **Design Tokens as CSS Classes (DRY Styles):** NEVER duplicate styles across repeating elements (buttons, cards, badges, headings). Always declare and attach reusable Design Tokens as CSS classes using `ws:tokens={[token('<class-name>', css`...`)]}` (e.g. `btn-primary`, `card-surface`, `badge-success` — do NOT prefix with `token-`).
-4. **Execution Skill:** Always use the `webstudio-ai-designer` skill (`.agents/skills/webstudio-ai-designer/SKILL.md`) when creating or modifying Webstudio designs.
-5. **Native MCP Tools (100% Local):** All 70+ official Webstudio MCP tools run locally via:
-   ```bash
-   npx webstudio mcp single-op-call <tool> --input-file <payload.json>
-   # Setup once per project: npm i webstudio && node scripts/setup-local-mcp.mjs --local
-   ```
-6. **Asset Upload & Cloud Sync Protocol:**
-   - When generating new local images in `.webstudio/assets/`, run:
-     ```bash
-     npm run upload-assets
-     ```
-     This automatically uploads images via the session cookie in `.webstudio/session.json`, remaps all image `src` props in `data.build.props`, and syncs with Webstudio Cloud.
-   - To manually push project structure to Webstudio Cloud:
+     This automatically uploads images/fonts via the session cookie in `.webstudio/session.json`, remaps all asset `src` props in `data.build.props`, and syncs with Webstudio Cloud.
+   - To manually push project structure with assets to Webstudio Cloud:
      ```bash
      npx webstudio import --to "<shareLink>"
      ```

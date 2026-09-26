@@ -250,7 +250,10 @@ if (transportPos !== -1 && assetRepoPos !== -1) {
 // 6. Patch uploadAsset to automatically bridge browser session from .webstudio/session.json
 const uploadAssetSearch = 'const uploadAsset = async (params) => {';
 if (code.includes(uploadAssetSearch)) {
-  const uploadAssetEnd = code.indexOf('\nconst uploadAssets =', code.indexOf(uploadAssetSearch));
+  let uploadAssetEnd = code.indexOf('\nconst uploadAssetsSettled =', code.indexOf(uploadAssetSearch));
+  if (uploadAssetEnd === -1) {
+    uploadAssetEnd = code.indexOf('\nconst uploadAssets =', code.indexOf(uploadAssetSearch));
+  }
   if (uploadAssetEnd !== -1) {
     const bridgedUploadAssetCode = `const uploadAsset = async (params) => {
   const { authToken, headers, origin, projectId, upload } = params;

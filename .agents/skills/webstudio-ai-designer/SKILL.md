@@ -14,6 +14,7 @@ Webstudio stores the complete source of truth for an entire visual site inside `
 2. **NEVER Edit `.webstudio/data.json` Manually:** The schema and immer patch trees are complex. Relying exclusively on native MCP tool execution ensures 100% data integrity and builder compatibility.
 3. **JSON-First Payload Pattern (`--input-file`):** Always save MCP tool arguments into a temporary JSON file (e.g. `.temp/payload.json`) and execute with `--input-file`. This completely eliminates Windows/POSIX shell escaping, quoting, and length limit issues.
 4. **Always Run Locally:** All 70+ MCP commands execute locally in <500ms via our local runtime bridge.
+5. **NEVER Pass `skipAssets: true` on Cloud Import/Push:** Passing `skipAssets: true` causes Webstudio Cloud to delete/clear all assets and custom fonts in the cloud project. Always upload assets via session cookies (`npm run upload-assets`) and import with assets intact (`webstudio import --to "<shareLink>"`).
 
 ### The Offline AI Protocol:
 ```
