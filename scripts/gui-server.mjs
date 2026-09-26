@@ -1660,20 +1660,40 @@ export function handleAction(action, params = {}) {
       break;
     }
     case 'import': {
-      if (params.shareLink && params.shareLink.startsWith('http')) {
-        saveProjectShareLink(targetProjectDir, params.shareLink);
+      let shareLink = (params.shareLink || '').trim();
+      if (shareLink && shareLink.startsWith('http')) {
+        saveProjectShareLink(targetProjectDir, shareLink);
       }
-      let shareLink = (params.shareLink || '').replace(/"/g, '\\"');
+      if (!shareLink && typeof projectManager !== 'undefined') {
+        const activeProj = projectManager.getActiveProject();
+        if (activeProj?.shareLink) {
+          shareLink = activeProj.shareLink;
+        }
+      }
       if (!shareLink) {
         const confPath = path.join(targetProjectDir, '.webstudio', 'config.json');
         if (fs.existsSync(confPath)) {
           try {
             const c = JSON.parse(fs.readFileSync(confPath, 'utf8'));
-            if (c.shareLink) shareLink = c.shareLink.replace(/"/g, '\\"');
+            if (c.shareLink) shareLink = c.shareLink;
           } catch {}
         }
       }
-      executeShellCommand('import', `npx webstudio import --to "${shareLink}"`, { cwd: targetProjectDir });
+
+      if (!shareLink) {
+        broadcastLog(
+          isEn
+            ? '❌ Error: No share link configured for this project. Please provide a Share Link.'
+            : '❌ Помилка: Не вказано Share Link для цього проєкту. Будь ласка, введіть посилання.',
+          'stderr'
+        );
+        broadcastComplete('import', false, 1);
+        break;
+      }
+
+      const payload = JSON.stringify({ to: shareLink, ignoreVersionCheck: true });
+      const cmd = `npx webstudio mcp single-op-call import '${payload.replace(/'/g, "'\\''")}'`;
+      executeShellCommand('import', cmd, { cwd: targetProjectDir });
       break;
     }
     case 'check-updates': {
