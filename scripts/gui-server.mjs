@@ -1028,6 +1028,28 @@ export function ensureProjectIntegrity(projectDir, options = {}) {
       fs.writeFileSync(gitignorePath, defaultGitignore, 'utf8');
     }
 
+    // Ensure SSG templates with Vike have Vite 8+ and plugin-react 6+
+    const pkgPath = path.join(projectDir, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        if (pkg.dependencies?.vike || pkg.devDependencies?.vike) {
+          let modified = false;
+          if (pkg.devDependencies?.vite && !pkg.devDependencies.vite.startsWith('^8') && !pkg.devDependencies.vite.startsWith('8')) {
+            pkg.devDependencies.vite = '^8.3.3';
+            modified = true;
+          }
+          if (pkg.devDependencies?.['@vitejs/plugin-react'] && !pkg.devDependencies['@vitejs/plugin-react'].startsWith('^6') && !pkg.devDependencies['@vitejs/plugin-react'].startsWith('6')) {
+            pkg.devDependencies['@vitejs/plugin-react'] = '^6.1.2';
+            modified = true;
+          }
+          if (modified) {
+            fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+          }
+        }
+      } catch {}
+    }
+
     // Ensure package-lock.json is valid and strictly in sync if present
     ensureLockfileSynced(projectDir);
   } catch (err) {

@@ -410,6 +410,26 @@ try {
     }
   }
 
+  const ssgPkgPath = path.join(templatesDir, 'ssg', 'package.json');
+  if (fs.existsSync(ssgPkgPath)) {
+    try {
+      const ssgPkg = JSON.parse(fs.readFileSync(ssgPkgPath, 'utf-8'));
+      let ssgModified = false;
+      if (ssgPkg.devDependencies?.vite && !ssgPkg.devDependencies.vite.startsWith('^8')) {
+        ssgPkg.devDependencies.vite = '^8.3.3';
+        ssgModified = true;
+      }
+      if (ssgPkg.devDependencies?.['@vitejs/plugin-react'] && !ssgPkg.devDependencies['@vitejs/plugin-react'].startsWith('^6')) {
+        ssgPkg.devDependencies['@vitejs/plugin-react'] = '^6.1.2';
+        ssgModified = true;
+      }
+      if (ssgModified) {
+        fs.writeFileSync(ssgPkgPath, JSON.stringify(ssgPkg, null, 2) + '\n', 'utf-8');
+        console.log('✅ 7b. Patched SSG template -> Vite 8 & plugin-react 6 for Vike compatibility');
+      }
+    } catch {}
+  }
+
   // Sync custom favicon from .webstudio/assets into template public folders
   const assetsDir = path.resolve(process.cwd(), '.webstudio', 'assets');
   if (fs.existsSync(assetsDir)) {
