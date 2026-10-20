@@ -1713,8 +1713,11 @@ export function handleAction(action, params = {}) {
         break;
       }
 
-      const payload = JSON.stringify({ to: shareLink, ignoreVersionCheck: true });
-      const cmd = `npx webstudio mcp single-op-call import '${payload.replace(/'/g, "'\\''")}'`;
+      const tempDir = path.join(targetProjectDir, '.temp');
+      fs.mkdirSync(tempDir, { recursive: true });
+      const payloadPath = path.join(tempDir, 'import-payload.json');
+      fs.writeFileSync(payloadPath, JSON.stringify({ to: shareLink, ignoreVersionCheck: true }, null, 2), 'utf8');
+      const cmd = `npx webstudio mcp single-op-call import --input-file "${payloadPath}"`;
       executeShellCommand('import', cmd, { cwd: targetProjectDir });
       break;
     }
