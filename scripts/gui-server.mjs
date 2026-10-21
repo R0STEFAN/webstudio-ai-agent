@@ -502,6 +502,12 @@ export function getDeployConfig(dir = null, requestedHosting = null, requestedTe
     };
   }
 
+  if (targetDir && path.resolve(targetDir) !== path.resolve(rootDir) && (requestedHosting === 'Docker' || (requestedTemplate && requestedTemplate.includes('docker')))) {
+    try {
+      ensureProjectIntegrity(targetDir, { provider: 'Docker', template: requestedTemplate });
+    } catch {}
+  }
+
   let projectName = '';
   let configFile = '';
   let detectedTemplate = 'unknown';
