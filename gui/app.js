@@ -1208,7 +1208,7 @@ export function renderView() {
   }
 
   if (dom.inputProjectName && activeEl !== dom.inputProjectName) {
-    dom.inputProjectName.value = state.status?.deploy?.projectName || state.activeProjectId || '';
+    dom.inputProjectName.value = state.deploy?.projectName || state.status?.deploy?.projectName || state.activeProjectId || '';
   }
 
   // Footer Updates
@@ -2077,6 +2077,15 @@ export function setupEventListeners() {
     });
   }
 
+  // Keep repo/project name in sync on input
+  if (dom.inputProjectName) {
+    dom.inputProjectName.addEventListener('input', () => {
+      if (state.deploy) {
+        state.deploy.projectName = dom.inputProjectName.value.trim();
+      }
+    });
+  }
+
   // Update Project Name Button
   if (dom.btnUpdateProjectName) {
     dom.btnUpdateProjectName.addEventListener('click', () => {
@@ -2181,7 +2190,8 @@ export function setupEventListeners() {
       else if (selectedPreset.includes('netlify')) provider = 'Netlify';
       else if (selectedPreset.includes('docker')) provider = 'Docker';
       else if (selectedPreset.includes('ssg')) provider = 'Static';
-      dispatchAction('deploy-project', { provider, template: selectedPreset });
+      const projectName = dom.inputProjectName ? dom.inputProjectName.value.trim() : '';
+      dispatchAction('deploy-project', { provider, template: selectedPreset, projectName });
     });
   }
   

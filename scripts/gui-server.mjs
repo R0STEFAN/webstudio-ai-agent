@@ -519,8 +519,17 @@ export function getDeployConfig(dir = null, requestedHosting = null, requestedTe
     } catch {}
   }
 
-  // Prioritize active project name from Project Hub registry if available
-  if (typeof projectManager !== 'undefined') {
+  // Load custom repository / deploy name from .webstudio/config.json if explicitly saved
+  const wsConfigPath = path.join(targetDir, '.webstudio', 'config.json');
+  if (fs.existsSync(wsConfigPath)) {
+    try {
+      const conf = JSON.parse(fs.readFileSync(wsConfigPath, 'utf8'));
+      if (conf.deployProjectName) projectName = conf.deployProjectName;
+    } catch {}
+  }
+
+  // Fallback to active project name from Project Hub registry only if projectName is not yet set
+  if (!projectName && typeof projectManager !== 'undefined') {
     try {
       const active = projectManager.getActiveProject();
       if (active && (path.resolve(targetDir) === path.resolve(projectManager.getActiveProjectDir() || '') || active.id === path.basename(targetDir))) {
@@ -577,6 +586,16 @@ export function getDeployConfig(dir = null, requestedHosting = null, requestedTe
         const match = content.match(/^name\s*=\s*"([^"]+)"/m);
         if (match) projectName = match[1];
       } catch {}
+    } else if (primaryCandidate.file === 'Dockerfile') {
+      if (fs.existsSync(wsConfigPath)) {
+        try {
+          const conf = JSON.parse(fs.readFileSync(wsConfigPath, 'utf8'));
+          if (conf.deployProjectName) projectName = conf.deployProjectName;
+        } catch {}
+      }
+      if (!projectName && pkg && pkg.name) {
+        projectName = pkg.name;
+      }
     }
   } else if (!configFile && fs.existsSync(packageJsonPath)) {
     configFile = 'package.json';
@@ -665,6 +684,18 @@ export function updateProjectNameOnDisk(dir, newName) {
       const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
       pkg.name = safeName;
       fs.writeFileSync(packageJsonPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+      updated = true;
+    } catch {}
+  }
+
+  // Always save repository / deploy name to .webstudio/config.json
+  const wsDir = path.join(dir, '.webstudio');
+  const wsConfigPath = path.join(wsDir, 'config.json');
+  if (fs.existsSync(wsConfigPath)) {
+    try {
+      const conf = JSON.parse(fs.readFileSync(wsConfigPath, 'utf8'));
+      conf.deployProjectName = safeName;
+      fs.writeFileSync(wsConfigPath, JSON.stringify(conf, null, 2) + '\n', 'utf8');
       updated = true;
     } catch {}
   }
@@ -1777,12 +1808,7 @@ export function handleAction(action, params = {}) {
       const newName = params.projectName || params.name || '';
       const result = updateProjectNameOnDisk(targetProjectDir, newName);
       if (result.updated || result.safeName) {
-        if (typeof projectManager !== 'undefined') {
-          try {
-            projectManager.renameProject(projectManager.getActiveProject()?.id, result.safeName);
-          } catch {}
-        }
-        broadcastLog(`✅ Project name updated to: ${result.safeName}`, 'stdout');
+        broadcastLog(`✅ Deploy / GitHub repository name updated to: ${result.safeName}`, 'stdout');
         broadcastComplete('update-project-name', true, 0);
       } else {
         broadcastLog('❌ Failed to update project name: invalid name provided', 'stderr');
@@ -1903,7 +1929,11 @@ export function handleAction(action, params = {}) {
 
       if (provider === 'Docker' || fs.existsSync(path.join(targetProjectDir, 'Dockerfile'))) {
         const deployConfig = getDeployConfig(targetProjectDir);
-        const projName = deployConfig.projectName || path.basename(targetProjectDir);
+        const rawName = params.projectName || deployConfig.projectName || path.basename(targetProjectDir);
+        const projName = rawName.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+        if (params.projectName) {
+          updateProjectNameOnDisk(targetProjectDir, projName);
+        }
 
         // 1. Verify GitHub authentication
         const ghUser = getGitHubUser();
