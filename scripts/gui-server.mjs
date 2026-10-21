@@ -210,6 +210,7 @@ export function cleanFrameworkArtifacts(dir = null, preset) {
 export function cleanAllTemplateGenerations(dir = null) {
   const targetDir = dir || (typeof projectManager !== 'undefined' ? projectManager.getActiveProjectDir() : null);
   if (!targetDir) return;
+  const isDocker = fs.existsSync(path.join(targetDir, 'Dockerfile')) && !fs.existsSync(path.join(targetDir, 'wrangler.jsonc'));
   const pathsToRemove = [
     path.join(targetDir, 'app'),
     path.join(targetDir, 'functions'),
@@ -222,7 +223,6 @@ export function cleanAllTemplateGenerations(dir = null) {
     path.join(targetDir, 'wrangler.toml'),
     path.join(targetDir, 'vercel.json'),
     path.join(targetDir, 'netlify.toml'),
-    path.join(targetDir, 'Dockerfile'),
     path.join(targetDir, 'vite.config.ts'),
     path.join(targetDir, 'react-router.config.ts'),
     path.join(targetDir, 'worker-configuration.d.ts'),
@@ -230,6 +230,10 @@ export function cleanAllTemplateGenerations(dir = null) {
     path.join(targetDir, 'tsconfig.json'),
     path.join(targetDir, 'WS_CF_README.md')
   ];
+
+  if (!isDocker) {
+    pathsToRemove.push(path.join(targetDir, 'Dockerfile'));
+  }
 
   if (targetDir !== rootDir) {
     pathsToRemove.push(path.join(targetDir, '.npmrc'));
@@ -1381,8 +1385,9 @@ export function executeShellCommand(action, command, options = {}) {
       }
       if (action === 'generate-template') {
         try {
+          const deployConf = getDeployConfig(targetCwd);
           const activeProj = typeof projectManager !== 'undefined' ? projectManager.getActiveProject() : null;
-          const targetName = activeProj?.name || path.basename(targetCwd);
+          const targetName = deployConf?.projectName || activeProj?.name || path.basename(targetCwd);
           if (targetName) {
             updateProjectNameOnDisk(targetCwd, targetName);
             broadcastLog(`✓ Synced project name "${targetName}" into template config files.`, 'stdout');
