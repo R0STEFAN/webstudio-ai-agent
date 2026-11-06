@@ -170,6 +170,7 @@ export function cleanFrameworkArtifacts(dir = null, preset) {
   }
   if (!isDocker) {
     removePaths.push(path.join(targetDir, 'Dockerfile'));
+    removePaths.push(path.join(targetDir, '.dockerignore'));
   }
   if (!isCloudflare && !isVercel) {
     removePaths.push(path.join(targetDir, 'react-router.config.ts'));
@@ -233,6 +234,7 @@ export function cleanAllTemplateGenerations(dir = null) {
 
   if (!isDocker) {
     pathsToRemove.push(path.join(targetDir, 'Dockerfile'));
+    pathsToRemove.push(path.join(targetDir, '.dockerignore'));
   }
 
   if (targetDir !== rootDir) {
@@ -957,6 +959,7 @@ export function setDockerBuildMode(projectDir, mode = 'prebuilt') {
     const targetMode = mode === 'server' ? 'server' : 'prebuilt';
     const dockerfilePath = path.join(projectDir, 'Dockerfile');
     const gitignorePath = path.join(projectDir, '.gitignore');
+    const dockerignorePath = path.join(projectDir, '.dockerignore');
 
     if (targetMode === 'prebuilt') {
       const prebuiltDocker = `FROM node:22-alpine
@@ -973,6 +976,12 @@ CMD ["npm", "run", "start"]
         let gitignore = fs.readFileSync(gitignorePath, 'utf8');
         gitignore = gitignore.replace(/^build\/$/gm, '# build/');
         fs.writeFileSync(gitignorePath, gitignore, 'utf8');
+      }
+
+      if (fs.existsSync(dockerignorePath)) {
+        let dockerignore = fs.readFileSync(dockerignorePath, 'utf8');
+        dockerignore = dockerignore.replace(/^build\/?$/gm, '# build');
+        fs.writeFileSync(dockerignorePath, dockerignore, 'utf8');
       }
     } else {
       const serverDocker = `FROM node:22-alpine AS dependencies-env
@@ -1006,6 +1015,16 @@ CMD ["npm", "run", "start"]
         }
         fs.writeFileSync(gitignorePath, gitignore, 'utf8');
       }
+
+      if (fs.existsSync(dockerignorePath)) {
+        let dockerignore = fs.readFileSync(dockerignorePath, 'utf8');
+        if (dockerignore.includes('# build')) {
+          dockerignore = dockerignore.replace(/^# build\/?$/gm, 'build');
+        } else if (!/^build\/?$/gm.test(dockerignore)) {
+          dockerignore = "build\n" + dockerignore;
+        }
+        fs.writeFileSync(dockerignorePath, dockerignore, 'utf8');
+      }
     }
 
     return { success: true, mode: targetMode };
@@ -1030,6 +1049,19 @@ export function ensureProjectIntegrity(projectDir, options = {}) {
       const dockerfilePath = path.join(projectDir, 'Dockerfile');
       if (!fs.existsSync(dockerfilePath)) {
         setDockerBuildMode(projectDir, 'prebuilt');
+      }
+
+      const buildMode = getDockerBuildMode(projectDir);
+      const dockerignorePath = path.join(projectDir, '.dockerignore');
+      if (fs.existsSync(dockerignorePath)) {
+        let dockerignore = fs.readFileSync(dockerignorePath, 'utf8');
+        if (buildMode === 'prebuilt' && /^build\/?$/m.test(dockerignore)) {
+          dockerignore = dockerignore.replace(/^build\/?$/gm, '# build');
+          fs.writeFileSync(dockerignorePath, dockerignore, 'utf8');
+        } else if (buildMode === 'server' && /^# build\/?$/m.test(dockerignore)) {
+          dockerignore = dockerignore.replace(/^# build\/?$/gm, 'build');
+          fs.writeFileSync(dockerignorePath, dockerignore, 'utf8');
+        }
       }
 
       // Ensure .npmrc has legacy-peer-deps=true for clean Docker / CI builds
@@ -1086,6 +1118,29 @@ export function ensureProjectIntegrity(projectDir, options = {}) {
           }
           if (modified) {
             fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+          }
+        }
+      } catch {}
+    }
+
+    // Check if installed @webstudio-is packages in node_modules match package.json version
+    const installedSdkPkg = path.join(projectDir, 'node_modules', '@webstudio-is', 'sdk', 'package.json');
+    if (fs.existsSync(installedSdkPkg)) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        const requiredVersion = pkg.dependencies?.['@webstudio-is/sdk']?.replace(/^[\^~]/, '');
+        if (requiredVersion) {
+          const installedVersion = JSON.parse(fs.readFileSync(installedSdkPkg, 'utf8')).version;
+          if (installedVersion !== requiredVersion) {
+            console.log(`[Webstudio CLI] 🔄 Updating stale node_modules/@webstudio-is (${installedVersion} -> ${requiredVersion})...`);
+            fs.rmSync(path.join(projectDir, 'node_modules', '@webstudio-is'), { recursive: true, force: true });
+            try {
+              execSync('npm install', { cwd: projectDir, stdio: 'ignore', timeout: 30000 });
+            } catch {
+              try {
+                execSync('npm install --legacy-peer-deps', { cwd: projectDir, stdio: 'ignore', timeout: 30000 });
+              } catch {}
+            }
           }
         }
       } catch {}
@@ -1423,6 +1478,7 @@ export function executePreviewCommand() {
   const relPath = path.relative(rootDir, targetCwd).replace(/\\/g, '/') || '.';
   const cwdDisplay = relPath === '.' ? './ (root)' : `./${relPath}`;
 
+  try { ensureProjectIntegrity(targetCwd); } catch {}
   const isDocker = fs.existsSync(path.join(targetCwd, 'Dockerfile'));
   let previewCmd = 'npm run preview';
   const pkgPath = path.join(targetCwd, 'package.json');
