@@ -876,33 +876,53 @@ if (patchedCount > 0) {
 export function patchSafariAssets(projectDir) {
   try {
     const buildDir = path.join(projectDir, 'build', 'client', 'assets');
-    if (!fs.existsSync(buildDir)) return;
+    if (fs.existsSync(buildDir)) {
+      let patchedCount = 0;
+      const files = fs.readdirSync(buildDir);
 
-    let patchedCount = 0;
-    const files = fs.readdirSync(buildDir);
+      for (const file of files) {
+        if (!file.endsWith('.js')) continue;
+        const fullPath = path.join(buildDir, file);
+        let code = fs.readFileSync(fullPath, 'utf8');
 
-    for (const file of files) {
-      if (!file.endsWith('.js')) continue;
-      const fullPath = path.join(buildDir, file);
-      let code = fs.readFileSync(fullPath, 'utf8');
+        const targetPattern = '[new RegExp("(?<=^|\\s|\\p{P}|\\p{S})([-.\\w+]+)@([-\\w]+(?:\\.[-\\w]+)+)","gu"),hu]';
+        const targetPatternAlt = '[new RegExp("(?<=^|\\s|\\p{P}|\\p{S})([-.\\w+]+)@([-\\w]+(?:\\.[-\\w]+)+)", "gu"), hu]';
+        const safeReplacement = '[/([-.\\w+]+)@([-\w]+(?:\\.[-\w]+)+)/g,hu]';
 
-      const targetPattern = '[new RegExp("(?<=^|\\\\s|\\\\p{P}|\\\\p{S})([-.\\\\w+]+)@([-\\\\w]+(?:\\\\.[-\\\\w]+)+)","gu"),hu]';
-      const targetPatternAlt = '[new RegExp("(?<=^|\\\\s|\\\\p{P}|\\\\p{S})([-.\\\\w+]+)@([-\\\\w]+(?:\\\\.[-\\\\w]+)+)", "gu"), hu]';
-      const safeReplacement = '[/([-.\\\\w+]+)@([-\\w]+(?:\\\\.[-\\w]+)+)/g,hu]';
-
-      if (code.includes(targetPattern)) {
-        code = code.replaceAll(targetPattern, safeReplacement);
-        fs.writeFileSync(fullPath, code, 'utf8');
-        patchedCount++;
-      } else if (code.includes(targetPatternAlt)) {
-        code = code.replaceAll(targetPatternAlt, safeReplacement);
-        fs.writeFileSync(fullPath, code, 'utf8');
-        patchedCount++;
+        if (code.includes(targetPattern)) {
+          code = code.replaceAll(targetPattern, safeReplacement);
+          fs.writeFileSync(fullPath, code, 'utf8');
+          patchedCount++;
+        } else if (code.includes(targetPatternAlt)) {
+          code = code.replaceAll(targetPatternAlt, safeReplacement);
+          fs.writeFileSync(fullPath, code, 'utf8');
+          patchedCount++;
+        }
       }
+
+      if (patchedCount > 0) {
+        console.log(`[Webstudio CLI] 🎉 Patched ${patchedCount} built asset(s) for iOS Safari compatibility.`);
+      }
+
+      // Mirror client assets into public/assets for bulletproof static file serving
+      try {
+        const publicAssetsDir = path.join(projectDir, 'public', 'assets');
+        fs.mkdirSync(publicAssetsDir, { recursive: true });
+        for (const file of files) {
+          fs.copyFileSync(path.join(buildDir, file), path.join(publicAssetsDir, file));
+        }
+      } catch {}
     }
 
-    if (patchedCount > 0) {
-      console.log(`[Webstudio CLI] 🎉 Patched ${patchedCount} built asset(s) for iOS Safari compatibility.`);
+    // Normalize Windows backslash path in build/server/index.js for Linux Docker container (react-router-serve)
+    const serverBundlePath = path.join(projectDir, 'build', 'server', 'index.js');
+    if (fs.existsSync(serverBundlePath)) {
+      let serverCode = fs.readFileSync(serverBundlePath, 'utf8');
+      if (serverCode.includes('build\\client')) {
+        serverCode = serverCode.replace(/build\\+client/g, 'build/client');
+        fs.writeFileSync(serverBundlePath, serverCode, 'utf8');
+        console.log('[Webstudio CLI] 🐧 Normalized server bundle asset paths for Linux Docker container (build/client).');
+      }
     }
   } catch {}
 }
