@@ -89,13 +89,23 @@ async function main() {
 
   const isDelete = args.includes('--delete');
   const type = isDelete ? 'URL_DELETED' : 'URL_UPDATED';
+  const excludeBlog = args.includes('--exclude-blog');
+  const excludeIdx = args.indexOf('--exclude');
+  const excludePattern = excludeIdx !== -1 ? args[excludeIdx + 1] : null;
 
-  if (args.includes('--sitemap') || (args.length === 0 && !isDelete)) {
+  if (args.includes('--sitemap') || (args.length === 0 && !isDelete) || excludeBlog || excludePattern) {
     const sitemapUrl = args.find(a => a.startsWith('http') && a.includes('sitemap')) || 'https://tattoozp.com/sitemap.xml';
     console.log(`🗺️ Fetching URLs from sitemap: ${sitemapUrl}...`);
     try {
-      const urls = await fetchSitemapUrls(sitemapUrl);
-      console.log(`Found ${urls.length} URLs in sitemap.`);
+      let urls = await fetchSitemapUrls(sitemapUrl);
+      const totalFound = urls.length;
+      if (excludeBlog) {
+        urls = urls.filter(u => !u.includes('/blog'));
+      }
+      if (excludePattern) {
+        urls = urls.filter(u => !u.includes(excludePattern));
+      }
+      console.log(`Found ${totalFound} URLs in sitemap (${urls.length} after exclusions).`);
       console.log(`🚀 Pushing URLs to Google Indexing API (${type})...\n`);
 
       let success = 0;
